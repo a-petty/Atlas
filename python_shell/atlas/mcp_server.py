@@ -72,7 +72,7 @@ _embedding_manager = None  # Lazy: atlas.embeddings.EmbeddingManager
 _context_manager = None    # Lazy: atlas.context.ContextManager
 
 IGNORED_DIRS = {"node_modules", "target", ".git", "__pycache__", "dist", "build", ".venv", "venv"}
-MAX_RESULT_CHARS = 80_000  # Safety cap for MCP tool results
+MAX_RESULT_CHARS = 60_000  # Safety cap for MCP tool results (Claude Code limit ~75K with JSON overhead)
 
 
 def _load_ignore_dirs(project_root: Path) -> list:
