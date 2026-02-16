@@ -119,7 +119,7 @@ class AtlasAgent:
         self.running = False
         
         self.embedding_manager = EmbeddingManager()
-        self.context_manager = ContextManager(self.repo_graph, self.embedding_manager)
+        self.context_manager = ContextManager(self.repo_graph, self.embedding_manager, model=model_name)
         
         if use_real_llm:
             self.llm = OllamaClient(model=model_name)

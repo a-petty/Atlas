@@ -1,6 +1,7 @@
 import collections
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Optional, Tuple
 import tiktoken
 import logging
 
@@ -8,6 +9,41 @@ from atlas.semantic_engine import RepoGraph, create_skeleton_from_source
 from .embeddings import EmbeddingManager # Assuming EmbeddingManager is in embeddings.py
 
 logger = logging.getLogger(__name__)
+
+# Known context window sizes (tokens). Used to set max_tokens automatically.
+# Conservative utilization: use 60% of window (leave room for system prompt + response).
+MODEL_CONTEXT_WINDOWS = {
+    # Cloud models
+    "claude": 200_000,
+    "claude-opus": 200_000,
+    "claude-sonnet": 200_000,
+    "gpt-4": 128_000,
+    "gpt-4o": 128_000,
+    "gemini": 1_000_000,
+    "gemini-pro": 1_000_000,
+    # Local models (Ollama)
+    "deepseek-coder": 128_000,
+    "deepseek-r2-distill-qwen-32b": 128_000,
+    "codellama": 16_000,
+    "llama3": 8_000,
+    "mistral": 32_000,
+    "qwen2.5-coder": 128_000,
+}
+
+CONTEXT_UTILIZATION = 0.60  # Use 60% of window for context (rest for system prompt + response)
+DEFAULT_CONTEXT_WINDOW = 100_000  # Fallback for unknown models
+
+
+@dataclass
+class ContextParams:
+    """Adaptive context assembly parameters computed from repo characteristics."""
+    tier1_tokens: int            # Map budget (measured actual, capped)
+    tier2_tokens: int            # Full content budget
+    tier3_tokens: int            # Skeleton budget
+    anchor_count: int            # Vector search top_n (3–10)
+    map_max_files: int           # Ranked list length (20–75)
+    neighborhood_max_hops: int   # BFS depth (2–3)
+    neighborhood_max_files: int  # BFS results cap (10–40)
 
 class ContextManager:
     """
@@ -20,13 +56,84 @@ class ContextManager:
         repo_graph: RepoGraph,
         embedding_manager: EmbeddingManager,
         model: str = "gpt-4",
-        max_tokens: int = 100000
+        max_tokens: Optional[int] = None
     ):
         self.repo_graph = repo_graph
         self.embedding_manager = embedding_manager
-        self.encoder = tiktoken.encoding_for_model(model)
-        self.max_tokens = max_tokens
-        logger.info(f"ContextManager initialized with model '{model}', max_tokens={max_tokens}")
+        try:
+            self.encoder = tiktoken.encoding_for_model(model)
+        except KeyError:
+            # Model not known to tiktoken — fall back to cl100k_base (GPT-4 tokenizer)
+            self.encoder = tiktoken.get_encoding("cl100k_base")
+        self.max_tokens = self._resolve_max_tokens(model, max_tokens)
+        logger.info(f"ContextManager initialized with model '{model}', max_tokens={self.max_tokens}")
+
+    @staticmethod
+    def _resolve_max_tokens(model: str, explicit_max_tokens: Optional[int]) -> int:
+        """Determine max_tokens from model name, unless explicitly overridden."""
+        if explicit_max_tokens is not None:
+            return explicit_max_tokens
+
+        # Try exact match, then prefix match (e.g., "deepseek-coder:7b" matches "deepseek-coder")
+        model_lower = model.lower()
+        window = MODEL_CONTEXT_WINDOWS.get(model_lower)
+        if window is None:
+            for prefix, w in MODEL_CONTEXT_WINDOWS.items():
+                if model_lower.startswith(prefix):
+                    window = w
+                    break
+        if window is None:
+            window = DEFAULT_CONTEXT_WINDOW
+
+        return int(window * CONTEXT_UTILIZATION)
+
+    def _compute_adaptive_params(self, total_budget: int, map_text: str) -> ContextParams:
+        """Compute adaptive context parameters based on repo size and map measurement."""
+        stats = self.repo_graph.get_statistics()
+        node_count = stats.node_count
+        edge_count = stats.edge_count
+        density = edge_count / max(node_count, 1)
+
+        # Tier 1 (map): use actual measured tokens, capped at 8% of total budget
+        map_tokens = self.count_tokens(map_text)
+        tier1_tokens = min(map_tokens, int(total_budget * 0.08))
+
+        # Tier 2 vs Tier 3 split: continuous function of node_count
+        remaining = total_budget - tier1_tokens
+        tier2_share = max(0.40, min(0.75, 0.75 - (node_count / 1500)))
+        tier2_tokens = int(remaining * tier2_share)
+        tier3_tokens = remaining - tier2_tokens
+
+        # Anchor count: scale with repo size, clamped 3–10
+        anchor_count = min(max(3, node_count // 10), 10)
+
+        # Map ranked list: scale with repo size, clamped 20–75
+        map_max_files = min(max(20, node_count // 4), 75)
+
+        # Neighborhood hops: sparse graphs get deeper traversal
+        neighborhood_max_hops = 3 if density < 3.0 else 2
+
+        # Neighborhood file cap: scale with repo size, clamped 10–40
+        neighborhood_max_files = min(max(10, node_count // 5), 40)
+
+        params = ContextParams(
+            tier1_tokens=tier1_tokens,
+            tier2_tokens=tier2_tokens,
+            tier3_tokens=tier3_tokens,
+            anchor_count=anchor_count,
+            map_max_files=map_max_files,
+            neighborhood_max_hops=neighborhood_max_hops,
+            neighborhood_max_files=neighborhood_max_files,
+        )
+
+        logger.info(
+            f"Adaptive params: repo={node_count} files, density={density:.1f}, "
+            f"tiers={params.tier1_tokens}/{params.tier2_tokens}/{params.tier3_tokens}, "
+            f"anchors={params.anchor_count}, hops={params.neighborhood_max_hops}, "
+            f"neighborhood_cap={params.neighborhood_max_files}"
+        )
+
+        return params
     
     def assemble_context(
         self,
@@ -35,41 +142,43 @@ class ContextManager:
         include_map: bool = True
     ) -> str:
         """
-        Build context using intelligent three-tier budgeting:
-        
-        Tier 1 (5%): Repository Map (always first)
-        Tier 2 (50%): Neighborhood Files (full content)
-        Tier 3 (45%): Architectural Context (skeletons of high-PageRank files)
+        Build context using adaptive three-tier budgeting.
+
+        Tier ratios, anchor counts, BFS depth, and neighborhood caps are all
+        computed dynamically based on repository size, graph density, and
+        actual map token cost.
         """
         context_parts = []
         total_budget = self.max_tokens
-        
+
         # Reserve for system prompt and query
         total_budget -= self.count_tokens(user_query)
         total_budget -= 1000  # System prompt overhead
-        
+
         processed_files = set()
-        
-        # === TIER 1: Repository Map (5% of budget) ===
-        map_budget = int(total_budget * 0.05)
-        if include_map:
-            map_text = self.repo_graph.generate_map(max_files=50)
+
+        # Step 1: Generate map (need it to measure tokens for adaptive params)
+        stats = self.repo_graph.get_statistics()
+        map_max_files = min(max(20, stats.node_count // 4), 75)
+        map_text = self.repo_graph.generate_map(max_files=map_max_files) if include_map else ""
+
+        # Step 2: Compute adaptive parameters
+        params = self._compute_adaptive_params(total_budget, map_text)
+
+        # === TIER 1: Repository Map (measured budget) ===
+        if include_map and map_text:
             map_tokens = self.count_tokens(map_text)
-            
-            if map_tokens <= map_budget:
+            if map_tokens <= params.tier1_tokens:
                 context_parts.append(("REPOSITORY_MAP", map_text))
                 logger.debug(f"Added repo map ({map_tokens} tokens)")
             else:
-                # Truncate map if too large
-                truncated_map = self._truncate_to_tokens(map_text, map_budget)
+                truncated_map = self._truncate_to_tokens(map_text, params.tier1_tokens)
                 context_parts.append(("REPOSITORY_MAP (truncated)", truncated_map))
-                logger.debug(f"Added truncated repo map ({map_budget} tokens)")
-        
-        remaining_budget = total_budget - map_budget
-        
-        # === TIER 2: Neighborhood Files - FULL CONTENT (50% of total) ===
-        neighborhood_budget = int(total_budget * 0.50)
-        
+                logger.debug(f"Added truncated repo map ({params.tier1_tokens} tokens)")
+
+        # === TIER 2: Neighborhood Files - FULL CONTENT ===
+        neighborhood_budget = params.tier2_tokens
+
         # 2a. Explicit files in scope (highest priority)
         explicit_content, explicit_processed = self._fill_with_content(
             files_in_scope,
@@ -81,15 +190,15 @@ class ContextManager:
             context_parts.append(("EXPLICIT_FILES (full content)", explicit_content))
             processed_files.update(explicit_processed)
             neighborhood_budget -= self.count_tokens(explicit_content)
-        
+
         # 2b. Vector search anchors
         all_graph_files = [Path(p) for p, _ in self.repo_graph.get_top_ranked_files(1000)]
         anchor_files = self.embedding_manager.find_relevant_files(
             user_query,
             all_graph_files,
-            top_n=5
+            top_n=params.anchor_count
         )
-        
+
         anchor_content, anchor_processed = self._fill_with_content(
             anchor_files,
             neighborhood_budget,
@@ -100,11 +209,15 @@ class ContextManager:
             context_parts.append(("ANCHOR_FILES (full content)", anchor_content))
             processed_files.update(anchor_processed)
             neighborhood_budget -= self.count_tokens(anchor_content)
-        
+
         # 2c. Neighborhood expansion (dependencies + dependents)
         expansion_base = list(files_in_scope) + anchor_files
-        weighted_neighborhood = self._get_dependency_neighborhood(expansion_base, processed_files)
-        # Extract paths in weight-sorted order (already sorted by _get_dependency_neighborhood)
+        weighted_neighborhood = self._get_dependency_neighborhood(
+            expansion_base,
+            processed_files,
+            max_hops=params.neighborhood_max_hops,
+            max_files=params.neighborhood_max_files,
+        )
         neighborhood_paths = [path for path, _weight in weighted_neighborhood]
 
         neighborhood_content, neighborhood_processed = self._fill_with_content(
@@ -116,24 +229,22 @@ class ContextManager:
         if neighborhood_content:
             context_parts.append(("NEIGHBORHOOD_FILES (full content)", neighborhood_content))
             processed_files.update(neighborhood_processed)
-        
-        # === TIER 3: Architectural Context - SKELETONS (45% of total) ===
-        skeleton_budget = int(total_budget * 0.45)
-        
+
+        # === TIER 3: Architectural Context - SKELETONS ===
         top_ranked = self.repo_graph.get_top_ranked_files(100)
         skeleton_content, skeleton_processed = self._fill_with_content(
             [Path(p) for p, _ in top_ranked],
-            skeleton_budget,
+            params.tier3_tokens,
             processed_files,
             is_skeleton=True
         )
         if skeleton_content:
             context_parts.append(("ARCHITECTURAL_CONTEXT (skeletons)", skeleton_content))
             processed_files.update(skeleton_processed)
-        
+
         final_budget = total_budget - sum(self.count_tokens(c[1]) for c in context_parts)
         logger.info(f"Context assembled: {len(processed_files)} files, {final_budget} tokens remaining")
-        
+
         return self._format_context(context_parts)
 
     def _get_dependency_neighborhood(
