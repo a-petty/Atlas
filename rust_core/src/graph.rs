@@ -53,10 +53,11 @@ pub struct UpdateResult {
 #[derive(Debug, Clone)]
 pub struct FileNode {
     pub path: PathBuf,
+    pub language: SupportedLanguage,
     pub definitions: Vec<String>,
     pub usages: Vec<String>,
     pub rank: f64,
-    
+
     // Cached data for fast change classification
     pub imports_hash: u64,
     pub definitions_hash: u64,
@@ -68,6 +69,7 @@ impl FileNode {
     /// Creates a new FileNode with computed hashes
     pub fn new(
         path: PathBuf,
+        language: SupportedLanguage,
         definitions: Vec<String>,
         usages: Vec<String>,
         imports: &HashSet<PathBuf>,
@@ -75,6 +77,7 @@ impl FileNode {
     ) -> Self {
         Self {
             path,
+            language,
             definitions: definitions.clone(),
             usages: usages.clone(),
             rank: 0.0,
@@ -87,8 +90,10 @@ impl FileNode {
 
     /// Creates an empty node (used when initializing before full parse)
     pub fn empty(path: PathBuf) -> Self {
+        let language = SupportedLanguage::from_path(&path);
         Self {
             path,
+            language,
             definitions: Vec::new(),
             usages: Vec::new(),
             rank: 0.0,
@@ -142,6 +147,24 @@ impl EdgeKind {
             EdgeKind::Import => 1.0,      // Weak link
         }
     }
+}
+
+/// Maximum number of files a symbol can be defined in before it's considered noise.
+/// Symbols defined in more files than this are skipped during SymbolUsage edge creation.
+const MAX_SYMBOL_DEFINITION_FILES: usize = 5;
+
+/// Check if two languages are compatible for SymbolUsage edges.
+/// JS/TS variants can reference each other, but Python↔JS/TS etc. cannot.
+fn languages_compatible(a: SupportedLanguage, b: SupportedLanguage) -> bool {
+    use SupportedLanguage::*;
+    matches!(
+        (a, b),
+        (Python, Python)
+            | (JavaScript | JavaScriptJsx, JavaScript | JavaScriptJsx | TypeScript | TypeScriptTsx)
+            | (TypeScript | TypeScriptTsx, JavaScript | JavaScriptJsx | TypeScript | TypeScriptTsx)
+            | (Rust, Rust)
+            | (Go, Go)
+    )
 }
 
 /// Represents the magnitude of a change to a file, used for tiered updates.
@@ -244,6 +267,19 @@ impl RepoGraph {
     /// Enable the CPG overlay layer.
     pub fn enable_cpg(&mut self) {
         self.cpg = Some(CpgLayer::new());
+    }
+
+    /// Enable CPG and build data for all files already in the graph.
+    /// Used when CPG is enabled after build_complete().
+    pub fn enable_cpg_and_build(&mut self) {
+        self.cpg = Some(CpgLayer::new());
+        let paths: Vec<PathBuf> = self.graph.node_weights()
+            .map(|n| n.path.clone())
+            .collect();
+        self.build_cpg_for_all_files(&paths);
+        if let Some(cpg) = &mut self.cpg {
+            crate::callgraph::CallGraphBuilder::resolve_all(cpg, &self.symbol_index);
+        }
     }
 
     /// Get skeleton for a file, loading on-demand if not cached
@@ -581,15 +617,23 @@ impl RepoGraph {
         }
 
         // 6. Create new edges for Added Definitions (Incoming edges)
+        let this_lang = lang;
         let mut edges_to_create = Vec::new();
         for def in &added_defs {
+            // Skip noisy symbols
+            if let Some(def_paths) = self.symbol_index.definitions.get(def) {
+                if def_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
+            }
             if let Some(user_paths) = self.symbol_index.users.get(def) {
                 for user_path in user_paths {
                     if user_path == file_path {
                         continue;
-                    } // No self-references for this logic
+                    }
                     if let Some(&user_idx) = self.path_to_idx.get(user_path) {
-                        edges_to_create.push((user_idx, node_idx));
+                        let user_lang = self.graph[user_idx].language;
+                        if languages_compatible(user_lang, this_lang) {
+                            edges_to_create.push((user_idx, node_idx));
+                        }
                     }
                 }
             }
@@ -604,12 +648,17 @@ impl RepoGraph {
         let mut edges_to_create = Vec::new();
         for use_ in &added_uses {
             if let Some(def_paths) = self.symbol_index.definitions.get(use_) {
+                // Skip noisy symbols
+                if def_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
                 for def_path in def_paths {
                     if def_path == file_path {
                         continue;
                     }
                     if let Some(&def_idx) = self.path_to_idx.get(def_path) {
-                        edges_to_create.push((node_idx, def_idx));
+                        let def_lang = self.graph[def_idx].language;
+                        if languages_compatible(this_lang, def_lang) {
+                            edges_to_create.push((node_idx, def_idx));
+                        }
                     }
                 }
             }
@@ -772,9 +821,11 @@ impl RepoGraph {
         for result in &parse_results {
             let defs: Vec<String> = result.symbols.iter().filter(|s| s.is_definition).map(|s| s.name.clone()).collect();
             let uses: Vec<String> = result.symbols.iter().filter(|s| !s.is_definition).map(|s| s.name.clone()).collect();
+            let lang = SupportedLanguage::from_path(&result.path);
 
             let file_node = FileNode::new(
                 result.path.clone(),
+                lang,
                 defs,
                 uses,
                 &result.imports,
@@ -887,6 +938,7 @@ impl RepoGraph {
         // 3. NODE CREATION
         let file_node = FileNode::new(
             path.clone(),
+            lang,
             defs.clone(),
             uses.clone(),
             &imports,
@@ -943,8 +995,11 @@ impl RepoGraph {
         
         // 7. SYMBOL USAGE EDGES
         // Create edges from this file to files defining symbols we use
+        let new_lang = lang;
         for usage in &uses {
             let defining_paths_to_process = if let Some(defining_paths) = self.symbol_index.definitions.get(usage) {
+                // Skip noisy symbols
+                if defining_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
                 // Clone the paths to release the immutable borrow on `self.symbol_index`
                 defining_paths.clone()
             } else {
@@ -954,26 +1009,36 @@ impl RepoGraph {
             for def_path in defining_paths_to_process {
                 if let Some(&def_idx) = self.path_to_idx.get(&def_path) {
                     if new_idx != def_idx {
-                        self.ensure_edge(new_idx, def_idx, EdgeKind::SymbolUsage);
+                        let def_lang = self.graph[def_idx].language;
+                        if languages_compatible(new_lang, def_lang) {
+                            self.ensure_edge(new_idx, def_idx, EdgeKind::SymbolUsage);
+                        }
                     }
                 }
             }
         }
-        
+
         // 8. REVERSE SYMBOL USAGE EDGES
         // Create edges FROM files that use symbols WE define
         for def in &defs {
+            // Skip noisy symbols
+            if let Some(def_paths) = self.symbol_index.definitions.get(def) {
+                if def_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
+            }
             let using_paths_to_process = if let Some(using_paths) = self.symbol_index.users.get(def) {
                 // Clone the paths to release the immutable borrow
                 using_paths.clone()
             } else {
                 Vec::new()
             };
-            
+
             for user_path in using_paths_to_process {
                 if let Some(&user_idx) = self.path_to_idx.get(&user_path) {
                     if user_idx != new_idx && &user_path != &path {
-                        self.ensure_edge(user_idx, new_idx, EdgeKind::SymbolUsage);
+                        let user_lang = self.graph[user_idx].language;
+                        if languages_compatible(user_lang, new_lang) {
+                            self.ensure_edge(user_idx, new_idx, EdgeKind::SymbolUsage);
+                        }
                     }
                 }
             }
@@ -1109,6 +1174,16 @@ impl RepoGraph {
     /// After initial population, this method builds the semantic edges based on symbol usage.
     pub fn build_semantic_edges(&mut self) {
         info!("Building semantic edges...");
+
+        // Pre-compute noisy symbols: skip symbols defined in too many files
+        let noisy_symbols: HashSet<&String> = self.symbol_index.definitions.iter()
+            .filter(|(_, paths)| paths.len() > MAX_SYMBOL_DEFINITION_FILES)
+            .map(|(name, _)| name)
+            .collect();
+        if !noisy_symbols.is_empty() {
+            info!("Filtering {} noisy symbols (defined in >{} files)", noisy_symbols.len(), MAX_SYMBOL_DEFINITION_FILES);
+        }
+
         let edges_to_create: Vec<(NodeIndex, NodeIndex)> = self.symbol_index.usages
             .par_iter()
             .flat_map(|(user_path, used_symbols)| {
@@ -1116,14 +1191,19 @@ impl RepoGraph {
                     Some(&idx) => idx,
                     None => return Vec::new(),
                 };
+                let user_lang = self.graph[user_node_idx].language;
 
                 let mut edges = Vec::new();
                 for symbol in used_symbols {
+                    if noisy_symbols.contains(symbol) { continue; }
                     if let Some(def_paths) = self.symbol_index.definitions.get(symbol) {
                         for def_path in def_paths {
                             if user_path == def_path { continue; } // No self-references
                             if let Some(&def_node_idx) = self.path_to_idx.get(def_path) {
-                                edges.push((user_node_idx, def_node_idx));
+                                let def_lang = self.graph[def_node_idx].language;
+                                if languages_compatible(user_lang, def_lang) {
+                                    edges.push((user_node_idx, def_node_idx));
+                                }
                             }
                         }
                     }

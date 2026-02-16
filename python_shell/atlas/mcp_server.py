@@ -66,11 +66,26 @@ mcp = FastMCP(
 # ---------------------------------------------------------------------------
 _graph: Optional[RepoGraph] = None
 _project_root: Optional[Path] = None
+_graph_initialized: bool = False
 _cpg_enabled: bool = False
 _embedding_manager = None  # Lazy: atlas.embeddings.EmbeddingManager
 _context_manager = None    # Lazy: atlas.context.ContextManager
 
 IGNORED_DIRS = {"node_modules", "target", ".git", "__pycache__", "dist", "build", ".venv", "venv"}
+MAX_RESULT_CHARS = 80_000  # Safety cap for MCP tool results
+
+
+def _load_ignore_dirs(project_root: Path) -> list:
+    """Load ignored directory names from IGNORED_DIRS and .atlasignore file."""
+    dirs = list(IGNORED_DIRS)
+    ignore_file = project_root / ".atlasignore"
+    if ignore_file.exists():
+        for line in ignore_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                dirs.append(line)
+        log.info("Loaded %d ignore patterns from .atlasignore", len(dirs) - len(IGNORED_DIRS))
+    return dirs
 
 
 # ---------------------------------------------------------------------------
@@ -78,14 +93,15 @@ IGNORED_DIRS = {"node_modules", "target", ".git", "__pycache__", "dist", "build"
 # ---------------------------------------------------------------------------
 def _initialize_graph(project_root: Path) -> None:
     """Scan repository, build file-level graph, compute PageRank."""
-    global _graph, _project_root
+    global _graph, _project_root, _graph_initialized
 
     _project_root = project_root.resolve()
     log.info("Initializing graph for %s", _project_root)
 
     _graph = RepoGraph(str(_project_root))
 
-    files = scan_repository(str(_project_root), ignored_dirs=list(IGNORED_DIRS))
+    ignored = _load_ignore_dirs(_project_root)
+    files = scan_repository(str(_project_root), ignored_dirs=ignored)
     log.info("Scanned %d files", len(files))
 
     _graph.build_complete(files)
@@ -98,6 +114,16 @@ def _initialize_graph(project_root: Path) -> None:
         stats.edge_count,
         stats.total_definitions,
     )
+    _graph_initialized = True
+
+
+def _ensure_graph() -> None:
+    """Lazily initialize the graph on first tool call."""
+    if _graph_initialized:
+        return
+    if _project_root is None:
+        raise RuntimeError("Project root not set")
+    _initialize_graph(_project_root)
 
 
 def _ensure_cpg() -> None:
@@ -107,10 +133,10 @@ def _ensure_cpg() -> None:
         return
     if _graph is None:
         return
-    log.info("Enabling CPG overlay (first CPG tool call)...")
-    _graph.enable_cpg()
+    log.info("Enabling CPG and building sub-file data (first CPG tool call)...")
+    _graph.enable_cpg_and_build()
     _cpg_enabled = True
-    log.info("CPG enabled")
+    log.info("CPG enabled and built")
 
 
 def _ensure_embeddings() -> None:
@@ -123,7 +149,8 @@ def _ensure_embeddings() -> None:
     from atlas.context import ContextManager
 
     _embedding_manager = EmbeddingManager()
-    _context_manager = ContextManager(_graph, _embedding_manager)
+    # Cap at 20K tokens (~80K chars) to stay within MCP tool result limits
+    _context_manager = ContextManager(_graph, _embedding_manager, max_tokens=20_000)
     log.info("Embedding manager ready")
 
 
@@ -156,9 +183,8 @@ def _to_relative(abs_path: str) -> str:
 @mcp.tool()
 def atlas_status() -> str:
     """Get graph statistics and readiness status. Call this first to verify Atlas is ready."""
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         stats = _graph.get_statistics()
         lines = [
             "Atlas Semantic Graph Status",
@@ -187,9 +213,8 @@ def get_repository_map(max_files: int = 50) -> str:
     Args:
         max_files: Maximum number of files to include (default 50).
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         return _graph.generate_map(max_files)
     except Exception as e:
         return f"ERROR: {e}"
@@ -202,9 +227,8 @@ def get_dependencies(file_path: str) -> str:
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         normalized = _normalize_path(file_path)
         deps = _graph.get_dependencies(normalized)
         if not deps:
@@ -224,9 +248,8 @@ def get_dependents(file_path: str) -> str:
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         normalized = _normalize_path(file_path)
         deps = _graph.get_dependents(normalized)
         if not deps:
@@ -249,9 +272,8 @@ def get_top_ranked_files(limit: int = 20) -> str:
     Args:
         limit: Number of files to return (default 20).
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         ranked = _graph.get_top_ranked_files(limit)
         if not ranked:
             return "No ranked files available"
@@ -274,9 +296,8 @@ def find_relevant_files(query: str, top_n: int = 10) -> str:
         query: Natural language description of what you're looking for.
         top_n: Number of results to return (default 10).
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         _ensure_embeddings()
         all_files = [Path(p) for p, _ in _graph.get_top_ranked_files(1000)]
         results = _embedding_manager.find_relevant_files(query, all_files, top_n=top_n)
@@ -302,11 +323,13 @@ def assemble_context(query: str) -> str:
     Args:
         query: The coding task or question to assemble context for.
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         _ensure_embeddings()
-        return _context_manager.assemble_context(query, files_in_scope=[])
+        result = _context_manager.assemble_context(query, files_in_scope=[])
+        if len(result) > MAX_RESULT_CHARS:
+            result = result[:MAX_RESULT_CHARS] + "\n\n[... truncated to fit MCP limit ...]"
+        return result
     except Exception as e:
         return f"ERROR: {e}"
 
@@ -321,9 +344,8 @@ def get_file_symbols(file_path: str) -> str:
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         _ensure_cpg()
         normalized = _normalize_path(file_path)
         symbols = _graph.get_functions_in_file(normalized)
@@ -367,9 +389,8 @@ def get_callees(file_path: str, function_name: str) -> str:
         file_path: Absolute or project-relative path to the file containing the function.
         function_name: Name of the function to analyze.
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         _ensure_cpg()
         normalized = _normalize_path(file_path)
         callees = _graph.get_callees(normalized, function_name)
@@ -391,9 +412,8 @@ def get_callers(file_path: str, function_name: str) -> str:
         file_path: Absolute or project-relative path to the file containing the function.
         function_name: Name of the function to analyze.
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         _ensure_cpg()
         normalized = _normalize_path(file_path)
         callers = _graph.get_callers(normalized, function_name)
@@ -416,9 +436,8 @@ def get_file_skeleton(file_path: str) -> str:
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    if _graph is None:
-        return "ERROR: Graph not initialized"
     try:
+        _ensure_graph()
         normalized = _normalize_path(file_path)
         skeleton = _graph.get_skeleton(normalized)
         if not skeleton or not skeleton.strip():
@@ -435,13 +454,14 @@ def atlas_refresh() -> str:
     Use this after significant file system changes (branch switches, large
     merges, etc.) to ensure the graph is up to date.
     """
-    global _cpg_enabled, _embedding_manager, _context_manager
+    global _cpg_enabled, _embedding_manager, _context_manager, _graph_initialized
     if _project_root is None:
         return "ERROR: Project root not set"
     try:
         _cpg_enabled = False
         _embedding_manager = None
         _context_manager = None
+        _graph_initialized = False
         _initialize_graph(_project_root)
         stats = _graph.get_statistics()
         return (
@@ -477,12 +497,15 @@ def main():
         logging.getLogger("atlas").setLevel(logging.DEBUG)
         log.setLevel(logging.DEBUG)
 
+    global _project_root
+
     project_root = args.project_root.resolve()
     if not project_root.is_dir():
         print(f"ERROR: {project_root} is not a directory", file=sys.stderr)
         sys.exit(1)
 
-    _initialize_graph(project_root)
+    _project_root = project_root
+    log.info("Atlas MCP server starting (project: %s, graph builds on first tool call)", project_root)
     mcp.run(transport="stdio")
 
 

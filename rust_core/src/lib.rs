@@ -404,6 +404,12 @@ impl PyRepoGraph {
         self.graph.enable_cpg();
     }
 
+    /// Enable CPG and build sub-file data for all files already in the graph.
+    /// Use this when CPG is enabled after build_complete().
+    fn enable_cpg_and_build(&mut self) {
+        self.graph.enable_cpg_and_build();
+    }
+
     /// Check if CPG is enabled.
     fn cpg_enabled(&self) -> bool {
         self.graph.cpg.is_some()

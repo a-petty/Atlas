@@ -30,5 +30,3 @@
 (new_expression
   constructor: (identifier) @reference.class)
 
-; Identifiers (general usage)
-(identifier) @reference.identifier

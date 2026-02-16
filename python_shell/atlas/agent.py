@@ -93,6 +93,22 @@ Always structure your responses as:
 - Path traversal is prevented
 """
 
+_DEFAULT_IGNORED_DIRS = {"node_modules", "target", ".git", "__pycache__", "dist", "build", ".venv", "venv"}
+
+
+def _load_ignore_dirs(project_root: Path) -> Set[str]:
+    """Load ignored directory names from defaults and .atlasignore file."""
+    dirs = set(_DEFAULT_IGNORED_DIRS)
+    ignore_file = project_root / ".atlasignore"
+    if ignore_file.exists():
+        for line in ignore_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                dirs.add(line)
+        log.info(f"Loaded .atlasignore: {len(dirs) - len(_DEFAULT_IGNORED_DIRS)} extra patterns")
+    return dirs
+
+
 class AgentConfig(BaseModel):
     """Configuration settings for the Atlas Agent."""
     project_root: Path
@@ -100,7 +116,7 @@ class AgentConfig(BaseModel):
         default_factory=lambda: ["py", "rs", "js", "ts", "go", "java", "c", "cpp", "md", "toml", "json"]
     )
     ignored_dirs: Set[str] = Field(
-        default_factory=lambda: {"node_modules", "target", ".git", "__pycache__", "dist", "build", ".venv", "venv"}
+        default_factory=lambda: set(_DEFAULT_IGNORED_DIRS)
     )
     debounce_seconds: float = 0.5
 
@@ -111,7 +127,8 @@ class AtlasAgent:
     """
 
     def __init__(self, project_root: Path, provider: str = "stub", model_name: str = "deepseek-coder"):
-        self.config = AgentConfig(project_root=project_root)
+        ignored = _load_ignore_dirs(project_root)
+        self.config = AgentConfig(project_root=project_root, ignored_dirs=ignored)
         self.project_root_canonical = project_root.resolve()
         self.repo_graph = RepoGraph(str(project_root))
         self.watcher: Optional[FileWatcher] = None

@@ -38,4 +38,3 @@
 (new_expression
   constructor: (identifier) @reference.class)
 
-(identifier) @reference.identifier
