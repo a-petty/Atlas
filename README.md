@@ -60,26 +60,26 @@ atlas query "Find all unused imports" -p /path/to/repo --model codellama
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Python Shell (python_shell/atlas/)                 │
-│  ┌──────────┐ ┌──────────┐ ┌──────┐ ┌───────────┐  │
-│  │  Agent   │ │ Context  │ │ LLM  │ │   Tools   │  │
+│  ┌──────────┐ ┌──────────┐ ┌──────┐ ┌────────────┐  │
+│  │  Agent   │ │ Context  │ │ LLM  │ │   Tools    │  │
 │  │          │ │ Manager  │ │Client│ │ (read/write│  │
 │  │ (orchest-│ │ (anchor  │ │(Olla-│ │  + syntax  │  │
 │  │  rator)  │ │ +expand) │ │  ma) │ │  checking) │  │
-│  └────┬─────┘ └────┬─────┘ └──────┘ └───────────┘  │
-│       │             │          PyO3 boundary         │
+│  └────┬─────┘ └────┬─────┘ └──────┘ └────────────┘  │
+│       │             │          PyO3 boundary        │
 ├───────┼─────────────┼───────────────────────────────┤
 │  Rust Core (rust_core/src/)                         │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐            │
-│  │ RepoGraph│ │ CpgLayer │ │  Parser  │            │
-│  │ (file-   │ │ (CPG:    │ │ (tree-   │            │
-│  │  level   │ │  CFG +   │ │  sitter, │            │
-│  │  graph,  │ │  dataflow│ │  6 langs,│            │
-│  │ PageRank)│ │  + calls)│ │  symbols)│            │
-│  └──────────┘ └──────────┘ └──────────┘            │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐            │
-│  │ Symbol   │ │ Import   │ │ Watcher  │            │
-│  │  Index   │ │ Resolver │ │ (notify) │            │
-│  └──────────┘ └──────────┘ └──────────┘            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐             │
+│  │ RepoGraph│ │ CpgLayer │ │  Parser  │             │
+│  │ (file-   │ │ (CPG:    │ │ (tree-   │             │
+│  │  level   │ │  CFG +   │ │  sitter, │             │
+│  │  graph,  │ │  dataflow│ │  6 langs,│             │
+│  │ PageRank)│ │  + calls)│ │  symbols)│             │
+│  └──────────┘ └──────────┘ └──────────┘             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐             │
+│  │ Symbol   │ │ Import   │ │ Watcher  │             │
+│  │  Index   │ │ Resolver │ │ (notify) │             │
+│  └──────────┘ └──────────┘ └──────────┘             │
 └─────────────────────────────────────────────────────┘
 ```
 
