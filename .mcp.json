@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "atlas": {
+      "type": "stdio",
+      "command": "atlas-mcp",
+      "args": ["--project-root", "."]
+    }
+  }
+}
