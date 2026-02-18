@@ -237,9 +237,29 @@ class ContextManager:
             processed_files.update(neighborhood_processed)
 
         # === TIER 3: Architectural Context - SKELETONS ===
-        top_ranked = self.repo_graph.get_top_ranked_files(100)
+        # Use dependency neighbors of anchor/explicit/neighborhood files (query-relevant)
+        # instead of static global PageRank top files.
+        skeleton_seed_files = list(files_in_scope) + anchor_files + neighborhood_paths
+        skeleton_neighbors = self._get_dependency_neighborhood(
+            skeleton_seed_files,
+            processed_files,
+            max_hops=1,
+            max_files=100,
+        )
+        skeleton_candidates = [path for path, _weight in skeleton_neighbors]
+
+        # If neighbor set is sparse, pad with global top-ranked files as fallback
+        if len(skeleton_candidates) < 20:
+            top_ranked = self.repo_graph.get_top_ranked_files(100)
+            top_ranked_paths = [Path(p) for p, _ in top_ranked]
+            seen = set(skeleton_candidates)
+            for p in top_ranked_paths:
+                if p not in seen and p not in processed_files:
+                    skeleton_candidates.append(p)
+                    seen.add(p)
+
         skeleton_content, skeleton_processed = self._fill_with_content(
-            [Path(p) for p, _ in top_ranked],
+            skeleton_candidates,
             params.tier3_tokens,
             processed_files,
             is_skeleton=True

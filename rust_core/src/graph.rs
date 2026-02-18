@@ -1348,6 +1348,11 @@ impl RepoGraph {
         }
     }
 
+    /// Check if a file path exists in the graph.
+    pub fn has_file(&self, file_path: &Path) -> bool {
+        self.path_to_idx.contains_key(file_path)
+    }
+
     /// Get outgoing dependencies for a file
     pub fn get_outgoing_dependencies(&self, file_path: &Path) -> Vec<(PathBuf, EdgeKind)> {
         if let Some(&node_idx) = self.path_to_idx.get(file_path) {

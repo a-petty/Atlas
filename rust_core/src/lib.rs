@@ -383,6 +383,12 @@ impl PyRepoGraph {
         Ok(dependencies.into_iter().map(|(p, k)| (p.to_string_lossy().into_owned(), format!("{:?}", k))).collect())
     }
 
+    /// Check if a file path exists in the graph.
+    fn has_file(&self, file_path: &str) -> bool {
+        let path = PathBuf::from(file_path);
+        self.graph.has_file(&path)
+    }
+
     fn get_top_ranked_files(&mut self, limit: usize) -> Vec<(String, f64)> {
         self.graph.get_top_ranked_files(limit)
             .into_iter()

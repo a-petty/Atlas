@@ -19,3 +19,6 @@ dist/
 
 # Rust
 rust_core/target/
+
+# Local docs
+git-workflow.md

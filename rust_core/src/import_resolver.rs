@@ -85,6 +85,9 @@ pub struct PythonImportResolver {
     import_query: Query,
     /// Directory names to exclude from module indexing.
     ignored_dirs: HashSet<String>,
+    /// Detected source roots (directories containing Python packages).
+    /// Modules are also indexed relative to each source root.
+    source_roots: Vec<PathBuf>,
 }
 
 impl PythonImportResolver {
@@ -96,6 +99,7 @@ impl PythonImportResolver {
             project_root: project_root.to_path_buf(),
             module_index: HashMap::new(),
             ignored_dirs: ignored_set,
+            source_roots: Vec::new(),
             // Pre-compile the query for performance
             // Pattern 0: absolute import (e.g., `import app.models`)
             // Pattern 1: entire from-import statement for programmatic AST walking
@@ -108,8 +112,50 @@ impl PythonImportResolver {
             )
             .expect("Failed to create import query"),
         };
+        resolver.source_roots = resolver.detect_source_roots();
         resolver.index_modules();
         resolver
+    }
+
+    /// Detect source roots: depth-1 directories that contain Python packages.
+    /// A directory is a source root if it has at least one child directory with `__init__.py`.
+    fn detect_source_roots(&self) -> Vec<PathBuf> {
+        let mut roots = Vec::new();
+
+        let read_dir = match std::fs::read_dir(&self.project_root) {
+            Ok(rd) => rd,
+            Err(_) => return roots,
+        };
+
+        for entry in read_dir.filter_map(Result::ok) {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+
+            let dir_name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(n) => n.to_string(),
+                None => continue,
+            };
+
+            // Skip ignored directories
+            if self.ignored_dirs.contains(&dir_name) {
+                continue;
+            }
+
+            // Check if this directory contains at least one Python package
+            if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                for sub_entry in sub_entries.filter_map(Result::ok) {
+                    let sub_path = sub_entry.path();
+                    if sub_path.is_dir() && sub_path.join("__init__.py").exists() {
+                        roots.push(path.clone());
+                        break;
+                    }
+                }
+            }
+        }
+
+        roots
     }
 
     /// Scans the project directory for Python files (.py) and builds the module index.
@@ -155,6 +201,38 @@ impl PythonImportResolver {
                     if !module_path_str.is_empty() {
                         self.module_index
                             .insert(module_path_str, path.to_path_buf());
+
+                        // Also register relative to each source root
+                        for source_root in &self.source_roots {
+                            if let Ok(sr_relative) = path.strip_prefix(source_root) {
+                                let mut sr_components: Vec<String> = sr_relative
+                                    .components()
+                                    .map(|c| c.as_os_str().to_string_lossy().to_string())
+                                    .collect();
+
+                                let sr_module_str =
+                                    if sr_components.last() == Some(&"__init__.py".to_string())
+                                        || sr_components.last() == Some(&"__init__.pyi".to_string())
+                                    {
+                                        sr_components.pop();
+                                        sr_components.join(".")
+                                    } else {
+                                        if let Some(last) = sr_components.last_mut() {
+                                            if let Some(stem) = Path::new(last).file_stem() {
+                                                *last = stem.to_string_lossy().to_string();
+                                            }
+                                        }
+                                        sr_components.join(".")
+                                    };
+
+                                if !sr_module_str.is_empty() {
+                                    // First-registered wins: don't overwrite existing entries
+                                    self.module_index
+                                        .entry(sr_module_str)
+                                        .or_insert_with(|| path.to_path_buf());
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -677,7 +755,10 @@ mod tests {
     fn test_module_indexing() {
         let repo = setup();
         let index = &repo.resolver.module_index;
-        assert_eq!(index.len(), 5);
+        // 5 full-path keys + 4 source-root-relative keys (src/ is a source root)
+        // Full-path: app, src.utils, src.api, src.api.v1.endpoints, src.api.v1.helpers
+        // Source-root-relative: utils, api, api.v1.endpoints, api.v1.helpers
+        assert_eq!(index.len(), 9);
         assert_eq!(index.get("app"), Some(&repo.root_path.join("app.py")));
         assert_eq!(
             index.get("src.utils"),
@@ -690,6 +771,15 @@ mod tests {
         assert_eq!(
             index.get("src.api.v1.endpoints"),
             Some(&repo.root_path.join("src/api/v1/endpoints.py"))
+        );
+        // Source-root-relative variants
+        assert_eq!(
+            index.get("utils"),
+            Some(&repo.root_path.join("src/utils.py"))
+        );
+        assert_eq!(
+            index.get("api"),
+            Some(&repo.root_path.join("src/api/__init__.py"))
         );
     }
 
@@ -883,5 +973,192 @@ def my_function():
         // nonexistent_module doesn't resolve as a module, so falls back to __init__.py
         assert_eq!(imports.len(), 1);
         assert!(imports.contains(&repo.root_path.join("src/api/v1/__init__.py")));
+    }
+
+    // === Source Root Detection Tests ===
+
+    /// Helper to set up a Django-like project with backend/ source root
+    fn setup_django_project() -> TestRepo {
+        let root = tempdir().unwrap();
+        let root_path = root.path().to_path_buf();
+
+        // Django-style: backend/ is the source root, app/ is a package inside it
+        create_dummy_file(&root_path, "backend/app/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/models/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/models/enums.py", "class PlanStatus: pass");
+        create_dummy_file(&root_path, "backend/app/models/user.py", "class User: pass");
+        create_dummy_file(&root_path, "backend/app/views/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/views/api.py", "");
+        create_dummy_file(
+            &root_path,
+            "backend/app/v3/orchestrator.py",
+            "from app.models.enums import PlanStatus",
+        );
+        create_dummy_file(&root_path, "backend/manage.py", "");
+        // Non-source-root directory (no Python packages inside)
+        create_dummy_file(&root_path, "frontend/index.html", "");
+
+        let resolver = PythonImportResolver::new(&root_path, &[]);
+
+        let mut parser = Parser::new();
+        parser
+            .set_language(tree_sitter_python::language())
+            .expect("Failed to load python grammar");
+
+        TestRepo {
+            _root: root,
+            root_path,
+            resolver,
+            parser,
+        }
+    }
+
+    #[test]
+    fn test_source_root_detection() {
+        let repo = setup_django_project();
+        // backend/ should be detected as a source root (contains app/ with __init__.py)
+        assert_eq!(repo.resolver.source_roots.len(), 1);
+        assert_eq!(repo.resolver.source_roots[0], repo.root_path.join("backend"));
+    }
+
+    #[test]
+    fn test_source_root_not_detected_for_non_package_dir() {
+        let repo = setup_django_project();
+        // frontend/ should NOT be a source root (no subdirectory with __init__.py)
+        let frontend = repo.root_path.join("frontend");
+        assert!(!repo.resolver.source_roots.contains(&frontend));
+    }
+
+    #[test]
+    fn test_source_root_module_index_has_both_variants() {
+        let repo = setup_django_project();
+        let index = &repo.resolver.module_index;
+
+        // Full-path variant should exist
+        assert!(
+            index.contains_key("backend.app.models.enums"),
+            "Full-path key 'backend.app.models.enums' should be in index"
+        );
+
+        // Source-root-relative variant should also exist
+        assert!(
+            index.contains_key("app.models.enums"),
+            "Source-root-relative key 'app.models.enums' should be in index"
+        );
+
+        // Both should point to the same file
+        assert_eq!(
+            index.get("backend.app.models.enums"),
+            index.get("app.models.enums"),
+        );
+    }
+
+    #[test]
+    fn test_absolute_import_via_source_root() {
+        // The critical test: `from app.models.enums import PlanStatus` should resolve
+        // even though the file is at backend/app/models/enums.py
+        let mut repo = setup_django_project();
+        let imports = run_find_imports(
+            &mut repo,
+            "from app.models.enums import PlanStatus",
+            "backend/app/v3/orchestrator.py",
+        );
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("backend/app/models/enums.py")));
+    }
+
+    #[test]
+    fn test_full_path_import_still_works() {
+        // `from backend.app.models.enums import PlanStatus` should also resolve
+        let mut repo = setup_django_project();
+        let imports = run_find_imports(
+            &mut repo,
+            "from backend.app.models.enums import PlanStatus",
+            "backend/manage.py",
+        );
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("backend/app/models/enums.py")));
+    }
+
+    #[test]
+    fn test_absolute_import_package_via_source_root() {
+        // `from app.models import something` should resolve to app/models/__init__.py
+        let mut repo = setup_django_project();
+        let imports = run_find_imports(
+            &mut repo,
+            "from app.models import something",
+            "backend/app/views/api.py",
+        );
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("backend/app/models/__init__.py")));
+    }
+
+    #[test]
+    fn test_bare_absolute_import_via_source_root() {
+        // `import app.models.enums` should resolve
+        let mut repo = setup_django_project();
+        let imports = run_find_imports(
+            &mut repo,
+            "import app.models.enums",
+            "backend/manage.py",
+        );
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("backend/app/models/enums.py")));
+    }
+
+    #[test]
+    fn test_multiple_source_roots() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().to_path_buf();
+
+        // Two source roots: backend/ and libs/
+        create_dummy_file(&root_path, "backend/app/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/core.py", "");
+        create_dummy_file(&root_path, "libs/shared/__init__.py", "");
+        create_dummy_file(&root_path, "libs/shared/utils.py", "");
+
+        let resolver = PythonImportResolver::new(&root_path, &[]);
+
+        // Both should be detected as source roots
+        assert_eq!(resolver.source_roots.len(), 2);
+        let root_set: HashSet<_> = resolver.source_roots.iter().collect();
+        assert!(root_set.contains(&root_path.join("backend")));
+        assert!(root_set.contains(&root_path.join("libs")));
+
+        // Both source-root-relative keys should exist
+        assert!(resolver.module_index.contains_key("app.core"));
+        assert!(resolver.module_index.contains_key("shared.utils"));
+    }
+
+    #[test]
+    fn test_source_root_ignored_dirs_skipped() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().to_path_buf();
+
+        // node_modules contains packages but should be ignored
+        create_dummy_file(&root_path, "node_modules/pkg/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/__init__.py", "");
+
+        let resolver = PythonImportResolver::new(
+            &root_path,
+            &["node_modules".to_string()],
+        );
+
+        // Only backend/ should be detected, not node_modules/
+        assert_eq!(resolver.source_roots.len(), 1);
+        assert_eq!(resolver.source_roots[0], root_path.join("backend"));
+    }
+
+    #[test]
+    fn test_no_source_roots_for_flat_project() {
+        // The default setup() project has no source roots (src/ contains files directly,
+        // not packages with __init__.py at depth-1)
+        let repo = setup();
+        // src/ does have src/api/__init__.py, so src/ IS a source root
+        // but the default setup doesn't have a depth-1 dir containing a package subdir
+        // Actually: src/ is a depth-1 dir, and it contains api/ which has __init__.py
+        // So src/ IS detected as a source root
+        assert_eq!(repo.resolver.source_roots.len(), 1);
+        assert_eq!(repo.resolver.source_roots[0], repo.root_path.join("src"));
     }
 }

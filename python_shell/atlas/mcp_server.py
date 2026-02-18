@@ -258,9 +258,11 @@ async def get_dependencies(file_path: str) -> str:
             def _run():
                 _ensure_graph()
                 normalized = _normalize_path(file_path)
+                if not _graph.has_file(normalized):
+                    return f"File not found in graph: {_to_relative(normalized)}. It may not be indexed (wrong extension, syntax errors, or in an ignored directory)."
                 deps = _graph.get_dependencies(normalized)
                 if not deps:
-                    return f"No outgoing dependencies found for {_to_relative(normalized)}"
+                    return f"No outgoing dependencies found for {_to_relative(normalized)} (file is in graph but has no imports)"
                 lines = [f"Dependencies of {_to_relative(normalized)}:"]
                 for dep_path, edge_kind in deps:
                     lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
@@ -282,9 +284,11 @@ async def get_dependents(file_path: str) -> str:
             def _run():
                 _ensure_graph()
                 normalized = _normalize_path(file_path)
+                if not _graph.has_file(normalized):
+                    return f"File not found in graph: {_to_relative(normalized)}. It may not be indexed (wrong extension, syntax errors, or in an ignored directory)."
                 deps = _graph.get_dependents(normalized)
                 if not deps:
-                    return f"No incoming dependents found for {_to_relative(normalized)}"
+                    return f"No incoming dependents found for {_to_relative(normalized)} (file is in graph but nothing imports it)"
                 lines = [f"Dependents of {_to_relative(normalized)} (files that depend on this):"]
                 for dep_path, edge_kind in deps:
                     lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
