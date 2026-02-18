@@ -10,10 +10,13 @@ Usage:
 """
 
 import sys
+import asyncio
 import argparse
 import logging
 from pathlib import Path
 from typing import Optional
+
+import anyio
 
 # ---------------------------------------------------------------------------
 # Import guards
@@ -68,11 +71,21 @@ _graph: Optional[RepoGraph] = None
 _project_root: Optional[Path] = None
 _graph_initialized: bool = False
 _cpg_enabled: bool = False
+_cpg_failed: bool = False
 _embedding_manager = None  # Lazy: atlas.embeddings.EmbeddingManager
 _context_manager = None    # Lazy: atlas.context.ContextManager
+_tool_lock: Optional[asyncio.Lock] = None
 
 IGNORED_DIRS = {"node_modules", "target", ".git", "__pycache__", "dist", "build", ".venv", "venv"}
 MAX_RESULT_CHARS = 60_000  # Safety cap for MCP tool results (Claude Code limit ~75K with JSON overhead)
+
+
+def _get_lock() -> asyncio.Lock:
+    """Get or create the global tool lock (must be called from async context)."""
+    global _tool_lock
+    if _tool_lock is None:
+        _tool_lock = asyncio.Lock()
+    return _tool_lock
 
 
 def _load_ignore_dirs(project_root: Path) -> list:
@@ -128,15 +141,22 @@ def _ensure_graph() -> None:
 
 def _ensure_cpg() -> None:
     """Lazily enable CPG overlay on first call that needs it."""
-    global _cpg_enabled
+    global _cpg_enabled, _cpg_failed
     if _cpg_enabled:
         return
+    if _cpg_failed:
+        raise RuntimeError("CPG previously failed. Call atlas_refresh() to retry.")
     if _graph is None:
         return
-    log.info("Enabling CPG and building sub-file data (first CPG tool call)...")
-    _graph.enable_cpg_and_build()
-    _cpg_enabled = True
-    log.info("CPG enabled and built")
+    try:
+        log.info("Enabling CPG and building sub-file data (first CPG tool call)...")
+        _graph.enable_cpg_and_build()
+        _cpg_enabled = True
+        log.info("CPG enabled and built")
+    except Exception as e:
+        _cpg_failed = True
+        log.error("CPG build failed: %s", e)
+        raise RuntimeError(f"CPG build failed: {e}. Call atlas_refresh() to retry.")
 
 
 def _ensure_embeddings() -> None:
@@ -181,29 +201,32 @@ def _to_relative(abs_path: str) -> str:
 # ---------------------------------------------------------------------------
 
 @mcp.tool()
-def atlas_status() -> str:
+async def atlas_status() -> str:
     """Get graph statistics and readiness status. Call this first to verify Atlas is ready."""
-    try:
-        _ensure_graph()
-        stats = _graph.get_statistics()
-        lines = [
-            "Atlas Semantic Graph Status",
-            f"  Project root: {_project_root}",
-            f"  Files indexed: {stats.node_count}",
-            f"  Dependency edges: {stats.edge_count}",
-            f"    Import edges: {stats.import_edges}",
-            f"    Symbol usage edges: {stats.symbol_edges}",
-            f"  Symbol definitions: {stats.total_definitions}",
-            f"  CPG enabled: {_cpg_enabled}",
-            f"  Embeddings loaded: {_embedding_manager is not None}",
-        ]
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                stats = _graph.get_statistics()
+                lines = [
+                    "Atlas Semantic Graph Status",
+                    f"  Project root: {_project_root}",
+                    f"  Files indexed: {stats.node_count}",
+                    f"  Dependency edges: {stats.edge_count}",
+                    f"    Import edges: {stats.import_edges}",
+                    f"    Symbol usage edges: {stats.symbol_edges}",
+                    f"  Symbol definitions: {stats.total_definitions}",
+                    f"  CPG enabled: {_cpg_enabled}",
+                    f"  Embeddings loaded: {_embedding_manager is not None}",
+                ]
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_repository_map(max_files: int = 50) -> str:
+async def get_repository_map(max_files: int = 50) -> str:
     """Get a PageRank-ordered architecture overview of the repository.
 
     Returns the most architecturally important files with their dependencies
@@ -213,57 +236,66 @@ def get_repository_map(max_files: int = 50) -> str:
     Args:
         max_files: Maximum number of files to include (default 50).
     """
-    try:
-        _ensure_graph()
-        return _graph.generate_map(max_files)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                return _graph.generate_map(max_files)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_dependencies(file_path: str) -> str:
+async def get_dependencies(file_path: str) -> str:
     """Get outgoing dependencies for a file (what this file imports/uses).
 
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    try:
-        _ensure_graph()
-        normalized = _normalize_path(file_path)
-        deps = _graph.get_dependencies(normalized)
-        if not deps:
-            return f"No outgoing dependencies found for {_to_relative(normalized)}"
-        lines = [f"Dependencies of {_to_relative(normalized)}:"]
-        for dep_path, edge_kind in deps:
-            lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                normalized = _normalize_path(file_path)
+                deps = _graph.get_dependencies(normalized)
+                if not deps:
+                    return f"No outgoing dependencies found for {_to_relative(normalized)}"
+                lines = [f"Dependencies of {_to_relative(normalized)}:"]
+                for dep_path, edge_kind in deps:
+                    lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_dependents(file_path: str) -> str:
+async def get_dependents(file_path: str) -> str:
     """Get incoming dependents for a file (what depends on this file — blast radius).
 
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    try:
-        _ensure_graph()
-        normalized = _normalize_path(file_path)
-        deps = _graph.get_dependents(normalized)
-        if not deps:
-            return f"No incoming dependents found for {_to_relative(normalized)}"
-        lines = [f"Dependents of {_to_relative(normalized)} (files that depend on this):"]
-        for dep_path, edge_kind in deps:
-            lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                normalized = _normalize_path(file_path)
+                deps = _graph.get_dependents(normalized)
+                if not deps:
+                    return f"No incoming dependents found for {_to_relative(normalized)}"
+                lines = [f"Dependents of {_to_relative(normalized)} (files that depend on this):"]
+                for dep_path, edge_kind in deps:
+                    lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_top_ranked_files(limit: int = 20) -> str:
+async def get_top_ranked_files(limit: int = 20) -> str:
     """Get the most architecturally important files ranked by PageRank.
 
     Higher-ranked files are more central to the codebase — they are imported
@@ -272,21 +304,24 @@ def get_top_ranked_files(limit: int = 20) -> str:
     Args:
         limit: Number of files to return (default 20).
     """
-    try:
-        _ensure_graph()
-        ranked = _graph.get_top_ranked_files(limit)
-        if not ranked:
-            return "No ranked files available"
-        lines = ["Top files by architectural importance (PageRank):"]
-        for i, (path, rank) in enumerate(ranked, 1):
-            lines.append(f"  {i:3d}. {_to_relative(path)} (score: {rank:.4f})")
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                ranked = _graph.get_top_ranked_files(limit)
+                if not ranked:
+                    return "No ranked files available"
+                lines = ["Top files by architectural importance (PageRank):"]
+                for i, (path, rank) in enumerate(ranked, 1):
+                    lines.append(f"  {i:3d}. {_to_relative(path)} (score: {rank:.4f})")
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def find_relevant_files(query: str, top_n: int = 10) -> str:
+async def find_relevant_files(query: str, top_n: int = 10) -> str:
     """Find files most relevant to a natural language query using semantic search.
 
     Uses vector embeddings to find files whose content is semantically similar
@@ -296,23 +331,26 @@ def find_relevant_files(query: str, top_n: int = 10) -> str:
         query: Natural language description of what you're looking for.
         top_n: Number of results to return (default 10).
     """
-    try:
-        _ensure_graph()
-        _ensure_embeddings()
-        all_files = [Path(p) for p, _ in _graph.get_top_ranked_files(1000)]
-        results = _embedding_manager.find_relevant_files(query, all_files, top_n=top_n)
-        if not results:
-            return f"No relevant files found for: {query}"
-        lines = [f"Files relevant to '{query}':"]
-        for i, path in enumerate(results, 1):
-            lines.append(f"  {i}. {_to_relative(str(path))}")
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                _ensure_embeddings()
+                all_files = [Path(p) for p, _ in _graph.get_top_ranked_files(1000)]
+                results = _embedding_manager.find_relevant_files(query, all_files, top_n=top_n)
+                if not results:
+                    return f"No relevant files found for: {query}"
+                lines = [f"Files relevant to '{query}':"]
+                for i, path in enumerate(results, 1):
+                    lines.append(f"  {i}. {_to_relative(str(path))}")
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def assemble_context(query: str) -> str:
+async def assemble_context(query: str) -> str:
     """Assemble optimized code context for a query using Anchor & Expand.
 
     This is Atlas's core intelligence: it finds relevant files via semantic
@@ -323,19 +361,22 @@ def assemble_context(query: str) -> str:
     Args:
         query: The coding task or question to assemble context for.
     """
-    try:
-        _ensure_graph()
-        _ensure_embeddings()
-        result = _context_manager.assemble_context(query, files_in_scope=[])
-        if len(result) > MAX_RESULT_CHARS:
-            result = result[:MAX_RESULT_CHARS] + "\n\n[... truncated to fit MCP limit ...]"
-        return result
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                _ensure_embeddings()
+                result = _context_manager.assemble_context(query, files_in_scope=[])
+                if len(result) > MAX_RESULT_CHARS:
+                    return result[:MAX_RESULT_CHARS] + "\n\n[... truncated to fit MCP limit ...]"
+                return result
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_file_symbols(file_path: str) -> str:
+async def get_file_symbols(file_path: str) -> str:
     """Get all functions, methods, and classes defined in a file with their signatures.
 
     Includes parameter names, type annotations, return types, and docstrings.
@@ -344,91 +385,100 @@ def get_file_symbols(file_path: str) -> str:
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    try:
-        _ensure_graph()
-        _ensure_cpg()
-        normalized = _normalize_path(file_path)
-        symbols = _graph.get_functions_in_file(normalized)
-        if not symbols:
-            return f"No symbols found in {_to_relative(normalized)}"
-        lines = [f"Symbols in {_to_relative(normalized)}:"]
-        for sym in symbols:
-            kind = sym["kind"]
-            name = sym["name"]
-            params = sym.get("parameters", [])
-            param_strs = []
-            for p in params:
-                s = p["name"]
-                if p.get("type_annotation"):
-                    s += f": {p['type_annotation']}"
-                if p.get("default_value"):
-                    s += f" = {p['default_value']}"
-                param_strs.append(s)
-            sig = f"{kind} {name}({', '.join(param_strs)})"
-            ret = sym.get("return_type")
-            if ret:
-                sig += f" -> {ret}"
-            parent = sym.get("parent_class")
-            if parent:
-                sig += f"  [in class {parent}]"
-            lines.append(f"  L{sym['start_line']}-{sym['end_line']}: {sig}")
-            doc = sym.get("docstring")
-            if doc:
-                first_line = doc.strip().split("\n")[0]
-                lines.append(f"    {first_line}")
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                _ensure_cpg()
+                normalized = _normalize_path(file_path)
+                symbols = _graph.get_functions_in_file(normalized)
+                if not symbols:
+                    return f"No symbols found in {_to_relative(normalized)}"
+                lines = [f"Symbols in {_to_relative(normalized)}:"]
+                for sym in symbols:
+                    kind = sym["kind"]
+                    name = sym["name"]
+                    params = sym.get("parameters", [])
+                    param_strs = []
+                    for p in params:
+                        s = p["name"]
+                        if p.get("type_annotation"):
+                            s += f": {p['type_annotation']}"
+                        if p.get("default_value"):
+                            s += f" = {p['default_value']}"
+                        param_strs.append(s)
+                    sig = f"{kind} {name}({', '.join(param_strs)})"
+                    ret = sym.get("return_type")
+                    if ret:
+                        sig += f" -> {ret}"
+                    parent = sym.get("parent_class")
+                    if parent:
+                        sig += f"  [in class {parent}]"
+                    lines.append(f"  L{sym['start_line']}-{sym['end_line']}: {sig}")
+                    doc = sym.get("docstring")
+                    if doc:
+                        first_line = doc.strip().split("\n")[0]
+                        lines.append(f"    {first_line}")
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_callees(file_path: str, function_name: str) -> str:
+async def get_callees(file_path: str, function_name: str) -> str:
     """Get all functions called by a given function (outgoing call graph).
 
     Args:
         file_path: Absolute or project-relative path to the file containing the function.
         function_name: Name of the function to analyze.
     """
-    try:
-        _ensure_graph()
-        _ensure_cpg()
-        normalized = _normalize_path(file_path)
-        callees = _graph.get_callees(normalized, function_name)
-        if not callees:
-            return f"No callees found for {function_name} in {_to_relative(normalized)}"
-        lines = [f"Functions called by {function_name}:"]
-        for callee in callees:
-            lines.append(f"  {callee['name']} ({_to_relative(callee['file'])}:{callee['line']})")
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                _ensure_cpg()
+                normalized = _normalize_path(file_path)
+                callees = _graph.get_callees(normalized, function_name)
+                if not callees:
+                    return f"No callees found for {function_name} in {_to_relative(normalized)}"
+                lines = [f"Functions called by {function_name}:"]
+                for callee in callees:
+                    lines.append(f"  {callee['name']} ({_to_relative(callee['file'])}:{callee['line']})")
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_callers(file_path: str, function_name: str) -> str:
+async def get_callers(file_path: str, function_name: str) -> str:
     """Get all functions that call a given function (incoming call graph).
 
     Args:
         file_path: Absolute or project-relative path to the file containing the function.
         function_name: Name of the function to analyze.
     """
-    try:
-        _ensure_graph()
-        _ensure_cpg()
-        normalized = _normalize_path(file_path)
-        callers = _graph.get_callers(normalized, function_name)
-        if not callers:
-            return f"No callers found for {function_name} in {_to_relative(normalized)}"
-        lines = [f"Functions that call {function_name}:"]
-        for caller in callers:
-            lines.append(f"  {caller['name']} ({_to_relative(caller['file'])}:{caller['line']})")
-        return "\n".join(lines)
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                _ensure_cpg()
+                normalized = _normalize_path(file_path)
+                callers = _graph.get_callers(normalized, function_name)
+                if not callers:
+                    return f"No callers found for {function_name} in {_to_relative(normalized)}"
+                lines = [f"Functions that call {function_name}:"]
+                for caller in callers:
+                    lines.append(f"  {caller['name']} ({_to_relative(caller['file'])}:{caller['line']})")
+                return "\n".join(lines)
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def get_file_skeleton(file_path: str) -> str:
+async def get_file_skeleton(file_path: str) -> str:
     """Get function/class signatures without implementation bodies.
 
     Useful for understanding a file's API surface without reading the full source.
@@ -436,40 +486,47 @@ def get_file_skeleton(file_path: str) -> str:
     Args:
         file_path: Absolute or project-relative path to the file.
     """
-    try:
-        _ensure_graph()
-        normalized = _normalize_path(file_path)
-        skeleton = _graph.get_skeleton(normalized)
-        if not skeleton or not skeleton.strip():
-            return f"No skeleton available for {_to_relative(normalized)}"
-        return f"Skeleton of {_to_relative(normalized)}:\n\n{skeleton}"
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                _ensure_graph()
+                normalized = _normalize_path(file_path)
+                skeleton = _graph.get_skeleton(normalized)
+                if not skeleton or not skeleton.strip():
+                    return f"No skeleton available for {_to_relative(normalized)}"
+                return f"Skeleton of {_to_relative(normalized)}:\n\n{skeleton}"
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 @mcp.tool()
-def atlas_refresh() -> str:
+async def atlas_refresh() -> str:
     """Re-scan the repository and rebuild the graph from scratch.
 
     Use this after significant file system changes (branch switches, large
     merges, etc.) to ensure the graph is up to date.
     """
-    global _cpg_enabled, _embedding_manager, _context_manager, _graph_initialized
-    if _project_root is None:
-        return "ERROR: Project root not set"
-    try:
-        _cpg_enabled = False
-        _embedding_manager = None
-        _context_manager = None
-        _graph_initialized = False
-        _initialize_graph(_project_root)
-        stats = _graph.get_statistics()
-        return (
-            f"Graph refreshed: {stats.node_count} files, "
-            f"{stats.edge_count} edges, {stats.total_definitions} symbols"
-        )
-    except Exception as e:
-        return f"ERROR: {e}"
+    async with _get_lock():
+        try:
+            def _run():
+                global _cpg_enabled, _cpg_failed, _embedding_manager, _context_manager, _graph_initialized
+                if _project_root is None:
+                    return "ERROR: Project root not set"
+                _cpg_enabled = False
+                _cpg_failed = False
+                _embedding_manager = None
+                _context_manager = None
+                _graph_initialized = False
+                _initialize_graph(_project_root)
+                stats = _graph.get_statistics()
+                return (
+                    f"Graph refreshed: {stats.node_count} files, "
+                    f"{stats.edge_count} edges, {stats.total_definitions} symbols"
+                )
+            return await anyio.to_thread.run_sync(_run)
+        except Exception as e:
+            return f"ERROR: {e}"
 
 
 # ---------------------------------------------------------------------------
