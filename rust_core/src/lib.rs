@@ -266,6 +266,12 @@ pub struct PyGraphStatistics {
     pub total_definitions: usize,
     #[pyo3(get)]
     pub total_files_with_usages: usize,
+    #[pyo3(get)]
+    pub unresolved_import_count: usize,
+    #[pyo3(get)]
+    pub source_roots: Vec<String>,
+    #[pyo3(get)]
+    pub module_index_size: usize,
 }
 
 impl From<GraphStatistics> for PyGraphStatistics {
@@ -277,6 +283,11 @@ impl From<GraphStatistics> for PyGraphStatistics {
             symbol_edges: stats.symbol_edges,
             total_definitions: stats.total_definitions,
             total_files_with_usages: stats.total_files_with_usages,
+            unresolved_import_count: stats.unresolved_import_count,
+            source_roots: stats.source_roots.iter()
+                .map(|p| p.to_string_lossy().into_owned())
+                .collect(),
+            module_index_size: stats.module_index_size,
         }
     }
 }
@@ -387,6 +398,14 @@ impl PyRepoGraph {
     fn has_file(&self, file_path: &str) -> bool {
         let path = PathBuf::from(file_path);
         self.graph.has_file(&path)
+    }
+
+    /// Get a sample of unresolved imports for diagnostics.
+    fn get_unresolved_imports(&self, limit: usize) -> Vec<(String, usize)> {
+        self.graph.get_unresolved_imports_sample(limit)
+            .into_iter()
+            .map(|(path, count)| (path.to_string_lossy().into_owned(), count))
+            .collect()
     }
 
     fn get_top_ranked_files(&mut self, limit: usize) -> Vec<(String, f64)> {

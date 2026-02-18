@@ -11,7 +11,7 @@ fn create_test_file(root: &std::path::Path, path: &str, content: &str) {
 #[test]
 fn test_import_edge_creation() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
     
     // Create a simple project
     create_test_file(&root_path, "utils.py", r#"
@@ -49,7 +49,7 @@ utils.helper()
 #[test]
 fn test_symbol_usage_edge_creation() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
     
     // Create files with symbol usage
     create_test_file(&root_path, "models.py", r#"
@@ -89,7 +89,7 @@ user = User()
 #[test]
 fn test_no_self_edges() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
     
     create_test_file(&root_path, "self_import.py", r#"
 class MyClass:
@@ -110,7 +110,7 @@ obj = MyClass()
 #[test]
 fn test_multiple_symbol_definitions() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
     
     // Same symbol defined in two files
     create_test_file(&root_path, "util1.py", r#"
@@ -151,7 +151,7 @@ process()
 #[test]
 fn test_graph_statistics() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
     
     // Create a small project
     create_test_file(&root_path, "core.py", r#"

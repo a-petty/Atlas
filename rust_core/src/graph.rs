@@ -189,6 +189,9 @@ pub struct GraphStatistics {
     pub symbol_edges: usize,
     pub total_definitions: usize,
     pub total_files_with_usages: usize,
+    pub unresolved_import_count: usize,
+    pub source_roots: Vec<PathBuf>,
+    pub module_index_size: usize,
 }
 
 /// A temporary, lightweight container for the results of parsing a single file.
@@ -240,14 +243,16 @@ pub struct RepoGraph {
 
 impl RepoGraph {
     pub fn new(project_root: &Path, language: &str, ignored_dirs: &[String]) -> Self {
+        let canonical_root = project_root.canonicalize()
+            .unwrap_or_else(|_| project_root.to_path_buf());
         let import_resolver: Box<dyn ImportResolver> = match language.to_lowercase().as_str() {
-            "python" => Box::new(PythonImportResolver::new(project_root, ignored_dirs)),
+            "python" => Box::new(PythonImportResolver::new(&canonical_root, ignored_dirs)),
             "javascript" | "typescript" | "js" | "ts" => {
-                Box::new(JsTsImportResolver::new(project_root, ignored_dirs))
+                Box::new(JsTsImportResolver::new(&canonical_root, ignored_dirs))
             }
             _ => panic!("Unsupported language: {}", language),
         };
-        
+
         let cache_size = NonZeroUsize::new(500).unwrap(); // Cache 500 skeletons
 
         Self {
@@ -258,7 +263,7 @@ impl RepoGraph {
             symbol_harvester: SymbolHarvester::new(),
             pagerank_dirty: true,
             unresolved_imports: HashMap::new(),
-            project_root: project_root.to_path_buf(),
+            project_root: canonical_root,
             skeleton_cache: RwLock::new(LruCache::new(cache_size)),
             cpg: None,
         }
@@ -423,6 +428,8 @@ impl RepoGraph {
         file_path: &PathBuf,
         source_code: &str,
     ) -> Result<UpdateResult, GraphError> {
+        // Canonicalize path to match build() convention
+        let file_path = &file_path.canonicalize().unwrap_or_else(|_| file_path.clone());
         debug!("Updating file: {}", file_path.display());
         let tier = self.classify_change(file_path, source_code)?;
         info!(
@@ -782,8 +789,14 @@ impl RepoGraph {
     pub fn build(&mut self, paths: &[PathBuf]) {
         info!("Starting parallel build for {} files...", paths.len());
 
+        // Canonicalize all paths up front so path_to_idx matches import resolver's module_index
+        let canonical_paths: Vec<PathBuf> = paths
+            .iter()
+            .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
+            .collect();
+
         // Stage 1: Parallel File Parsing and Data Collection
-        let parse_results: Vec<FileParseResult> = paths
+        let parse_results: Vec<FileParseResult> = canonical_paths
             .par_iter()
             .filter_map(|path| {
                 let lang = SupportedLanguage::from_extension(
@@ -907,12 +920,27 @@ impl RepoGraph {
                 }
             }
         }
-        info!("Import edge creation complete.");
+        // Log import resolution summary
+        let total_imports: usize = import_map.values().map(|s| s.len()).sum();
+        let unresolved: usize = self.unresolved_imports.values().map(|s| s.len()).sum();
+        let resolved = total_imports - unresolved;
+        info!(
+            "Import resolution: {} total, {} resolved to edges, {} unresolved",
+            total_imports, resolved, unresolved
+        );
+        if unresolved > 0 {
+            let sample: Vec<_> = self.unresolved_imports.keys().take(5)
+                .map(|p| p.display().to_string()).collect();
+            info!("Sample unresolved import targets: {:?}", sample);
+        }
 
         self.pagerank_dirty = true;
     }
     
     pub fn add_file(&mut self, path: PathBuf, content: &str) -> Result<(), GraphError> {
+        // Canonicalize path to match build() convention
+        let path = path.canonicalize().unwrap_or(path);
+
         // 1. UPSERT PROTECTION
         // If file exists, remove it first to ensure clean state
         if self.path_to_idx.contains_key(&path) {
@@ -1093,8 +1121,12 @@ impl RepoGraph {
     }
 
     pub fn remove_file(&mut self, path: &Path) -> Result<(), GraphError> {
+        // Canonicalize path to match build() convention
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let path = canonical.as_path();
+
         // ===== PHASE 1: PREPARE (Read-Only, Failable) =====
-        
+
         // 1.1. Resolve path to index
         let target_idx = *self.path_to_idx.get(path)
             .ok_or_else(|| GraphError::NodeNotFound(path.to_path_buf()))?;
@@ -1273,14 +1305,19 @@ impl RepoGraph {
     
     /// Complete build process: parse files, harvest symbols, build import edges, build semantic edges.
     pub fn build_complete(&mut self, paths: &[PathBuf], _project_root: &Path) {
-        self.build(paths);
+        // Canonicalize paths once for consistency across build and CPG
+        let canonical_paths: Vec<PathBuf> = paths
+            .iter()
+            .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
+            .collect();
+        self.build(&canonical_paths);
         self.build_semantic_edges();
         self.calculate_pagerank(20, 0.85);
         info!("Build complete. Final graph: {} nodes, {} edges.", self.graph.node_count(), self.graph.edge_count());
 
         // CPG overlay: re-parse files to populate sub-file nodes
         if self.cpg.is_some() {
-            self.build_cpg_for_all_files(paths);
+            self.build_cpg_for_all_files(&canonical_paths);
         }
 
         // Call graph resolution (Pass 2): resolve call sites across all files
@@ -1334,12 +1371,24 @@ impl RepoGraph {
             symbol_edges,
             total_definitions: self.symbol_index.definitions.len(),
             total_files_with_usages: self.symbol_index.usages.len(),
+            unresolved_import_count: self.unresolved_imports.values().map(|s| s.len()).sum(),
+            source_roots: self.import_resolver.get_source_roots(),
+            module_index_size: self.import_resolver.module_index_size(),
         }
+    }
+
+    /// Get details about unresolved imports (for diagnostics).
+    pub fn get_unresolved_imports_sample(&self, limit: usize) -> Vec<(PathBuf, usize)> {
+        self.unresolved_imports.iter()
+            .take(limit)
+            .map(|(path, waiters)| (path.clone(), waiters.len()))
+            .collect()
     }
 
     /// Get incoming dependencies for a file
     pub fn get_incoming_dependencies(&self, file_path: &Path) -> Vec<(PathBuf, EdgeKind)> {
-        if let Some(&node_idx) = self.path_to_idx.get(file_path) {
+        let canonical = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
+        if let Some(&node_idx) = self.path_to_idx.get(canonical.as_path()) {
             self.graph.edges_directed(node_idx, petgraph::Direction::Incoming)
                 .map(|edge| (self.graph[edge.source()].path.clone(), edge.weight().clone()))
                 .collect()
@@ -1350,12 +1399,14 @@ impl RepoGraph {
 
     /// Check if a file path exists in the graph.
     pub fn has_file(&self, file_path: &Path) -> bool {
-        self.path_to_idx.contains_key(file_path)
+        let canonical = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
+        self.path_to_idx.contains_key(canonical.as_path())
     }
 
     /// Get outgoing dependencies for a file
     pub fn get_outgoing_dependencies(&self, file_path: &Path) -> Vec<(PathBuf, EdgeKind)> {
-        if let Some(&node_idx) = self.path_to_idx.get(file_path) {
+        let canonical = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
+        if let Some(&node_idx) = self.path_to_idx.get(canonical.as_path()) {
             self.graph.edges_directed(node_idx, petgraph::Direction::Outgoing)
                 .map(|edge| (self.graph[edge.target()].path.clone(), edge.weight().clone()))
                 .collect()

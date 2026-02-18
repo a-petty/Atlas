@@ -373,7 +373,7 @@ fn test_return_flow() {
 #[test]
 fn test_repograph_call_graph_integration() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
 
     create_test_file(&root_path, "main.py", r#"from helpers import add
 
@@ -407,7 +407,7 @@ def main():
 #[test]
 fn test_incremental_update_adds_call_edges() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
 
     create_test_file(&root_path, "funcs.py", "def g():\n    pass\n\ndef f():\n    pass\n");
 
@@ -436,7 +436,7 @@ fn test_incremental_update_adds_call_edges() {
 #[test]
 fn test_remove_file_no_dangling_edges() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
 
     create_test_file(&root_path, "a.py", "def f():\n    g()\n");
     create_test_file(&root_path, "b.py", "def g():\n    pass\n");

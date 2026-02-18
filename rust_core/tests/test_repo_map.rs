@@ -10,7 +10,7 @@ fn create_test_file(root: &std::path::Path, path: &str, content: &str) {
 
 fn create_test_repo_with_structure() -> (tempfile::TempDir, RepoGraph) {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
     
     // Create a realistic project structure
     create_test_file(&root_path, "src/core.py", r#"

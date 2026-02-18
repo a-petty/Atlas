@@ -77,6 +77,10 @@ harness = true
 name = "test_callgraph"
 harness = true
 
+[[test]]
+name = "test_import_canonicalization"
+harness = true
+
 [[bench]]
 name = "incremental_benchmark"
 harness = false

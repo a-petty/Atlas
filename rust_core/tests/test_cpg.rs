@@ -233,7 +233,7 @@ def configure(timeout=30, retries=3, verbose=False):
 #[test]
 fn test_repograph_cpg_integration() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
 
     create_test_file(&root_path, "models.py", r#"
 class User:
@@ -280,7 +280,7 @@ def format_name(first: str, last: str) -> str:
 #[test]
 fn test_cpg_incremental_update() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
 
     let original = r#"
 def hello():
@@ -324,7 +324,7 @@ def goodbye(name: str) -> str:
 #[test]
 fn test_cpg_file_removal() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
 
     create_test_file(&root_path, "a.py", "def func_a():\n    pass\n");
     create_test_file(&root_path, "b.py", "def func_b():\n    pass\n");

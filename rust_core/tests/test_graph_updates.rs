@@ -120,7 +120,7 @@ fn test_lazy_pagerank_recalculation() {
 #[test]
 fn test_update_performance() {
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
     let mut graph = RepoGraph::new(root, "python", &[]);
     
     let num_files = 500;
@@ -161,7 +161,7 @@ fn test_update_performance() {
 fn test_symbol_definition_removal() {
     // SETUP
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
     
     // Create file structure
     fs::create_dir_all(root.join("src")).unwrap();
@@ -227,7 +227,7 @@ fn test_symbol_definition_removal() {
 #[test]
 fn test_symbol_definition_addition() {
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
     
     fs::create_dir_all(root.join("src")).unwrap();
     
@@ -282,7 +282,7 @@ fn test_symbol_definition_addition() {
 #[test]
 fn test_symbol_usage_change() {
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
     
     fs::create_dir_all(root.join("src")).unwrap();
     
@@ -360,7 +360,7 @@ fn test_symbol_usage_change() {
 #[test]
 fn test_symbol_collision_handling() {
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
 
     fs::create_dir_all(root.join("src")).unwrap();
 
@@ -417,7 +417,7 @@ fn test_symbol_collision_handling() {
 #[test]
 fn test_file_creation_with_symbols() {
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
     
     fs::create_dir_all(root.join("src")).unwrap();
     
@@ -464,7 +464,7 @@ fn test_file_creation_with_symbols() {
 #[test]
 fn test_file_deletion_cleanup() {
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
     
     fs::create_dir_all(root.join("src")).unwrap();
     
@@ -539,7 +539,7 @@ fn test_update_maintains_consistency() {
 #[test]
 fn test_batch_updates_maintain_consistency() {
     let dir = tempdir().unwrap();
-    let root = dir.path();
+    let root = &dir.path().canonicalize().unwrap();
     
     // Create a complex graph
     fs::create_dir_all(root.join("src")).unwrap();

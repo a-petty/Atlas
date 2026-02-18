@@ -216,9 +216,17 @@ async def atlas_status() -> str:
                     f"    Import edges: {stats.import_edges}",
                     f"    Symbol usage edges: {stats.symbol_edges}",
                     f"  Symbol definitions: {stats.total_definitions}",
+                    f"  Module index size: {stats.module_index_size}",
+                    f"  Source roots: {stats.source_roots}",
+                    f"  Unresolved imports: {stats.unresolved_import_count}",
                     f"  CPG enabled: {_cpg_enabled}",
                     f"  Embeddings loaded: {_embedding_manager is not None}",
                 ]
+                if stats.unresolved_import_count > 0:
+                    unresolved = _graph.get_unresolved_imports(5)
+                    lines.append("  Top unresolved targets:")
+                    for target, count in unresolved:
+                        lines.append(f"    {target} (wanted by {count} file(s))")
                 return "\n".join(lines)
             return await anyio.to_thread.run_sync(_run)
         except Exception as e:

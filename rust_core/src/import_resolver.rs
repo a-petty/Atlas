@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use log::info;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
@@ -73,6 +74,12 @@ pub trait ImportResolver: Debug + Send + Sync {
 
     /// Returns the file extensions this resolver handles.
     fn file_extensions(&self) -> &[&str];
+
+    /// Get detected source roots (for diagnostics). Default: empty.
+    fn get_source_roots(&self) -> Vec<PathBuf> { Vec::new() }
+
+    /// Get module index size (for diagnostics). Default: 0.
+    fn module_index_size(&self) -> usize { 0 }
 }
 
 /// Resolves Python import statements to absolute file paths.
@@ -95,8 +102,10 @@ impl PythonImportResolver {
     /// `ignored_dirs` contains directory names (not paths) to exclude from module indexing.
     pub fn new(project_root: &Path, ignored_dirs: &[String]) -> Self {
         let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
+        let canonical_root = project_root.canonicalize()
+            .unwrap_or_else(|_| project_root.to_path_buf());
         let mut resolver = Self {
-            project_root: project_root.to_path_buf(),
+            project_root: canonical_root,
             module_index: HashMap::new(),
             ignored_dirs: ignored_set,
             source_roots: Vec::new(),
@@ -119,12 +128,16 @@ impl PythonImportResolver {
 
     /// Detect source roots: depth-1 directories that contain Python packages.
     /// A directory is a source root if it has at least one child directory with `__init__.py`.
+    /// Falls back to namespace package detection if no `__init__.py` roots found.
     fn detect_source_roots(&self) -> Vec<PathBuf> {
         let mut roots = Vec::new();
 
         let read_dir = match std::fs::read_dir(&self.project_root) {
             Ok(rd) => rd,
-            Err(_) => return roots,
+            Err(_) => {
+                info!("Source root detection: cannot read project root {:?}", self.project_root);
+                return roots;
+            }
         };
 
         for entry in read_dir.filter_map(Result::ok) {
@@ -148,11 +161,57 @@ impl PythonImportResolver {
                 for sub_entry in sub_entries.filter_map(Result::ok) {
                     let sub_path = sub_entry.path();
                     if sub_path.is_dir() && sub_path.join("__init__.py").exists() {
-                        roots.push(path.clone());
+                        let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+                        info!("Detected source root: {}", canonical.display());
+                        roots.push(canonical);
                         break;
                     }
                 }
             }
+        }
+
+        // Fallback: namespace packages (dirs with Python subdirs but no __init__.py)
+        if roots.is_empty() {
+            let read_dir2 = match std::fs::read_dir(&self.project_root) {
+                Ok(rd) => rd,
+                Err(_) => return roots,
+            };
+
+            for entry in read_dir2.filter_map(Result::ok) {
+                let path = entry.path();
+                if !path.is_dir() { continue; }
+                let dir_name = match path.file_name().and_then(|n| n.to_str()) {
+                    Some(n) => n.to_string(),
+                    None => continue,
+                };
+                if self.ignored_dirs.contains(&dir_name) { continue; }
+
+                // Check if this directory has subdirectories containing .py files
+                if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                    for sub_entry in sub_entries.filter_map(Result::ok) {
+                        let sub_path = sub_entry.path();
+                        if sub_path.is_dir() {
+                            let has_py = std::fs::read_dir(&sub_path)
+                                .map(|entries| entries.filter_map(Result::ok).any(|e| {
+                                    e.path().extension().and_then(|ext| ext.to_str()) == Some("py")
+                                }))
+                                .unwrap_or(false);
+                            if has_py {
+                                let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+                                info!("Detected namespace-package source root: {}", canonical.display());
+                                roots.push(canonical);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if roots.is_empty() {
+            info!("No source roots detected for {:?}", self.project_root);
+        } else {
+            info!("Detected {} source root(s) for {:?}", roots.len(), self.project_root);
         }
 
         roots
@@ -160,7 +219,10 @@ impl PythonImportResolver {
 
     /// Scans the project directory for Python files (.py) and builds the module index.
     /// Skips directories listed in `ignored_dirs`.
+    /// All paths stored in module_index are canonicalized to match scan_repository output.
     fn index_modules(&mut self) {
+        let mut sr_variant_count = 0usize;
+
         for entry in WalkDir::new(&self.project_root)
             .into_iter()
             .filter_entry(|e| {
@@ -173,11 +235,13 @@ impl PythonImportResolver {
             .filter_map(Result::ok)
             .filter(|e| e.path().is_file())
         {
-            let path = entry.path();
-            let extension = path.extension().and_then(|s| s.to_str());
+            // Canonicalize to match the canonical paths from scan_repository
+            let canonical_path = entry.path().canonicalize()
+                .unwrap_or_else(|_| entry.path().to_path_buf());
+            let extension = canonical_path.extension().and_then(|s| s.to_str());
 
             if extension == Some("py") || extension == Some("pyi") {
-                if let Ok(relative_path) = path.strip_prefix(&self.project_root) {
+                if let Ok(relative_path) = canonical_path.strip_prefix(&self.project_root) {
                     let mut components: Vec<String> = relative_path
                         .components()
                         .map(|c| c.as_os_str().to_string_lossy().to_string())
@@ -200,11 +264,11 @@ impl PythonImportResolver {
 
                     if !module_path_str.is_empty() {
                         self.module_index
-                            .insert(module_path_str, path.to_path_buf());
+                            .insert(module_path_str, canonical_path.clone());
 
                         // Also register relative to each source root
                         for source_root in &self.source_roots {
-                            if let Ok(sr_relative) = path.strip_prefix(source_root) {
+                            if let Ok(sr_relative) = canonical_path.strip_prefix(source_root) {
                                 let mut sr_components: Vec<String> = sr_relative
                                     .components()
                                     .map(|c| c.as_os_str().to_string_lossy().to_string())
@@ -229,7 +293,8 @@ impl PythonImportResolver {
                                     // First-registered wins: don't overwrite existing entries
                                     self.module_index
                                         .entry(sr_module_str)
-                                        .or_insert_with(|| path.to_path_buf());
+                                        .or_insert_with(|| canonical_path.clone());
+                                    sr_variant_count += 1;
                                 }
                             }
                         }
@@ -237,6 +302,12 @@ impl PythonImportResolver {
                 }
             }
         }
+
+        info!(
+            "Module index: {} entries ({} source-root-relative variants)",
+            self.module_index.len(),
+            sr_variant_count,
+        );
     }
 
     fn resolve_absolute(&self, module_path: &str) -> Option<PathBuf> {
@@ -455,6 +526,14 @@ impl ImportResolver for PythonImportResolver {
     fn file_extensions(&self) -> &[&str] {
         &["py", "pyi"]
     }
+
+    fn get_source_roots(&self) -> Vec<PathBuf> {
+        self.source_roots.clone()
+    }
+
+    fn module_index_size(&self) -> usize {
+        self.module_index.len()
+    }
 }
 
 #[derive(Debug)]
@@ -476,8 +555,10 @@ pub struct JsTsImportResolver {
 impl JsTsImportResolver {
     pub fn new(project_root: &Path, ignored_dirs: &[String]) -> Self {
         let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
+        let canonical_root = project_root.canonicalize()
+            .unwrap_or_else(|_| project_root.to_path_buf());
         let mut resolver = Self {
-            project_root: project_root.to_path_buf(),
+            project_root: canonical_root,
             module_index: HashMap::new(),
             ignored_dirs: ignored_set,
             import_query_js: Query::new(
@@ -714,7 +795,7 @@ mod tests {
 
     fn setup() -> TestRepo {
         let root = tempdir().unwrap();
-        let root_path = root.path().to_path_buf();
+        let root_path = root.path().canonicalize().unwrap();
 
         // Create a dummy project structure
         create_dummy_file(&root_path, "app.py", "");
@@ -980,7 +1061,7 @@ def my_function():
     /// Helper to set up a Django-like project with backend/ source root
     fn setup_django_project() -> TestRepo {
         let root = tempdir().unwrap();
-        let root_path = root.path().to_path_buf();
+        let root_path = root.path().canonicalize().unwrap();
 
         // Django-style: backend/ is the source root, app/ is a package inside it
         create_dummy_file(&root_path, "backend/app/__init__.py", "");
@@ -1109,7 +1190,7 @@ def my_function():
     #[test]
     fn test_multiple_source_roots() {
         let root = tempdir().unwrap();
-        let root_path = root.path().to_path_buf();
+        let root_path = root.path().canonicalize().unwrap();
 
         // Two source roots: backend/ and libs/
         create_dummy_file(&root_path, "backend/app/__init__.py", "");
@@ -1133,7 +1214,7 @@ def my_function():
     #[test]
     fn test_source_root_ignored_dirs_skipped() {
         let root = tempdir().unwrap();
-        let root_path = root.path().to_path_buf();
+        let root_path = root.path().canonicalize().unwrap();
 
         // node_modules contains packages but should be ignored
         create_dummy_file(&root_path, "node_modules/pkg/__init__.py", "");

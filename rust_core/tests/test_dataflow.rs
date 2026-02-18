@@ -424,7 +424,7 @@ fn test_no_reaching_def_for_undefined() {
 #[test]
 fn test_repograph_dataflow_integration() {
     let root = tempdir().unwrap();
-    let root_path = root.path().to_path_buf();
+    let root_path = root.path().canonicalize().unwrap();
 
     create_test_file(&root_path, "example.py", r#"
 def add(a, b):
