@@ -432,7 +432,7 @@ def add(a, b):
     return result
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     graph.enable_cpg();
     let paths = vec![root_path.join("example.py")];
     graph.build_complete(&paths, &root_path);

@@ -130,7 +130,7 @@ class AtlasAgent:
         ignored = _load_ignore_dirs(project_root)
         self.config = AgentConfig(project_root=project_root, ignored_dirs=ignored)
         self.project_root_canonical = project_root.resolve()
-        self.repo_graph = RepoGraph(str(project_root))
+        self.repo_graph = RepoGraph(str(project_root), ignored_dirs=list(ignored))
         self.watcher: Optional[FileWatcher] = None
         self.tools = ToolExecutor(project_root.resolve(), self.repo_graph)
         self.running = False

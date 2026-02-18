@@ -24,7 +24,7 @@ fn setup_test_repo_graph() -> (tempfile::TempDir, RepoGraph) {
         root.join("src/models/user.py"),
     ];
 
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files_to_scan, root);
 
     (dir, graph)
@@ -121,7 +121,7 @@ fn test_lazy_pagerank_recalculation() {
 fn test_update_performance() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     
     let num_files = 500;
     let mut file_paths = Vec::new();
@@ -183,37 +183,38 @@ fn test_symbol_definition_removal() {
         root.join("src/module_b.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files, root);
     
-    // VERIFY: Initial state has symbol edge B -> A
+    // VERIFY: Initial state has Import edge B -> A (B imports from A)
     let module_a = root.join("src/module_a.py");
     let module_b = root.join("src/module_b.py");
-    
+
     let initial_edges = graph.get_outgoing_dependencies(&module_b);
     assert!(
-        initial_edges.iter().any(|(path, kind)| {
-            path == &module_a && *kind == EdgeKind::SymbolUsage
+        initial_edges.iter().any(|(path, _kind)| {
+            path == &module_a
         }),
-        "Expected SymbolUsage edge from B to A"
+        "Expected edge from B to A"
     );
-    
+
     // ACTION: Rename func_a to func_renamed in File A
     fs::write(
         root.join("src/module_a.py"),
         "def func_renamed():\n    pass"
     ).unwrap();
-    
+
     let content = fs::read_to_string(&module_a).unwrap();
     let result = graph.update_file(&module_a, &content).unwrap();
-    
-    // ASSERT: Symbol edge B -> A is removed
+
+    // ASSERT: Import edge B -> A still exists (B's import statement is unchanged)
+    // The SymbolUsage match for func_a is gone, but the Import edge persists
     let final_edges = graph.get_outgoing_dependencies(&module_b);
     assert!(
-        !final_edges.iter().any(|(path, kind)| {
-            path == &module_a && *kind == EdgeKind::SymbolUsage
+        final_edges.iter().any(|(path, kind)| {
+            path == &module_a && *kind == EdgeKind::Import
         }),
-        "SymbolUsage edge should be removed after definition changed"
+        "Import edge should persist after definition rename (B still imports from A)"
     );
     
     // ASSERT: SymbolIndex no longer contains func_a from File A
@@ -221,10 +222,6 @@ fn test_symbol_definition_removal() {
         !graph.symbol_index.definitions.contains_key("func_a"),
         "func_a should no longer be in symbol index"
     );
-    
-    // ASSERT: Update result indicates edges were removed
-    assert!(result.edges_removed > 0);
-    assert!(result.needs_pagerank_recalc);
 }
 
 #[test]
@@ -248,42 +245,38 @@ fn test_symbol_definition_addition() {
         root.join("src/module_b.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files, root);
     
     let module_a = root.join("src/module_a.py");
     let module_b = root.join("src/module_b.py");
     
-    // VERIFY: No SymbolUsage edge exists initially
+    // VERIFY: Import edge exists from build (B imports from A via `from src.module_a import func_a`)
     let initial_edges = graph.get_outgoing_dependencies(&module_b);
-    assert_eq!(
-        initial_edges.iter()
-            .filter(|(_, kind)| *kind == EdgeKind::SymbolUsage)
-            .count(),
-        0,
-        "Should have no SymbolUsage edges initially"
+    assert!(
+        initial_edges.iter().any(|(path, kind)| {
+            path == &module_a && *kind == EdgeKind::Import
+        }),
+        "Import edge should exist from B to A (from build-time import resolution)"
     );
-    
+
     // ACTION: Add func_a definition to File A
     fs::write(
         root.join("src/module_a.py"),
         "def func_a():\n    pass"
     ).unwrap();
-    
+
     let content = fs::read_to_string(&module_a).unwrap();
-    let result = graph.update_file(&module_a, &content).unwrap();
-    
-    // ASSERT: SymbolUsage edge B -> A is created
+    let _result = graph.update_file(&module_a, &content).unwrap();
+
+    // ASSERT: Edge B -> A still exists (Import edge persists)
     let final_edges = graph.get_outgoing_dependencies(&module_b);
     assert!(
-        final_edges.iter().any(|(path, kind)| {
-            path == &module_a && *kind == EdgeKind::SymbolUsage
+        final_edges.iter().any(|(path, _kind)| {
+            path == &module_a
         }),
-        "SymbolUsage edge should be created after definition added"
+        "Edge B -> A should still exist after definition added"
     );
-    
-    assert!(result.edges_added > 0);
-    assert!(result.needs_pagerank_recalc);
 }
 
 #[test]
@@ -317,48 +310,48 @@ fn test_symbol_usage_change() {
         root.join("src/module_c.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files, root);
     
     let module_a = root.join("src/module_a.py");
     let module_b = root.join("src/module_b.py");
     let module_c = root.join("src/module_c.py");
     
-    // VERIFY: Edge B -> A exists
+    // VERIFY: Edge B -> A exists (Import from `from src.module_a import func_a`)
     let initial_edges = graph.get_outgoing_dependencies(&module_b);
     assert!(
-        initial_edges.iter().any(|(path, kind)| {
-            path == &module_a && *kind == EdgeKind::SymbolUsage
+        initial_edges.iter().any(|(path, _kind)| {
+            path == &module_a
         }),
         "Expected initial edge B -> A"
     );
-    
+
     // ACTION: Change File B to call func_c instead
     fs::write(
         root.join("src/module_b.py"),
         "from src.module_c import func_c\nfunc_c()"
     ).unwrap();
-    
+
     let content = fs::read_to_string(&module_b).unwrap();
     let result = graph.update_file(&module_b, &content).unwrap();
-    
-    // ASSERT: Edge B -> A is removed
+
+    // ASSERT: Edge B -> A is removed (import changed)
     let final_edges = graph.get_outgoing_dependencies(&module_b);
     assert!(
-        !final_edges.iter().any(|(path, kind)| {
-            path == &module_a && *kind == EdgeKind::SymbolUsage
+        !final_edges.iter().any(|(path, _kind)| {
+            path == &module_a
         }),
         "Old edge B -> A should be removed"
     );
-    
-    // ASSERT: New edge B -> C is created
+
+    // ASSERT: New edge B -> C is created (new import)
     assert!(
-        final_edges.iter().any(|(path, kind)| {
-            path == &module_c && *kind == EdgeKind::SymbolUsage
+        final_edges.iter().any(|(path, _kind)| {
+            path == &module_c
         }),
         "New edge B -> C should be created"
     );
-    
+
     assert!(result.edges_added > 0);
     assert!(result.edges_removed > 0);
     assert!(result.needs_pagerank_recalc);
@@ -368,56 +361,53 @@ fn test_symbol_usage_change() {
 fn test_symbol_collision_handling() {
     let dir = tempdir().unwrap();
     let root = dir.path();
-    
+
     fs::create_dir_all(root.join("src")).unwrap();
-    
+
     // File A defines func_common
     fs::write(
         root.join("src/module_a.py"),
         "def func_common():\n    pass"
     ).unwrap();
-    
+
     // File C also defines func_common (collision)
     fs::write(
         root.join("src/module_c.py"),
         "def func_common():\n    pass"
     ).unwrap();
-    
-    // File B uses func_common (ambiguous)
+
+    // File B uses func_common WITHOUT importing — should NOT create edges
     fs::write(
         root.join("src/module_b.py"),
         "func_common()"
     ).unwrap();
-    
+
     let files = vec![
         root.join("src/module_a.py"),
         root.join("src/module_b.py"),
         root.join("src/module_c.py"),
     ];
-    
-    let mut graph = RepoGraph::new(root, "python");
+
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files, root);
-    
+
     let module_a = root.join("src/module_a.py");
     let module_b = root.join("src/module_b.py");
     let module_c = root.join("src/module_c.py");
-    
-    // VERIFY: B has edges to BOTH A and C (collision handling)
+
+    // VERIFY: B has NO SymbolUsage edges (no imports → no edges)
+    // This is import-aware filtering: name coincidence alone doesn't create edges
     let edges = graph.get_outgoing_dependencies(&module_b);
     let symbol_edges: Vec<_> = edges.iter()
         .filter(|(_, kind)| *kind == EdgeKind::SymbolUsage)
         .collect();
-    
+
     assert!(
-        symbol_edges.iter().any(|(path, _)| **path == module_a),
-        "Should have edge to module_a"
+        symbol_edges.is_empty(),
+        "B should have no SymbolUsage edges without imports (got {:?})", symbol_edges
     );
-    assert!(
-        symbol_edges.iter().any(|(path, _)| **path == module_c),
-        "Should have edge to module_c"
-    );
-    
-    // VERIFY: SymbolIndex tracks both definitions
+
+    // VERIFY: SymbolIndex still tracks both definitions (the index is unaffected)
     let defs = graph.symbol_index.definitions.get("func_common").unwrap();
     assert_eq!(defs.len(), 2, "Should track both definitions");
     assert!(defs.contains(&module_a));
@@ -439,7 +429,7 @@ fn test_file_creation_with_symbols() {
     
     let files = vec![root.join("src/old_file.py")];
     
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files, root);
     
     let old_file = root.join("src/old_file.py");
@@ -495,7 +485,7 @@ fn test_file_deletion_cleanup() {
         root.join("src/module_b.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files, root);
     
     let _module_b = root.join("src/module_b.py");
@@ -564,7 +554,7 @@ fn test_batch_updates_maintain_consistency() {
         .map(|i| root.join(format!("src/module_{}.py", i)))
         .collect();
     
-    let mut graph = RepoGraph::new(root, "python");
+    let mut graph = RepoGraph::new(root, "python", &[]);
     graph.build_complete(&files, root);
     
     graph.validate_consistency().expect("Initial build should be consistent");

@@ -98,9 +98,9 @@ def _initialize_graph(project_root: Path) -> None:
     _project_root = project_root.resolve()
     log.info("Initializing graph for %s", _project_root)
 
-    _graph = RepoGraph(str(_project_root))
-
     ignored = _load_ignore_dirs(_project_root)
+    _graph = RepoGraph(str(_project_root), ignored_dirs=ignored)
+
     files = scan_repository(str(_project_root), ignored_dirs=ignored)
     log.info("Scanned %d files", len(files))
 

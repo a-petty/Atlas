@@ -285,11 +285,12 @@ impl From<GraphStatistics> for PyGraphStatistics {
 #[pymethods]
 impl PyRepoGraph {
     #[new]
-    #[pyo3(signature = (project_root, language = "python"))]
-    fn new(project_root: &str, language: &str) -> PyResult<Self> {
+    #[pyo3(signature = (project_root, language = "python", ignored_dirs = None))]
+    fn new(project_root: &str, language: &str, ignored_dirs: Option<Vec<String>>) -> PyResult<Self> {
         let root_path = Path::new(project_root);
+        let dirs = ignored_dirs.unwrap_or_default();
         Ok(Self {
-            graph: graph::RepoGraph::new(root_path, language),
+            graph: graph::RepoGraph::new(root_path, language, &dirs),
         })
     }
 

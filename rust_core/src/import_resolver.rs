@@ -83,22 +83,27 @@ pub struct PythonImportResolver {
     module_index: HashMap<String, PathBuf>,
     /// Compiled query for import statements.
     import_query: Query,
+    /// Directory names to exclude from module indexing.
+    ignored_dirs: HashSet<String>,
 }
 
 impl PythonImportResolver {
     /// Creates a new `PythonImportResolver` and indexes all Python modules in the project.
-    pub fn new(project_root: &Path) -> Self {
+    /// `ignored_dirs` contains directory names (not paths) to exclude from module indexing.
+    pub fn new(project_root: &Path, ignored_dirs: &[String]) -> Self {
+        let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
         let mut resolver = Self {
             project_root: project_root.to_path_buf(),
             module_index: HashMap::new(),
+            ignored_dirs: ignored_set,
             // Pre-compile the query for performance
+            // Pattern 0: absolute import (e.g., `import app.models`)
+            // Pattern 1: entire from-import statement for programmatic AST walking
             import_query: Query::new(
                 tree_sitter_python::language(),
                 r#"
                 (import_statement name: (dotted_name) @module)
-                (import_from_statement module_name: (dotted_name) @module)
-                (import_from_statement module_name: (relative_import) @relative_import (dotted_name)? @module)
-                (import_from_statement (wildcard_import))
+                (import_from_statement) @from_import
                 "#,
             )
             .expect("Failed to create import query"),
@@ -108,9 +113,17 @@ impl PythonImportResolver {
     }
 
     /// Scans the project directory for Python files (.py) and builds the module index.
+    /// Skips directories listed in `ignored_dirs`.
     fn index_modules(&mut self) {
         for entry in WalkDir::new(&self.project_root)
             .into_iter()
+            .filter_entry(|e| {
+                if e.file_type().is_dir() {
+                    let name = e.file_name().to_string_lossy();
+                    return !self.ignored_dirs.contains(name.as_ref());
+                }
+                true
+            })
             .filter_map(Result::ok)
             .filter(|e| e.path().is_file())
         {
@@ -208,6 +221,116 @@ impl PythonImportResolver {
     }
 }
 
+impl PythonImportResolver {
+    /// Resolves a `from ... import ...` statement by walking its AST node.
+    fn resolve_from_import(
+        &self,
+        node: tree_sitter::Node,
+        current_file: &Path,
+        source: &[u8],
+        imports: &mut HashSet<PathBuf>,
+    ) {
+        let module_name_node = node.child_by_field_name("module_name");
+
+        match module_name_node {
+            Some(mn) if mn.kind() == "dotted_name" => {
+                // Absolute: `from app.models import User`
+                let text = mn.utf8_text(source).unwrap_or("");
+                let root_module = text.split('.').next().unwrap_or("");
+                if !PYTHON_STDLIB_MODULES.contains(root_module)
+                    && !COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                {
+                    if let Some(path) = self.resolve_absolute(text) {
+                        imports.insert(path);
+                    }
+                }
+            }
+            Some(mn) if mn.kind() == "relative_import" => {
+                // Relative: `from .module import X` or `from . import X`
+                let mut dots = 0usize;
+                let mut module_path: Option<String> = None;
+
+                // Walk children of the relative_import node to extract
+                // the dot count (import_prefix) and optional module name (dotted_name)
+                let mut cursor = mn.walk();
+                for child in mn.children(&mut cursor) {
+                    match child.kind() {
+                        "import_prefix" => {
+                            dots = child
+                                .utf8_text(source)
+                                .unwrap_or("")
+                                .chars()
+                                .filter(|&c| c == '.')
+                                .count();
+                        }
+                        "dotted_name" => {
+                            module_path =
+                                Some(child.utf8_text(source).unwrap_or("").to_string());
+                        }
+                        _ => {}
+                    }
+                }
+
+                if let Some(ref module) = module_path {
+                    // `from .module import X` — resolve the module directly
+                    if let Some(path) = self.resolve_relative(current_file, dots, Some(module)) {
+                        imports.insert(path);
+                    }
+                } else {
+                    // `from . import X, Y` or `from . import *`
+                    // No module name inside relative_import — check what's being imported
+                    let has_wildcard = {
+                        let mut c = node.walk();
+                        node.children(&mut c)
+                            .any(|child| child.kind() == "wildcard_import")
+                    };
+
+                    if has_wildcard {
+                        // `from . import *` — resolve to the package's __init__.py
+                        if let Some(path) = self.resolve_relative(current_file, dots, None) {
+                            imports.insert(path);
+                        }
+                    } else {
+                        // `from . import X, Y` — each imported name could be a submodule
+                        // or a symbol from __init__.py. Try module first, then fall back.
+                        let mut any_resolved = false;
+                        let mut cursor2 = node.walk();
+                        for child in node.children(&mut cursor2) {
+                            let name_text = match child.kind() {
+                                "dotted_name" => child.utf8_text(source).ok(),
+                                "aliased_import" => child
+                                    .child_by_field_name("name")
+                                    .and_then(|n| n.utf8_text(source).ok()),
+                                _ => None,
+                            };
+                            if let Some(name) = name_text {
+                                if let Some(path) =
+                                    self.resolve_relative(current_file, dots, Some(name))
+                                {
+                                    imports.insert(path);
+                                    any_resolved = true;
+                                }
+                            }
+                        }
+                        // If none resolved as modules, try the package __init__.py
+                        // (the names are symbols exported from __init__.py)
+                        if !any_resolved {
+                            if let Some(path) =
+                                self.resolve_relative(current_file, dots, None)
+                            {
+                                imports.insert(path);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                // No module_name field or unrecognized kind — skip
+            }
+        }
+    }
+}
+
 impl ImportResolver for PythonImportResolver {
     fn find_imports<'a>(
         &self,
@@ -220,42 +343,32 @@ impl ImportResolver for PythonImportResolver {
         let matches = query_cursor.matches(&self.import_query, tree.root_node(), source);
 
         for match_ in matches {
-            // The last pattern in the query is for wildcard imports, which we ignore.
-            if match_.pattern_index == 3 {
-                continue;
-            }
-
-            let mut relative_import_text: Option<&str> = None;
-            let mut module_text: Option<&str> = None;
-
             for capture in match_.captures {
                 let capture_name = &self.import_query.capture_names()[capture.index as usize];
-                let text = capture.node.utf8_text(source).unwrap_or("");
                 match capture_name.as_str() {
-                    "relative_import" => relative_import_text = Some(text),
-                    "module" => module_text = Some(text),
+                    "module" => {
+                        // Pattern 0: `import app.models`
+                        let text = capture.node.utf8_text(source).unwrap_or("");
+                        let root_module = text.split('.').next().unwrap_or("");
+                        if !PYTHON_STDLIB_MODULES.contains(root_module)
+                            && !COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                        {
+                            if let Some(path) = self.resolve_absolute(text) {
+                                imports.insert(path);
+                            }
+                        }
+                    }
+                    "from_import" => {
+                        // Pattern 1: entire `from ... import ...` statement
+                        self.resolve_from_import(
+                            capture.node,
+                            current_file,
+                            source,
+                            &mut imports,
+                        );
+                    }
                     _ => (),
                 }
-            }
-            
-            let resolved_path = if let Some(relative_text) = relative_import_text {
-                let dots = relative_text.chars().filter(|&c| c == '.').count();
-                self.resolve_relative(current_file, dots, module_text)
-            } else if let Some(module_text_str) = module_text {
-                let root_module = module_text_str.split('.').next().unwrap_or("");
-                if PYTHON_STDLIB_MODULES.contains(root_module)
-                    || COMMON_THIRD_PARTY_MODULES.contains(root_module)
-                {
-                    None
-                } else {
-                    self.resolve_absolute(module_text_str)
-                }
-            } else {
-                None
-            };
-            
-            if let Some(path) = resolved_path {
-                imports.insert(path);
             }
         }
         imports
@@ -278,13 +391,17 @@ pub struct JsTsImportResolver {
     path_aliases: HashMap<String, Vec<String>>,
     /// Base URL from tsconfig
     base_url: Option<PathBuf>,
+    /// Directory names to exclude from module indexing.
+    ignored_dirs: HashSet<String>,
 }
 
 impl JsTsImportResolver {
-    pub fn new(project_root: &Path) -> Self {
+    pub fn new(project_root: &Path, ignored_dirs: &[String]) -> Self {
+        let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
         let mut resolver = Self {
             project_root: project_root.to_path_buf(),
             module_index: HashMap::new(),
+            ignored_dirs: ignored_set,
             import_query_js: Query::new(
                 tree_sitter_javascript::language(),
                 include_str!("../queries/javascript/imports.scm"),
@@ -331,6 +448,13 @@ impl JsTsImportResolver {
 
         for entry in WalkDir::new(&self.project_root)
             .into_iter()
+            .filter_entry(|e| {
+                if e.file_type().is_dir() {
+                    let name = e.file_name().to_string_lossy();
+                    return !self.ignored_dirs.contains(name.as_ref());
+                }
+                true
+            })
             .filter_map(Result::ok)
             .filter(|e| e.path().is_file())
         {
@@ -522,7 +646,7 @@ mod tests {
         create_dummy_file(&root_path, "src/api/v1/helpers.py", "");
         create_dummy_file(&root_path, "README.md", ""); // Should be ignored
 
-        let resolver = PythonImportResolver::new(&root_path);
+        let resolver = PythonImportResolver::new(&root_path, &[]);
 
         let mut parser = Parser::new();
         parser
@@ -636,7 +760,128 @@ mod tests {
     #[test]
     fn test_resolve_star_import() {
         let mut repo = setup();
+        // No __init__.py in src/api/v1/, so wildcard resolves to nothing
         let imports = run_find_imports(&mut repo, "from . import *", "src/api/v1/endpoints.py");
         assert!(imports.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_star_import_with_init() {
+        let mut repo = setup();
+        create_dummy_file(&repo.root_path, "src/api/v1/__init__.py", "");
+        repo.resolver = PythonImportResolver::new(&repo.root_path, &[]);
+
+        let imports = run_find_imports(&mut repo, "from . import *", "src/api/v1/endpoints.py");
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/api/v1/__init__.py")));
+    }
+
+    #[test]
+    fn test_resolve_relative_with_module_name() {
+        // This is the primary bug fix: `from .helpers import some_func`
+        // Previously, the query captured "some_func" as the module, not "helpers"
+        let mut repo = setup();
+        let imports = run_find_imports(
+            &mut repo,
+            "from .helpers import some_func",
+            "src/api/v1/endpoints.py",
+        );
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/api/v1/helpers.py")));
+    }
+
+    #[test]
+    fn test_resolve_relative_dotted_module() {
+        // `from ..api import something` from src/api/v1/endpoints.py
+        // resolve_relative with dots=2:
+        //   base_path starts at src/api/v1/, goes up once to src/api/
+        //   then the __init__.py fallback goes up one more to src/
+        //   components = ["src"] + ["api"] = "src.api" → src/api/__init__.py
+        let mut repo = setup();
+        let imports = run_find_imports(
+            &mut repo,
+            "from ..api import something",
+            "src/api/v1/endpoints.py",
+        );
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/api/__init__.py")));
+    }
+
+    #[test]
+    fn test_resolve_from_import_absolute() {
+        // `from src.api import something` should resolve to src/api/__init__.py
+        let mut repo = setup();
+        let imports = run_find_imports(&mut repo, "from src.api import something", "app.py");
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/api/__init__.py")));
+    }
+
+    #[test]
+    fn test_resolve_from_import_absolute_module() {
+        // `from src.utils import some_func` should resolve to src/utils.py
+        let mut repo = setup();
+        let imports = run_find_imports(&mut repo, "from src.utils import some_func", "app.py");
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/utils.py")));
+    }
+
+    #[test]
+    fn test_resolve_multiple_bare_imports() {
+        // `from . import helpers, endpoints` should resolve both modules
+        let mut repo = setup();
+        let imports = run_find_imports(
+            &mut repo,
+            "from . import helpers, endpoints",
+            "src/api/v1/endpoints.py",
+        );
+        // helpers.py exists, endpoints.py is the file itself (self-import gets resolved but
+        // the graph layer filters self-edges). Both should appear in raw resolution.
+        assert!(imports.contains(&repo.root_path.join("src/api/v1/helpers.py")));
+        assert!(imports.contains(&repo.root_path.join("src/api/v1/endpoints.py")));
+    }
+
+    #[test]
+    fn test_resolve_function_level_import() {
+        // Imports inside functions should also be captured
+        let mut repo = setup();
+        let source = r#"
+def my_function():
+    from src.utils import helper
+    return helper()
+"#;
+        let imports = run_find_imports(&mut repo, source, "app.py");
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/utils.py")));
+    }
+
+    #[test]
+    fn test_resolve_from_import_with_alias() {
+        // `from src.utils import something as alias` should still resolve
+        let mut repo = setup();
+        let imports = run_find_imports(
+            &mut repo,
+            "from src.utils import something as alias",
+            "app.py",
+        );
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/utils.py")));
+    }
+
+    #[test]
+    fn test_resolve_bare_import_fallback_to_init() {
+        // `from . import nonexistent_module` where the name is not a submodule
+        // but __init__.py exists — should fall back to __init__.py
+        let mut repo = setup();
+        create_dummy_file(&repo.root_path, "src/api/v1/__init__.py", "");
+        repo.resolver = PythonImportResolver::new(&repo.root_path, &[]);
+
+        let imports = run_find_imports(
+            &mut repo,
+            "from . import nonexistent_module",
+            "src/api/v1/endpoints.py",
+        );
+        // nonexistent_module doesn't resolve as a module, so falls back to __init__.py
+        assert_eq!(imports.len(), 1);
+        assert!(imports.contains(&repo.root_path.join("src/api/v1/__init__.py")));
     }
 }

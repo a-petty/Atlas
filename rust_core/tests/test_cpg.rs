@@ -249,7 +249,7 @@ def format_name(first: str, last: str) -> str:
     return f"{first} {last}"
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     graph.enable_cpg();
 
     let paths = vec![
@@ -288,7 +288,7 @@ def hello():
 "#;
     create_test_file(&root_path, "mod.py", original);
 
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     graph.enable_cpg();
     let paths = vec![root_path.join("mod.py")];
     graph.build_complete(&paths, &root_path);
@@ -329,7 +329,7 @@ fn test_cpg_file_removal() {
     create_test_file(&root_path, "a.py", "def func_a():\n    pass\n");
     create_test_file(&root_path, "b.py", "def func_b():\n    pass\n");
 
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     graph.enable_cpg();
     let paths = vec![root_path.join("a.py"), root_path.join("b.py")];
     graph.build_complete(&paths, &root_path);

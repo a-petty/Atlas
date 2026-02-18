@@ -385,7 +385,7 @@ def main():
     return a + b
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     graph.enable_cpg();
     let paths = vec![root_path.join("main.py"), root_path.join("helpers.py")];
     graph.build_complete(&paths, &root_path);
@@ -411,7 +411,7 @@ fn test_incremental_update_adds_call_edges() {
 
     create_test_file(&root_path, "funcs.py", "def g():\n    pass\n\ndef f():\n    pass\n");
 
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     graph.enable_cpg();
     let paths = vec![root_path.join("funcs.py")];
     graph.build_complete(&paths, &root_path);
@@ -441,7 +441,7 @@ fn test_remove_file_no_dangling_edges() {
     create_test_file(&root_path, "a.py", "def f():\n    g()\n");
     create_test_file(&root_path, "b.py", "def g():\n    pass\n");
 
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     graph.enable_cpg();
     let paths = vec![root_path.join("a.py"), root_path.join("b.py")];
     graph.build_complete(&paths, &root_path);

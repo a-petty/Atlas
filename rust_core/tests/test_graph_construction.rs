@@ -26,7 +26,7 @@ utils.helper()
 "#);
     
     // Build graph
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     let paths = vec![
         root_path.join("utils.py"),
         root_path.join("main.py"),
@@ -63,7 +63,7 @@ from models import User
 user = User()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     let paths = vec![
         root_path.join("models.py"),
         root_path.join("app.py"),
@@ -75,16 +75,15 @@ user = User()
     assert_eq!(graph.graph.node_count(), 2);
     assert!(graph.graph.edge_count() >= 1);
     
-    // Check edge type is SymbolUsage (should override Import)
+    // When both Import and SymbolUsage edges exist for the same pair,
+    // Import wins because it's structurally confirmed via AST analysis
     let app_idx = graph.path_to_idx.get(&root_path.join("app.py")).unwrap();
     let models_idx = graph.path_to_idx.get(&root_path.join("models.py")).unwrap();
-    
+
     let edge_idx = graph.graph.find_edge(*app_idx, *models_idx).unwrap();
     let edge_kind = &graph.graph[edge_idx];
-    
-    println!("DEBUG: Edge kind is: {:?}", edge_kind); // Add this line
-    
-    assert_eq!(edge_kind, &EdgeKind::SymbolUsage, "Should be SymbolUsage edge");
+
+    assert_eq!(edge_kind, &EdgeKind::Import, "Import should take priority over SymbolUsage");
 }
 
 #[test]
@@ -99,7 +98,7 @@ class MyClass:
 obj = MyClass()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     let paths = vec![root_path.join("self_import.py")];
     
     graph.build_complete(&paths, &root_path);
@@ -130,7 +129,7 @@ from util1 import process
 process()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     let paths = vec![
         root_path.join("util1.py"),
         root_path.join("util2.py"),
@@ -174,7 +173,7 @@ from models import User
 user = User()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     let paths = vec![
         root_path.join("core.py"),
         root_path.join("models.py"),

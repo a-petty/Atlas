@@ -134,17 +134,17 @@ impl FileNode {
 /// Represents the type of dependency between two files.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EdgeKind {
-    /// A strong dependency based on direct symbol usage (e.g., a function call).
+    /// A heuristic dependency based on symbol name matching.
     SymbolUsage,
-    /// A weaker dependency based on an import statement.
+    /// A structurally confirmed dependency based on an import statement.
     Import,
 }
 
 impl EdgeKind {
     pub fn strength(&self) -> f64 {
         match self {
-            EdgeKind::SymbolUsage => 2.0, // Strong link
-            EdgeKind::Import => 1.0,      // Weak link
+            EdgeKind::Import => 2.0,       // Strong: structurally confirmed via AST
+            EdgeKind::SymbolUsage => 1.0,   // Weak: heuristic name matching
         }
     }
 }
@@ -239,11 +239,11 @@ pub struct RepoGraph {
 }
 
 impl RepoGraph {
-    pub fn new(project_root: &Path, language: &str) -> Self {
+    pub fn new(project_root: &Path, language: &str, ignored_dirs: &[String]) -> Self {
         let import_resolver: Box<dyn ImportResolver> = match language.to_lowercase().as_str() {
-            "python" => Box::new(PythonImportResolver::new(project_root)),
+            "python" => Box::new(PythonImportResolver::new(project_root, ignored_dirs)),
             "javascript" | "typescript" | "js" | "ts" => {
-                Box::new(JsTsImportResolver::new(project_root))
+                Box::new(JsTsImportResolver::new(project_root, ignored_dirs))
             }
             _ => panic!("Unsupported language: {}", language),
         };
@@ -326,13 +326,14 @@ impl RepoGraph {
         Ok(skeleton_arc)
     }
 
-    /// Helper to ensure an edge exists without overwriting edges of different kinds.
+    /// Helper to ensure an edge exists. Import edges (structurally confirmed) take
+    /// priority over SymbolUsage edges (heuristic name matching).
     fn ensure_edge(&mut self, source: NodeIndex, target: NodeIndex, kind: EdgeKind) -> bool {
         if let Some(edge_id) = self.graph.find_edge(source, target) {
-            // Edge already exists, check if we need to upgrade it
+            // Edge already exists — upgrade SymbolUsage to Import, but never downgrade
             let existing_kind = &mut self.graph[edge_id];
-            if *existing_kind == EdgeKind::Import && kind == EdgeKind::SymbolUsage {
-                *existing_kind = EdgeKind::SymbolUsage;
+            if *existing_kind == EdgeKind::SymbolUsage && kind == EdgeKind::Import {
+                *existing_kind = EdgeKind::Import;
                 return true; // Upgraded
             }
             return false; // No change needed
@@ -616,11 +617,11 @@ impl RepoGraph {
                 .push(file_path.clone());
         }
 
-        // 6. Create new edges for Added Definitions (Incoming edges)
+        // 6. Create new edges for Added Definitions (Incoming, import-aware)
+        // Only create SymbolUsage edges from user files that import this file
         let this_lang = lang;
         let mut edges_to_create = Vec::new();
         for def in &added_defs {
-            // Skip noisy symbols
             if let Some(def_paths) = self.symbol_index.definitions.get(def) {
                 if def_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
             }
@@ -630,9 +631,16 @@ impl RepoGraph {
                         continue;
                     }
                     if let Some(&user_idx) = self.path_to_idx.get(user_path) {
-                        let user_lang = self.graph[user_idx].language;
-                        if languages_compatible(user_lang, this_lang) {
-                            edges_to_create.push((user_idx, node_idx));
+                        // Only if the user file imports this file
+                        let has_import = self
+                            .graph
+                            .edges_directed(user_idx, petgraph::Direction::Outgoing)
+                            .any(|e| e.target() == node_idx && *e.weight() == EdgeKind::Import);
+                        if has_import {
+                            let user_lang = self.graph[user_idx].language;
+                            if languages_compatible(user_lang, this_lang) {
+                                edges_to_create.push((user_idx, node_idx));
+                            }
                         }
                     }
                 }
@@ -644,17 +652,24 @@ impl RepoGraph {
             }
         }
 
-        // 7. Create new edges for Added Usages (Outgoing edges)
+        // 7. Create new edges for Added Usages (Outgoing, import-aware)
+        // Pre-compute new import targets from the updated import resolution
+        let new_import_target_indices: HashSet<NodeIndex> = new_import_paths
+            .iter()
+            .filter_map(|p| self.path_to_idx.get(p).copied())
+            .collect();
+
         let mut edges_to_create = Vec::new();
         for use_ in &added_uses {
             if let Some(def_paths) = self.symbol_index.definitions.get(use_) {
-                // Skip noisy symbols
                 if def_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
                 for def_path in def_paths {
                     if def_path == file_path {
                         continue;
                     }
                     if let Some(&def_idx) = self.path_to_idx.get(def_path) {
+                        // Only if this file imports the defining file
+                        if !new_import_target_indices.contains(&def_idx) { continue; }
                         let def_lang = self.graph[def_idx].language;
                         if languages_compatible(this_lang, def_lang) {
                             edges_to_create.push((node_idx, def_idx));
@@ -993,14 +1008,19 @@ impl RepoGraph {
             }
         }
         
-        // 7. SYMBOL USAGE EDGES
-        // Create edges from this file to files defining symbols we use
+        // 7. SYMBOL USAGE EDGES (import-aware)
+        // Only create SymbolUsage edges to files this node imports
         let new_lang = lang;
+        let outgoing_import_targets: HashSet<NodeIndex> = self
+            .graph
+            .edges_directed(new_idx, petgraph::Direction::Outgoing)
+            .filter(|e| *e.weight() == EdgeKind::Import)
+            .map(|e| e.target())
+            .collect();
+
         for usage in &uses {
             let defining_paths_to_process = if let Some(defining_paths) = self.symbol_index.definitions.get(usage) {
-                // Skip noisy symbols
                 if defining_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
-                // Clone the paths to release the immutable borrow on `self.symbol_index`
                 defining_paths.clone()
             } else {
                 Vec::new()
@@ -1008,7 +1028,7 @@ impl RepoGraph {
 
             for def_path in defining_paths_to_process {
                 if let Some(&def_idx) = self.path_to_idx.get(&def_path) {
-                    if new_idx != def_idx {
+                    if new_idx != def_idx && outgoing_import_targets.contains(&def_idx) {
                         let def_lang = self.graph[def_idx].language;
                         if languages_compatible(new_lang, def_lang) {
                             self.ensure_edge(new_idx, def_idx, EdgeKind::SymbolUsage);
@@ -1018,15 +1038,13 @@ impl RepoGraph {
             }
         }
 
-        // 8. REVERSE SYMBOL USAGE EDGES
-        // Create edges FROM files that use symbols WE define
+        // 8. REVERSE SYMBOL USAGE EDGES (import-aware)
+        // Only create incoming SymbolUsage edges from files that import this file
         for def in &defs {
-            // Skip noisy symbols
             if let Some(def_paths) = self.symbol_index.definitions.get(def) {
                 if def_paths.len() > MAX_SYMBOL_DEFINITION_FILES { continue; }
             }
             let using_paths_to_process = if let Some(using_paths) = self.symbol_index.users.get(def) {
-                // Clone the paths to release the immutable borrow
                 using_paths.clone()
             } else {
                 Vec::new()
@@ -1035,9 +1053,16 @@ impl RepoGraph {
             for user_path in using_paths_to_process {
                 if let Some(&user_idx) = self.path_to_idx.get(&user_path) {
                     if user_idx != new_idx && &user_path != &path {
-                        let user_lang = self.graph[user_idx].language;
-                        if languages_compatible(user_lang, new_lang) {
-                            self.ensure_edge(user_idx, new_idx, EdgeKind::SymbolUsage);
+                        // Check if the user file has an Import edge to this file
+                        let has_import = self
+                            .graph
+                            .edges_directed(user_idx, petgraph::Direction::Outgoing)
+                            .any(|e| e.target() == new_idx && *e.weight() == EdgeKind::Import);
+                        if has_import {
+                            let user_lang = self.graph[user_idx].language;
+                            if languages_compatible(user_lang, new_lang) {
+                                self.ensure_edge(user_idx, new_idx, EdgeKind::SymbolUsage);
+                            }
                         }
                     }
                 }
@@ -1172,8 +1197,25 @@ impl RepoGraph {
     }
 
     /// After initial population, this method builds the semantic edges based on symbol usage.
+    /// Only creates SymbolUsage edges where an Import edge already exists, ensuring that
+    /// symbol matches are backed by actual import relationships.
     pub fn build_semantic_edges(&mut self) {
         info!("Building semantic edges...");
+
+        // Pre-compute import targets: for each node, which other nodes does it import?
+        let import_targets: HashMap<NodeIndex, HashSet<NodeIndex>> = self
+            .graph
+            .node_indices()
+            .map(|idx| {
+                let targets: HashSet<NodeIndex> = self
+                    .graph
+                    .edges_directed(idx, petgraph::Direction::Outgoing)
+                    .filter(|e| *e.weight() == EdgeKind::Import)
+                    .map(|e| e.target())
+                    .collect();
+                (idx, targets)
+            })
+            .collect();
 
         // Pre-compute noisy symbols: skip symbols defined in too many files
         let noisy_symbols: HashSet<&String> = self.symbol_index.definitions.iter()
@@ -1193,13 +1235,24 @@ impl RepoGraph {
                 };
                 let user_lang = self.graph[user_node_idx].language;
 
+                // Only create SymbolUsage edges to files this node imports
+                let user_imports = match import_targets.get(&user_node_idx) {
+                    Some(targets) => targets,
+                    None => return Vec::new(),
+                };
+                if user_imports.is_empty() {
+                    return Vec::new();
+                }
+
                 let mut edges = Vec::new();
                 for symbol in used_symbols {
                     if noisy_symbols.contains(symbol) { continue; }
                     if let Some(def_paths) = self.symbol_index.definitions.get(symbol) {
                         for def_path in def_paths {
-                            if user_path == def_path { continue; } // No self-references
+                            if user_path == def_path { continue; }
                             if let Some(&def_node_idx) = self.path_to_idx.get(def_path) {
+                                // Only create edge if the user file imports the defining file
+                                if !user_imports.contains(&def_node_idx) { continue; }
                                 let def_lang = self.graph[def_node_idx].language;
                                 if languages_compatible(user_lang, def_lang) {
                                     edges.push((user_node_idx, def_node_idx));

@@ -3,7 +3,6 @@
 ; ========== DEFINITIONS ==========
 
 (function_definition name: (identifier) @def.function)
-(function_definition parameters: (parameters (identifier) @def.parameter))
 (class_definition name: (identifier) @def.class)
 
 ; Handle assignments (e.g., `x = 10`)

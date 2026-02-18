@@ -75,9 +75,9 @@ fn test_symbol_harvesting_python_simple() {
     let defs: Vec<String> = symbols.iter().filter(|s| s.is_definition).map(|s| s.name.clone()).collect();
     let _uses: Vec<String> = symbols.iter().filter(|s| !s.is_definition).map(|s| s.name.clone()).collect();
 
-    // Expected: function name + parameters
-    let expected_defs: HashSet<String> = 
-        ["my_function", "a", "b"]
+    // Expected: function name (parameters are local scope, not file-level definitions)
+    let expected_defs: HashSet<String> =
+        ["my_function"]
         .iter()
         .map(|s| s.to_string())
         .collect();
@@ -118,7 +118,7 @@ mc = MyClass(GLOBAL_VAR)
     let defs: Vec<String> = symbols.iter().filter(|s| s.is_definition).map(|s| s.name.clone()).collect();
     let uses: Vec<String> = symbols.iter().filter(|s| !s.is_definition).map(|s| s.name.clone()).collect();
 
-    // Core definitions we MUST capture
+    // Core definitions we MUST capture (parameters excluded — they're local scope)
     let must_have: HashSet<String> = [
         "MyClass",      // class name
         "__init__",     // method name
@@ -126,11 +126,8 @@ mc = MyClass(GLOBAL_VAR)
         "my_function",  // function name
         "GLOBAL_VAR",   // variable
         "mc",           // variable
-        "value",        // parameter
-        "multiplier",   // parameter
-        "a", "b",       // parameters
-        "c",            // variable
-        "result",       // variable
+        "c",            // variable (assignment)
+        "result",       // variable (assignment)
     ].iter().map(|s| s.to_string()).collect();
 
     let actual_defs: HashSet<String> = defs.into_iter().collect();

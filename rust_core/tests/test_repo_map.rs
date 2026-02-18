@@ -53,7 +53,7 @@ def test_user():
 "#);
     
     // Build graph
-    let mut graph = RepoGraph::new(&root_path, "python");
+    let mut graph = RepoGraph::new(&root_path, "python", &[]);
     let paths = vec![
         root_path.join("src/core.py"),
         root_path.join("src/models/user.py"),
