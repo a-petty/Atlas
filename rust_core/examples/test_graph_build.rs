@@ -24,7 +24,7 @@ fn main() {
     println!("Found {} Python files", paths.len());
     
     // Build graph
-    let mut graph = RepoGraph::new(&root_path, "python", &[]);
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
     graph.build_complete(&paths, &root_path);
     
     // Print statistics

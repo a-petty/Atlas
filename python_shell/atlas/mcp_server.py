@@ -101,6 +101,31 @@ def _load_ignore_dirs(project_root: Path) -> list:
     return dirs
 
 
+def _load_source_roots(project_root: Path):
+    """Load explicit source roots from .atlas.toml if present."""
+    toml_file = project_root / ".atlas.toml"
+    if not toml_file.exists():
+        return None
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ImportError:
+            log.warning(".atlas.toml found but neither tomllib nor tomli available. Ignoring.")
+            return None
+    try:
+        with open(toml_file, "rb") as f:
+            config = tomllib.load(f)
+        roots = config.get("project", {}).get("source_roots")
+        if roots and isinstance(roots, list):
+            log.info("Loaded source roots from .atlas.toml: %s", roots)
+            return roots
+    except Exception as e:
+        log.warning("Failed to parse .atlas.toml: %s", e)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Initialization helpers
 # ---------------------------------------------------------------------------
@@ -112,7 +137,8 @@ def _initialize_graph(project_root: Path) -> None:
     log.info("Initializing graph for %s", _project_root)
 
     ignored = _load_ignore_dirs(_project_root)
-    _graph = RepoGraph(str(_project_root), ignored_dirs=ignored)
+    source_roots = _load_source_roots(_project_root)
+    _graph = RepoGraph(str(_project_root), ignored_dirs=ignored, source_roots=source_roots)
 
     files = scan_repository(str(_project_root), ignored_dirs=ignored)
     log.info("Scanned %d files", len(files))
@@ -149,10 +175,14 @@ def _ensure_cpg() -> None:
     if _graph is None:
         return
     try:
+        import time
+        ignored = _load_ignore_dirs(_project_root) if _project_root else []
         log.info("Enabling CPG and building sub-file data (first CPG tool call)...")
-        _graph.enable_cpg_and_build()
+        start = time.monotonic()
+        _graph.enable_cpg_and_build(excluded_dirs=ignored)
+        elapsed = time.monotonic() - start
         _cpg_enabled = True
-        log.info("CPG enabled and built")
+        log.info("CPG enabled and built in %.1fs", elapsed)
     except Exception as e:
         _cpg_failed = True
         log.error("CPG build failed: %s", e)
@@ -194,6 +224,21 @@ def _to_relative(abs_path: str) -> str:
         return str(Path(abs_path).relative_to(_project_root))
     except ValueError:
         return abs_path
+
+
+def _is_trivial_init(path: Path) -> bool:
+    """Check if a file is a trivial __init__.py with minimal content."""
+    if path.name != "__init__.py":
+        return False
+    try:
+        content = path.read_text().strip()
+        meaningful = "\n".join(
+            line for line in content.splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        )
+        return len(meaningful) < 50
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -349,11 +394,15 @@ async def find_relevant_files(query: str, top_n: int = 10) -> str:
                 _ensure_graph()
                 _ensure_embeddings()
                 all_files = [Path(p) for p, _ in _graph.get_top_ranked_files(1000)]
-                results = _embedding_manager.find_relevant_files(query, all_files, top_n=top_n)
-                if not results:
+                # Request extra results to compensate for filtering
+                results = _embedding_manager.find_relevant_files(query, all_files, top_n=top_n + 10)
+                # Filter out trivial __init__.py files
+                filtered = [p for p in results if not _is_trivial_init(p)]
+                filtered = filtered[:top_n]
+                if not filtered:
                     return f"No relevant files found for: {query}"
                 lines = [f"Files relevant to '{query}':"]
-                for i, path in enumerate(results, 1):
+                for i, path in enumerate(filtered, 1):
                     lines.append(f"  {i}. {_to_relative(str(path))}")
                 return "\n".join(lines)
             return await anyio.to_thread.run_sync(_run)
@@ -401,8 +450,11 @@ async def get_file_symbols(file_path: str) -> str:
         try:
             def _run():
                 _ensure_graph()
-                _ensure_cpg()
                 normalized = _normalize_path(file_path)
+                # Try incremental CPG build for just this file (fast)
+                if not _graph.ensure_cpg_for_file(normalized):
+                    # Fall back to full CPG build if incremental fails
+                    _ensure_cpg()
                 symbols = _graph.get_functions_in_file(normalized)
                 if not symbols:
                     return f"No symbols found in {_to_relative(normalized)}"

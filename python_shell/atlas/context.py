@@ -173,6 +173,25 @@ class ContextManager:
 
         # === TIER 1: Repository Map (measured budget) ===
         if include_map and map_text:
+            # Supplement with query-relevant file ranking when embeddings available
+            if self.embedding_manager is not None and user_query:
+                try:
+                    all_graph_files = [Path(p) for p, _ in self.repo_graph.get_top_ranked_files(200)]
+                    relevant = self.embedding_manager.find_relevant_files(
+                        user_query, all_graph_files, top_n=15
+                    )
+                    if relevant:
+                        relevant_section = "\n\nQUERY-RELEVANT FILES (by semantic similarity):\n"
+                        for i, p in enumerate(relevant, 1):
+                            try:
+                                rel_path = p.relative_to(self.repo_graph.project_root)
+                            except (ValueError, AttributeError):
+                                rel_path = p
+                            relevant_section += f"  {i}. {rel_path}\n"
+                        map_text = map_text + relevant_section
+                except Exception as e:
+                    logger.debug(f"Query-relevant map supplement failed: {e}")
+
             map_tokens = self.count_tokens(map_text)
             if map_tokens <= params.tier1_tokens:
                 context_parts.append(("REPOSITORY_MAP", map_text))
@@ -248,15 +267,34 @@ class ContextManager:
         )
         skeleton_candidates = [path for path, _weight in skeleton_neighbors]
 
-        # If neighbor set is sparse, pad with global top-ranked files as fallback
+        # If neighbor set is sparse, fall back to embedding similarity (query-relevant)
+        # instead of static PageRank top files
         if len(skeleton_candidates) < 20:
-            top_ranked = self.repo_graph.get_top_ranked_files(100)
-            top_ranked_paths = [Path(p) for p, _ in top_ranked]
             seen = set(skeleton_candidates)
-            for p in top_ranked_paths:
-                if p not in seen and p not in processed_files:
-                    skeleton_candidates.append(p)
-                    seen.add(p)
+            if self.embedding_manager is not None:
+                try:
+                    all_graph_files = [Path(p) for p, _ in self.repo_graph.get_top_ranked_files(1000)]
+                    embedding_candidates = self.embedding_manager.find_relevant_files(
+                        user_query, all_graph_files, top_n=50
+                    )
+                    for p in embedding_candidates:
+                        if p not in seen and p not in processed_files:
+                            skeleton_candidates.append(p)
+                            seen.add(p)
+                except Exception as e:
+                    logger.debug(f"Embedding skeleton fallback failed: {e}")
+
+            # Final fallback to PageRank if still sparse
+            if len(skeleton_candidates) < 20:
+                top_ranked = self.repo_graph.get_top_ranked_files(100)
+                top_ranked_paths = [Path(p) for p, _ in top_ranked]
+                for p in top_ranked_paths:
+                    if p not in seen and p not in processed_files:
+                        skeleton_candidates.append(p)
+                        seen.add(p)
+
+        # Filter noise files before filling with content
+        skeleton_candidates = [p for p in skeleton_candidates if not self._is_noise_file(p)]
 
         skeleton_content, skeleton_processed = self._fill_with_content(
             skeleton_candidates,
@@ -272,6 +310,29 @@ class ContextManager:
         logger.info(f"Context assembled: {len(processed_files)} files, {final_budget} tokens remaining")
 
         return self._format_context(context_parts)
+
+    @staticmethod
+    def _is_noise_file(path: Path) -> bool:
+        """Filter out files that provide no useful architectural context."""
+        name = path.name
+        # Empty __init__.py files
+        if name == "__init__.py":
+            try:
+                content = path.read_text().strip()
+                meaningful = "\n".join(
+                    line for line in content.splitlines()
+                    if line.strip() and not line.strip().startswith("#")
+                )
+                if len(meaningful) < 50:
+                    return True
+            except Exception:
+                return True
+        # Test files
+        if name.startswith("test_") or name.endswith("_test.py"):
+            return True
+        if name == "conftest.py":
+            return True
+        return False
 
     def _get_dependency_neighborhood(
         self,

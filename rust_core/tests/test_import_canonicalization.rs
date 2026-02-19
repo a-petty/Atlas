@@ -68,7 +68,7 @@ fn test_absolute_import_with_canonical_paths() {
     );
 
     // Build graph with NON-canonical root (RepoGraph::new should canonicalize internally)
-    let mut graph = RepoGraph::new(&non_canonical_root, "python", &[]);
+    let mut graph = RepoGraph::new(&non_canonical_root, "python", &[], None);
     graph.build_complete(&canonical_files, &non_canonical_root);
 
     // The canonical root is what the graph uses internally
@@ -131,7 +131,7 @@ fn test_relative_import_with_canonical_paths() {
     );
 
     let canonical_files = scan_and_canonicalize(&non_canonical_root);
-    let mut graph = RepoGraph::new(&non_canonical_root, "python", &[]);
+    let mut graph = RepoGraph::new(&non_canonical_root, "python", &[], None);
     graph.build_complete(&canonical_files, &non_canonical_root);
 
     let canonical_root = non_canonical_root.canonicalize().unwrap();
@@ -158,7 +158,7 @@ fn test_source_roots_detected_in_statistics() {
     create_file(&non_canonical_root, "backend/app/core.py", "");
 
     let canonical_files = scan_and_canonicalize(&non_canonical_root);
-    let mut graph = RepoGraph::new(&non_canonical_root, "python", &[]);
+    let mut graph = RepoGraph::new(&non_canonical_root, "python", &[], None);
     graph.build_complete(&canonical_files, &non_canonical_root);
 
     let stats = graph.get_statistics();

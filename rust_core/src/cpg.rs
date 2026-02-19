@@ -135,6 +135,11 @@ impl CpgLayer {
         }
     }
 
+    /// Check if CPG data has been built for a given file.
+    pub fn has_file(&self, path: &Path) -> bool {
+        self.file_to_nodes.contains_key(path)
+    }
+
     /// Extract CPG nodes from an AST and store the tree + source.
     pub fn build_file(
         &mut self,

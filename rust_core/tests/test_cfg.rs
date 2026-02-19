@@ -569,7 +569,7 @@ def conditional(x):
     return "non-positive"
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[]);
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("example.py")];
     graph.build_complete(&paths, &root_path);

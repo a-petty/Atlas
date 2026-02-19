@@ -7,7 +7,7 @@ fn test_js_import_resolution() {
     let test_repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/js_test_repo");
     
-    let mut graph = RepoGraph::new(&test_repo, "javascript", &[]);
+    let mut graph = RepoGraph::new(&test_repo, "javascript", &[], None);
     let paths: Vec<PathBuf> = vec![
         test_repo.join("src/index.js"),
         test_repo.join("src/utils/helpers.js"),
@@ -28,7 +28,7 @@ fn test_ts_path_alias_resolution() {
     let test_repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/js_test_repo");
     
-    let mut graph = RepoGraph::new(&test_repo, "typescript", &[]);
+    let mut graph = RepoGraph::new(&test_repo, "typescript", &[], None);
     let paths: Vec<PathBuf> = vec![
         test_repo.join("src/index.js"),
         test_repo.join("src/utils/helpers.js"),

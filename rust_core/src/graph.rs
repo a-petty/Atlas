@@ -2,7 +2,7 @@ use crate::cpg::CpgLayer;
 use crate::import_resolver::{ImportResolver, JsTsImportResolver, PythonImportResolver};
 use crate::parser::{self, Symbol, SymbolHarvester, SupportedLanguage};
 use crate::symbol_table::SymbolIndex;
-use log::{debug, info};
+use log::{debug, info, warn};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
 use rayon::prelude::*;
@@ -20,6 +20,7 @@ use std::fmt::Write;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 use tree_sitter::Parser as TreeSitterParser;
 
 /// Represents an error that can occur during graph operations.
@@ -242,11 +243,11 @@ pub struct RepoGraph {
 }
 
 impl RepoGraph {
-    pub fn new(project_root: &Path, language: &str, ignored_dirs: &[String]) -> Self {
+    pub fn new(project_root: &Path, language: &str, ignored_dirs: &[String], source_roots: Option<&[String]>) -> Self {
         let canonical_root = project_root.canonicalize()
             .unwrap_or_else(|_| project_root.to_path_buf());
         let import_resolver: Box<dyn ImportResolver> = match language.to_lowercase().as_str() {
-            "python" => Box::new(PythonImportResolver::new(&canonical_root, ignored_dirs)),
+            "python" => Box::new(PythonImportResolver::new(&canonical_root, ignored_dirs, source_roots)),
             "javascript" | "typescript" | "js" | "ts" => {
                 Box::new(JsTsImportResolver::new(&canonical_root, ignored_dirs))
             }
@@ -276,15 +277,80 @@ impl RepoGraph {
 
     /// Enable CPG and build data for all files already in the graph.
     /// Used when CPG is enabled after build_complete().
-    pub fn enable_cpg_and_build(&mut self) {
+    /// `excluded_prefixes` optionally filters out files under certain directories.
+    pub fn enable_cpg_and_build(&mut self, excluded_prefixes: Option<&[String]>) {
         self.cpg = Some(CpgLayer::new());
+        let all_count = self.graph.node_count();
         let paths: Vec<PathBuf> = self.graph.node_weights()
             .map(|n| n.path.clone())
+            .filter(|p| {
+                if let Some(prefixes) = excluded_prefixes {
+                    let path_str = p.to_string_lossy();
+                    !prefixes.iter().any(|prefix| {
+                        // Match directory name as a path component
+                        path_str.contains(&format!("/{prefix}/"))
+                            || path_str.contains(&format!("\\{prefix}\\"))
+                            || path_str.ends_with(&format!("/{prefix}"))
+                    })
+                } else {
+                    true
+                }
+            })
             .collect();
+        let excluded = all_count - paths.len();
+        if excluded > 0 {
+            info!("CPG build: {} files ({} excluded by ignore rules)", paths.len(), excluded);
+        }
         self.build_cpg_for_all_files(&paths);
         if let Some(cpg) = &mut self.cpg {
             crate::callgraph::CallGraphBuilder::resolve_all(cpg, &self.symbol_index);
         }
+    }
+
+    /// Build CPG data for a single file on demand (incremental).
+    /// Creates the CPG layer if not yet created. Skips if already built for this file.
+    /// Returns true if CPG data is available for the file after this call.
+    pub fn ensure_cpg_for_file(&mut self, path: &Path) -> bool {
+        if self.cpg.is_none() {
+            self.cpg = Some(CpgLayer::new());
+        }
+
+        let cpg = self.cpg.as_ref().unwrap();
+        if cpg.has_file(path) {
+            return true;
+        }
+
+        let lang = SupportedLanguage::from_path(path);
+        if lang != SupportedLanguage::Python {
+            return false;
+        }
+
+        let ts_lang = match lang.get_parser() {
+            Some(l) => l,
+            None => return false,
+        };
+
+        let source = match fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+
+        let mut parser = TreeSitterParser::new();
+        if parser.set_language(ts_lang).is_err() {
+            return false;
+        }
+
+        let tree = match parser.parse(&source, None) {
+            Some(t) => t,
+            None => return false,
+        };
+
+        if let Some(cpg) = &mut self.cpg {
+            cpg.build_file(path, tree, source, lang);
+            crate::callgraph::CallGraphBuilder::resolve_file(cpg, path, &self.symbol_index);
+        }
+
+        true
     }
 
     /// Get skeleton for a file, loading on-demand if not cached
@@ -1328,7 +1394,11 @@ impl RepoGraph {
 
     /// Build CPG data for all files (used during build_complete).
     fn build_cpg_for_all_files(&mut self, paths: &[PathBuf]) {
-        for path in paths {
+        let total = paths.len();
+        let start = Instant::now();
+        let mut built = 0usize;
+
+        for (i, path) in paths.iter().enumerate() {
             let lang = SupportedLanguage::from_path(path);
             if lang == SupportedLanguage::Unknown {
                 continue;
@@ -1349,10 +1419,25 @@ impl RepoGraph {
                 Some(t) => t,
                 None => continue,
             };
+
+            let file_start = Instant::now();
             if let Some(cpg) = &mut self.cpg {
                 cpg.build_file(path, tree, source, lang);
             }
+            let file_elapsed = file_start.elapsed();
+            built += 1;
+
+            if file_elapsed.as_secs() > 5 {
+                warn!("CPG: slow file ({:.1}s): {}", file_elapsed.as_secs_f64(), path.display());
+            }
+
+            if built % 50 == 0 || i == total - 1 {
+                info!("CPG progress: {}/{} files built ({:.1}s elapsed)",
+                      built, total, start.elapsed().as_secs_f64());
+            }
         }
+
+        info!("CPG build complete: {} files in {:.1}s", built, start.elapsed().as_secs_f64());
     }
     
     /// Get statistics about the graph

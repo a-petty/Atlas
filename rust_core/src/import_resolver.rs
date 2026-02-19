@@ -100,12 +100,13 @@ pub struct PythonImportResolver {
 impl PythonImportResolver {
     /// Creates a new `PythonImportResolver` and indexes all Python modules in the project.
     /// `ignored_dirs` contains directory names (not paths) to exclude from module indexing.
-    pub fn new(project_root: &Path, ignored_dirs: &[String]) -> Self {
+    /// `explicit_source_roots` optionally overrides auto-detection of source roots.
+    pub fn new(project_root: &Path, ignored_dirs: &[String], explicit_source_roots: Option<&[String]>) -> Self {
         let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
         let canonical_root = project_root.canonicalize()
             .unwrap_or_else(|_| project_root.to_path_buf());
         let mut resolver = Self {
-            project_root: canonical_root,
+            project_root: canonical_root.clone(),
             module_index: HashMap::new(),
             ignored_dirs: ignored_set,
             source_roots: Vec::new(),
@@ -121,7 +122,29 @@ impl PythonImportResolver {
             )
             .expect("Failed to create import query"),
         };
-        resolver.source_roots = resolver.detect_source_roots();
+        resolver.source_roots = if let Some(roots) = explicit_source_roots {
+            let explicit: Vec<PathBuf> = roots.iter()
+                .filter_map(|r| {
+                    let p = canonical_root.join(r);
+                    let canonical = p.canonicalize().unwrap_or(p);
+                    if canonical.is_dir() {
+                        info!("Explicit source root: {}", canonical.display());
+                        Some(canonical)
+                    } else {
+                        info!("Ignoring non-existent source root: {}", r);
+                        None
+                    }
+                })
+                .collect();
+            if explicit.is_empty() {
+                info!("No valid explicit source roots, falling back to auto-detection");
+                resolver.detect_source_roots()
+            } else {
+                explicit
+            }
+        } else {
+            resolver.detect_source_roots()
+        };
         resolver.index_modules();
         resolver
     }
@@ -805,7 +828,7 @@ mod tests {
         create_dummy_file(&root_path, "src/api/v1/helpers.py", "");
         create_dummy_file(&root_path, "README.md", ""); // Should be ignored
 
-        let resolver = PythonImportResolver::new(&root_path, &[]);
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
 
         let mut parser = Parser::new();
         parser
@@ -940,7 +963,7 @@ mod tests {
     fn test_resolve_star_import_with_init() {
         let mut repo = setup();
         create_dummy_file(&repo.root_path, "src/api/v1/__init__.py", "");
-        repo.resolver = PythonImportResolver::new(&repo.root_path, &[]);
+        repo.resolver = PythonImportResolver::new(&repo.root_path, &[], None);
 
         let imports = run_find_imports(&mut repo, "from . import *", "src/api/v1/endpoints.py");
         assert_eq!(imports.len(), 1);
@@ -1044,7 +1067,7 @@ def my_function():
         // but __init__.py exists — should fall back to __init__.py
         let mut repo = setup();
         create_dummy_file(&repo.root_path, "src/api/v1/__init__.py", "");
-        repo.resolver = PythonImportResolver::new(&repo.root_path, &[]);
+        repo.resolver = PythonImportResolver::new(&repo.root_path, &[], None);
 
         let imports = run_find_imports(
             &mut repo,
@@ -1079,7 +1102,7 @@ def my_function():
         // Non-source-root directory (no Python packages inside)
         create_dummy_file(&root_path, "frontend/index.html", "");
 
-        let resolver = PythonImportResolver::new(&root_path, &[]);
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
 
         let mut parser = Parser::new();
         parser
@@ -1198,7 +1221,7 @@ def my_function():
         create_dummy_file(&root_path, "libs/shared/__init__.py", "");
         create_dummy_file(&root_path, "libs/shared/utils.py", "");
 
-        let resolver = PythonImportResolver::new(&root_path, &[]);
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
 
         // Both should be detected as source roots
         assert_eq!(resolver.source_roots.len(), 2);
@@ -1223,6 +1246,7 @@ def my_function():
         let resolver = PythonImportResolver::new(
             &root_path,
             &["node_modules".to_string()],
+            None,
         );
 
         // Only backend/ should be detected, not node_modules/

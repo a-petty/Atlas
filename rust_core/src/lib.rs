@@ -296,12 +296,12 @@ impl From<GraphStatistics> for PyGraphStatistics {
 #[pymethods]
 impl PyRepoGraph {
     #[new]
-    #[pyo3(signature = (project_root, language = "python", ignored_dirs = None))]
-    fn new(project_root: &str, language: &str, ignored_dirs: Option<Vec<String>>) -> PyResult<Self> {
+    #[pyo3(signature = (project_root, language = "python", ignored_dirs = None, source_roots = None))]
+    fn new(project_root: &str, language: &str, ignored_dirs: Option<Vec<String>>, source_roots: Option<Vec<String>>) -> PyResult<Self> {
         let root_path = Path::new(project_root);
         let dirs = ignored_dirs.unwrap_or_default();
         Ok(Self {
-            graph: graph::RepoGraph::new(root_path, language, &dirs),
+            graph: graph::RepoGraph::new(root_path, language, &dirs, source_roots.as_deref()),
         })
     }
 
@@ -432,13 +432,23 @@ impl PyRepoGraph {
 
     /// Enable CPG and build sub-file data for all files already in the graph.
     /// Use this when CPG is enabled after build_complete().
-    fn enable_cpg_and_build(&mut self) {
-        self.graph.enable_cpg_and_build();
+    /// `excluded_dirs` optionally filters out files under certain directories.
+    #[pyo3(signature = (excluded_dirs = None))]
+    fn enable_cpg_and_build(&mut self, excluded_dirs: Option<Vec<String>>) {
+        self.graph.enable_cpg_and_build(excluded_dirs.as_deref());
     }
 
     /// Check if CPG is enabled.
     fn cpg_enabled(&self) -> bool {
         self.graph.cpg.is_some()
+    }
+
+    /// Build CPG data for a single file on demand (incremental).
+    /// Returns true if CPG data is available for the file after this call.
+    fn ensure_cpg_for_file(&mut self, file_path: &str) -> bool {
+        let path = PathBuf::from(file_path);
+        let canonical = path.canonicalize().unwrap_or(path);
+        self.graph.ensure_cpg_for_file(&canonical)
     }
 
     /// Get all functions/methods in a file as a list of dicts.

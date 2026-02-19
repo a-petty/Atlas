@@ -5,7 +5,7 @@ use tempfile::tempdir;
 fn create_test_graph() -> RepoGraph {
     let root = tempdir().unwrap();
     let root_path = root.path();
-    let mut graph = RepoGraph::new(root_path, "python", &[]);
+    let mut graph = RepoGraph::new(root_path, "python", &[], None);
 
     // Add files (nodes) with initial rank 0.0
     let core_path = PathBuf::from("src/core.py");
@@ -73,7 +73,7 @@ fn test_pagerank_identifies_core_file() {
 fn test_pagerank_handles_empty_graph() {
     let root = tempdir().unwrap();
     let root_path = root.path();
-    let mut graph = RepoGraph::new(root_path, "python", &[]);
+    let mut graph = RepoGraph::new(root_path, "python", &[], None);
     graph.calculate_pagerank(20, 0.85);
     let top_files = graph.get_top_ranked_files(1);
     assert!(top_files.is_empty());
