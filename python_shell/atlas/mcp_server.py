@@ -13,6 +13,7 @@ import sys
 import asyncio
 import argparse
 import logging
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -78,6 +79,10 @@ _tool_lock: Optional[asyncio.Lock] = None
 
 IGNORED_DIRS = {"node_modules", "target", ".git", "__pycache__", "dist", "build", ".venv", "venv"}
 MAX_RESULT_CHARS = 60_000  # Safety cap for MCP tool results (Claude Code limit ~75K with JSON overhead)
+SUPPORTED_CPG_EXTENSIONS = {".py", ".pyi"}
+CPG_TOOL_TIMEOUT_SECONDS = 120  # Safety timeout for CPG-dependent tools (call graph queries)
+
+_cpg_lock = threading.Lock()
 
 
 def _get_lock() -> asyncio.Lock:
@@ -170,23 +175,27 @@ def _ensure_cpg() -> None:
     global _cpg_enabled, _cpg_failed
     if _cpg_enabled:
         return
-    if _cpg_failed:
-        raise RuntimeError("CPG previously failed. Call atlas_refresh() to retry.")
-    if _graph is None:
-        return
-    try:
-        import time
-        ignored = _load_ignore_dirs(_project_root) if _project_root else []
-        log.info("Enabling CPG and building sub-file data (first CPG tool call)...")
-        start = time.monotonic()
-        _graph.enable_cpg_and_build(excluded_dirs=ignored)
-        elapsed = time.monotonic() - start
-        _cpg_enabled = True
-        log.info("CPG enabled and built in %.1fs", elapsed)
-    except Exception as e:
-        _cpg_failed = True
-        log.error("CPG build failed: %s", e)
-        raise RuntimeError(f"CPG build failed: {e}. Call atlas_refresh() to retry.")
+    with _cpg_lock:
+        # Double-check after acquiring lock (another thread may have built it)
+        if _cpg_enabled:
+            return
+        if _cpg_failed:
+            raise RuntimeError("CPG previously failed. Call atlas_refresh() to retry.")
+        if _graph is None:
+            return
+        try:
+            import time
+            ignored = _load_ignore_dirs(_project_root) if _project_root else []
+            log.info("Enabling CPG and building sub-file data (first CPG tool call)...")
+            start = time.monotonic()
+            _graph.enable_cpg_and_build(excluded_dirs=ignored)
+            elapsed = time.monotonic() - start
+            _cpg_enabled = True
+            log.info("CPG enabled and built in %.1fs", elapsed)
+        except Exception as e:
+            _cpg_failed = True
+            log.error("CPG build failed: %s", e)
+            raise RuntimeError(f"CPG build failed: {e}. Call atlas_refresh() to retry.")
 
 
 def _ensure_embeddings() -> None:
@@ -224,6 +233,18 @@ def _to_relative(abs_path: str) -> str:
         return str(Path(abs_path).relative_to(_project_root))
     except ValueError:
         return abs_path
+
+
+def _validate_cpg_file(file_path: str) -> Optional[str]:
+    """Return an error message if the file is not supported for CPG analysis, else None."""
+    ext = Path(file_path).suffix
+    if ext not in SUPPORTED_CPG_EXTENSIONS:
+        return (
+            f"CPG analysis not supported for '{ext}' files. "
+            f"Supported extensions: {', '.join(sorted(SUPPORTED_CPG_EXTENSIONS))}. "
+            f"Use get_file_skeleton for non-Python files."
+        )
+    return None
 
 
 def _is_trivial_init(path: Path) -> bool:
@@ -451,6 +472,9 @@ async def get_file_symbols(file_path: str) -> str:
             def _run():
                 _ensure_graph()
                 normalized = _normalize_path(file_path)
+                cpg_err = _validate_cpg_file(normalized)
+                if cpg_err:
+                    return cpg_err
                 # Try incremental CPG build for just this file (fast)
                 if not _graph.ensure_cpg_for_file(normalized):
                     # Fall back to full CPG build if incremental fails
@@ -501,8 +525,11 @@ async def get_callees(file_path: str, function_name: str) -> str:
         try:
             def _run():
                 _ensure_graph()
-                _ensure_cpg()
                 normalized = _normalize_path(file_path)
+                cpg_err = _validate_cpg_file(normalized)
+                if cpg_err:
+                    return cpg_err
+                _ensure_cpg()
                 callees = _graph.get_callees(normalized, function_name)
                 if not callees:
                     return f"No callees found for {function_name} in {_to_relative(normalized)}"
@@ -510,7 +537,10 @@ async def get_callees(file_path: str, function_name: str) -> str:
                 for callee in callees:
                     lines.append(f"  {callee['name']} ({_to_relative(callee['file'])}:{callee['line']})")
                 return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
+            with anyio.fail_after(CPG_TOOL_TIMEOUT_SECONDS):
+                return await anyio.to_thread.run_sync(_run)
+        except TimeoutError:
+            return f"ERROR: Call graph query timed out after {CPG_TOOL_TIMEOUT_SECONDS}s. The repository may be too large for full call graph analysis."
         except Exception as e:
             return f"ERROR: {e}"
 
@@ -527,8 +557,11 @@ async def get_callers(file_path: str, function_name: str) -> str:
         try:
             def _run():
                 _ensure_graph()
-                _ensure_cpg()
                 normalized = _normalize_path(file_path)
+                cpg_err = _validate_cpg_file(normalized)
+                if cpg_err:
+                    return cpg_err
+                _ensure_cpg()
                 callers = _graph.get_callers(normalized, function_name)
                 if not callers:
                     return f"No callers found for {function_name} in {_to_relative(normalized)}"
@@ -536,7 +569,10 @@ async def get_callers(file_path: str, function_name: str) -> str:
                 for caller in callers:
                     lines.append(f"  {caller['name']} ({_to_relative(caller['file'])}:{caller['line']})")
                 return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
+            with anyio.fail_after(CPG_TOOL_TIMEOUT_SECONDS):
+                return await anyio.to_thread.run_sync(_run)
+        except TimeoutError:
+            return f"ERROR: Call graph query timed out after {CPG_TOOL_TIMEOUT_SECONDS}s. The repository may be too large for full call graph analysis."
         except Exception as e:
             return f"ERROR: {e}"
 

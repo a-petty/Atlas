@@ -34,16 +34,7 @@ impl DataFlowAnalyzer {
             None => return,
         };
 
-        let mut cfg_nodes: Vec<NodeIndex> = Vec::new();
-        cfg_nodes.push(entry_idx);
-        cfg_nodes.push(exit_idx);
-        for idx in cpg.graph.node_indices() {
-            if let Some(node) = cpg.graph.node_weight(idx) {
-                if node.function_idx == Some(func_idx) && node.kind == CpgNodeKind::Statement {
-                    cfg_nodes.push(idx);
-                }
-            }
-        }
+        let cfg_nodes: Vec<NodeIndex> = cpg.get_stmts_for_function(func_idx).to_vec();
 
         // Get the persisted tree for this file
         let tree = match cpg.trees.get(&file_path) {
@@ -131,10 +122,17 @@ impl DataFlowAnalyzer {
 
         // Initialize worklist with all nodes
         let mut worklist: VecDeque<NodeIndex> = cfg_nodes.iter().copied().collect();
-        let in_worklist: HashSet<NodeIndex> = cfg_nodes.iter().copied().collect();
-        let _ = in_worklist; // just used for initial fill
+
+        // Safety cap: reaching definitions converges in O(nodes * variables) iterations.
+        // This limit prevents hangs from pathological CFG shapes or bugs.
+        const MAX_ITERATIONS: usize = 100_000;
+        let mut iterations: usize = 0;
 
         while let Some(node_idx) = worklist.pop_front() {
+            iterations += 1;
+            if iterations > MAX_ITERATIONS {
+                break;
+            }
             // IN(node) = union of OUT(pred) for all predecessors
             let mut new_in: HashSet<Def> = HashSet::new();
             if let Some(preds) = predecessors.get(&node_idx) {

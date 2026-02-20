@@ -79,11 +79,10 @@ impl CallGraphBuilder {
 
         let mut sites = Vec::new();
 
-        // Iterate over all Statement nodes owned by this function
-        for idx in cpg.graph.node_indices() {
+        // Iterate over Statement nodes owned by this function (via index)
+        for &idx in cpg.get_stmts_for_function(func_idx) {
             if let Some(node) = cpg.graph.node_weight(idx) {
-                if node.function_idx == Some(func_idx) && node.kind == CpgNodeKind::Statement {
-                    // Find the tree-sitter node for this statement
+                if node.kind == CpgNodeKind::Statement {
                     if let Some(ts_node) = find_node_at_bytes(
                         tree.root_node(),
                         node.start_byte,
@@ -378,19 +377,7 @@ impl CallGraphBuilder {
     fn remove_interprocedural_edges_for_func(cpg: &mut CpgLayer, func_idx: NodeIndex) {
         // Collect all nodes belonging to this function (for DataFlowArgument/Return)
         let mut func_nodes: Vec<NodeIndex> = vec![func_idx];
-        if let Some(&entry) = cpg.function_to_entry.get(&func_idx) {
-            func_nodes.push(entry);
-        }
-        if let Some(&exit) = cpg.function_to_exit.get(&func_idx) {
-            func_nodes.push(exit);
-        }
-        for idx in cpg.graph.node_indices() {
-            if let Some(node) = cpg.graph.node_weight(idx) {
-                if node.function_idx == Some(func_idx) && node.kind == CpgNodeKind::Statement {
-                    func_nodes.push(idx);
-                }
-            }
-        }
+        func_nodes.extend_from_slice(cpg.get_stmts_for_function(func_idx));
 
         // Collect edge IDs to remove
         let mut edges_to_remove = Vec::new();
@@ -506,10 +493,9 @@ fn collect_edges_for_resolved_call(
     }
 
     // DataFlowReturn: each return statement in callee → call_stmt in caller
-    for idx in cpg.graph.node_indices() {
+    for &idx in cpg.get_stmts_for_function(callee_idx) {
         if let Some(node) = cpg.graph.node_weight(idx) {
-            if node.function_idx == Some(callee_idx)
-                && node.kind == CpgNodeKind::Statement
+            if node.kind == CpgNodeKind::Statement
                 && node.statement_kind.as_ref() == Some(&StatementKind::Return)
             {
                 edges.push(EdgeToAdd {

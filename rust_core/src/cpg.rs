@@ -106,6 +106,7 @@ pub struct CpgLayer {
     pub stmt_uses: HashMap<NodeIndex, Vec<String>>,        // Statement → used variables
     pub call_sites: HashMap<NodeIndex, Vec<crate::callgraph::CallSite>>,  // func_idx → call sites
     pub name_to_funcs: HashMap<String, Vec<NodeIndex>>,   // func name → defining node indices
+    pub function_to_stmts: HashMap<NodeIndex, Vec<NodeIndex>>,  // func_idx → owned Statement/CfgEntry/CfgExit nodes
 }
 
 impl std::fmt::Debug for CpgLayer {
@@ -132,7 +133,16 @@ impl CpgLayer {
             stmt_uses: HashMap::new(),
             call_sites: HashMap::new(),
             name_to_funcs: HashMap::new(),
+            function_to_stmts: HashMap::new(),
         }
+    }
+
+    /// Get all Statement/CfgEntry/CfgExit nodes owned by a function.
+    pub fn get_stmts_for_function(&self, func_idx: NodeIndex) -> &[NodeIndex] {
+        self.function_to_stmts
+            .get(&func_idx)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
     }
 
     /// Check if CPG data has been built for a given file.
@@ -233,6 +243,7 @@ impl CpgLayer {
                 self.function_to_entry.remove(fi);
                 self.function_to_exit.remove(fi);
                 self.call_sites.remove(fi);
+                self.function_to_stmts.remove(fi);
             }
 
             // Clean up stmt_defs/stmt_uses for all nodes being removed
@@ -316,6 +327,22 @@ impl CpgLayer {
                             }
                         }
                     }
+
+                    // Remap function_to_stmts: key (if last_idx was a function)
+                    if let Some(stmts) = self.function_to_stmts.remove(&last_idx) {
+                        let stmts: Vec<NodeIndex> = stmts.into_iter().map(|s| {
+                            if s == last_idx { idx } else { s }
+                        }).collect();
+                        self.function_to_stmts.insert(idx, stmts);
+                    }
+                    // Remap function_to_stmts: values that reference last_idx
+                    for stmt_list in self.function_to_stmts.values_mut() {
+                        for s in stmt_list.iter_mut() {
+                            if *s == last_idx {
+                                *s = idx;
+                            }
+                        }
+                    }
                 }
                 self.graph.remove_node(idx);
             }
@@ -391,22 +418,10 @@ impl CpgLayer {
     pub fn get_cfg_edges_for_function(&self, func_idx: NodeIndex) -> Vec<(NodeIndex, NodeIndex, &CpgEdge)> {
         let mut result = Vec::new();
 
-        // Collect all node indices belonging to this function
-        let mut func_nodes: HashSet<NodeIndex> = HashSet::new();
-        if let Some(&entry) = self.function_to_entry.get(&func_idx) {
-            func_nodes.insert(entry);
-        }
-        if let Some(&exit) = self.function_to_exit.get(&func_idx) {
-            func_nodes.insert(exit);
-        }
-        // Collect all statement nodes owned by this function
-        for idx in self.graph.node_indices() {
-            if let Some(node) = self.graph.node_weight(idx) {
-                if node.function_idx == Some(func_idx) && node.kind == CpgNodeKind::Statement {
-                    func_nodes.insert(idx);
-                }
-            }
-        }
+        let func_nodes: HashSet<NodeIndex> = self.get_stmts_for_function(func_idx)
+            .iter()
+            .copied()
+            .collect();
 
         // Collect all CFG edges between these nodes
         for &node_idx in &func_nodes {
@@ -497,21 +512,10 @@ impl CpgLayer {
     pub fn get_dataflow_edges_for_function(&self, func_idx: NodeIndex) -> Vec<(NodeIndex, NodeIndex, &str)> {
         let mut result = Vec::new();
 
-        // Collect all node indices belonging to this function
-        let mut func_nodes: HashSet<NodeIndex> = HashSet::new();
-        if let Some(&entry) = self.function_to_entry.get(&func_idx) {
-            func_nodes.insert(entry);
-        }
-        if let Some(&exit) = self.function_to_exit.get(&func_idx) {
-            func_nodes.insert(exit);
-        }
-        for idx in self.graph.node_indices() {
-            if let Some(node) = self.graph.node_weight(idx) {
-                if node.function_idx == Some(func_idx) && node.kind == CpgNodeKind::Statement {
-                    func_nodes.insert(idx);
-                }
-            }
-        }
+        let func_nodes: HashSet<NodeIndex> = self.get_stmts_for_function(func_idx)
+            .iter()
+            .copied()
+            .collect();
 
         // Collect all DataFlowReach edges between these nodes
         for &node_idx in &func_nodes {

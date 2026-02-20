@@ -621,10 +621,9 @@ impl PyRepoGraph {
         };
 
         let mut result = Vec::new();
-        for idx in cpg.graph.node_indices() {
+        for &idx in cpg.get_stmts_for_function(func_idx) {
             if let Some(node) = cpg.graph.node_weight(idx) {
-                if node.function_idx == Some(func_idx)
-                    && matches!(node.kind, cpg::CpgNodeKind::Statement | cpg::CpgNodeKind::CfgEntry | cpg::CpgNodeKind::CfgExit)
+                if matches!(node.kind, cpg::CpgNodeKind::Statement | cpg::CpgNodeKind::CfgEntry | cpg::CpgNodeKind::CfgExit)
                 {
                     let dict = PyDict::new(py);
                     dict.set_item("name", &node.name)?;
@@ -667,10 +666,9 @@ impl PyRepoGraph {
         };
 
         let mut result = Vec::new();
-        for idx in cpg.graph.node_indices() {
+        for &idx in cpg.get_stmts_for_function(func_idx) {
             if let Some(node) = cpg.graph.node_weight(idx) {
-                if node.function_idx == Some(func_idx)
-                    && matches!(node.kind, cpg::CpgNodeKind::Statement | cpg::CpgNodeKind::CfgEntry | cpg::CpgNodeKind::CfgExit)
+                if matches!(node.kind, cpg::CpgNodeKind::Statement | cpg::CpgNodeKind::CfgEntry | cpg::CpgNodeKind::CfgExit)
                 {
                     let dict = PyDict::new(py);
                     dict.set_item("name", &node.name)?;

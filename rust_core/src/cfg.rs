@@ -78,6 +78,7 @@ impl CfgBuilder {
             function_idx: Some(func_idx),
         };
         let entry_idx = cpg.graph.add_node(entry_node);
+        cpg.function_to_stmts.entry(func_idx).or_default().push(entry_idx);
 
         // Create CfgExit sentinel
         let exit_node = CpgNode {
@@ -97,6 +98,7 @@ impl CfgBuilder {
             function_idx: Some(func_idx),
         };
         let exit_idx = cpg.graph.add_node(exit_node);
+        cpg.function_to_stmts.entry(func_idx).or_default().push(exit_idx);
 
         // Register in maps
         cpg.function_to_entry.insert(func_idx, entry_idx);
@@ -697,6 +699,7 @@ impl CfgBuilder {
         };
 
         let idx = cpg.graph.add_node(node);
+        cpg.function_to_stmts.entry(ctx.func_idx).or_default().push(idx);
 
         // Add AstChild edge from function to statement
         cpg.graph.add_edge(ctx.func_idx, idx, CpgEdge::AstChild);
