@@ -646,3 +646,149 @@ def use2():
     assert_eq!(count_calls_edges(&cpg, use1_idx, helper_idx), 1, "After re-resolve: use1→helper should still have 1 Calls edge");
     assert_eq!(count_calls_edges(&cpg, use2_idx, helper_idx), 1, "After re-resolve: use2→helper should still have 1 Calls edge");
 }
+
+// ---------------------------------------------------------------------------
+// Import-aware resolution tests
+// ---------------------------------------------------------------------------
+
+// Test: module-qualified resolution (`import utils` → `utils.process()`)
+#[test]
+fn test_module_qualified_call_resolution() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "utils.py", r#"def process(x):
+    return x + 1
+"#);
+    create_test_file(&root_path, "main.py", r#"import utils
+
+def run():
+    utils.process(42)
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    graph.enable_cpg();
+    let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
+    graph.build_complete(&paths, &root_path);
+
+    let cpg = graph.cpg.as_ref().unwrap();
+
+    let run_idx = find_function(cpg, &root_path.join("main.py").to_string_lossy(), "run").unwrap();
+    let process_idx = find_function(cpg, &root_path.join("utils.py").to_string_lossy(), "process").unwrap();
+
+    assert!(has_calls_edge(cpg, run_idx, process_idx),
+        "run() should call utils.process() via module-qualified resolution");
+    assert!(has_called_by_edge(cpg, process_idx, run_idx),
+        "process() should be called by run()");
+}
+
+// Test: from-import class-qualified resolution (`from models import User` → `User.save()`)
+#[test]
+fn test_class_qualified_call_resolution() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "models.py", r#"class User:
+    def save(self):
+        pass
+"#);
+    create_test_file(&root_path, "views.py", r#"from models import User
+
+def create_user():
+    User.save(instance)
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    graph.enable_cpg();
+    let paths = vec![root_path.join("models.py"), root_path.join("views.py")];
+    graph.build_complete(&paths, &root_path);
+
+    let cpg = graph.cpg.as_ref().unwrap();
+
+    let create_user_idx = find_function(cpg, &root_path.join("views.py").to_string_lossy(), "create_user").unwrap();
+    let save_idx = find_function(cpg, &root_path.join("models.py").to_string_lossy(), "save").unwrap();
+
+    assert!(has_calls_edge(cpg, create_user_idx, save_idx),
+        "create_user() should call User.save() via class-qualified resolution");
+}
+
+// Test: aliased import resolution (`import utils as u` → `u.process()`)
+#[test]
+fn test_aliased_module_import_resolution() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "utils.py", r#"def process(x):
+    return x + 1
+"#);
+    create_test_file(&root_path, "main.py", r#"import utils as u
+
+def run():
+    u.process(42)
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    graph.enable_cpg();
+    let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
+    graph.build_complete(&paths, &root_path);
+
+    let cpg = graph.cpg.as_ref().unwrap();
+
+    let run_idx = find_function(cpg, &root_path.join("main.py").to_string_lossy(), "run").unwrap();
+    let process_idx = find_function(cpg, &root_path.join("utils.py").to_string_lossy(), "process").unwrap();
+
+    assert!(has_calls_edge(cpg, run_idx, process_idx),
+        "run() should call u.process() (aliased import) via module-qualified resolution");
+}
+
+// Test: unresolved when receiver doesn't match any import
+#[test]
+fn test_unresolved_receiver_no_import() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "main.py", r#"def run():
+    unknown.process(42)
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    graph.enable_cpg();
+    let paths = vec![root_path.join("main.py")];
+    graph.build_complete(&paths, &root_path);
+
+    let cpg = graph.cpg.as_ref().unwrap();
+
+    // No Calls edges should exist since `unknown` isn't imported
+    let calls_count = count_edge_kind(cpg, |e| *e == CpgEdge::Calls);
+    assert_eq!(calls_count, 0, "Should have no Calls edges for unresolved receiver");
+}
+
+// Test: from-import with alias (`from models import User as U` → `U.save()`)
+#[test]
+fn test_aliased_from_import_class_resolution() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "models.py", r#"class User:
+    def save(self):
+        pass
+"#);
+    create_test_file(&root_path, "views.py", r#"from models import User as U
+
+def create_user():
+    U.save(instance)
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    graph.enable_cpg();
+    let paths = vec![root_path.join("models.py"), root_path.join("views.py")];
+    graph.build_complete(&paths, &root_path);
+
+    let cpg = graph.cpg.as_ref().unwrap();
+
+    let create_user_idx = find_function(cpg, &root_path.join("views.py").to_string_lossy(), "create_user").unwrap();
+    let save_idx = find_function(cpg, &root_path.join("models.py").to_string_lossy(), "save").unwrap();
+
+    assert!(has_calls_edge(cpg, create_user_idx, save_idx),
+        "create_user() should call U.save() (aliased from-import) via class-qualified resolution");
+}

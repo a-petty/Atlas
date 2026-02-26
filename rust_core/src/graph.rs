@@ -302,6 +302,7 @@ impl RepoGraph {
             info!("CPG build: {} files ({} excluded by ignore rules)", paths.len(), excluded);
         }
         self.build_cpg_for_all_files(&paths);
+        self.compute_all_import_bindings();
         if let Some(cpg) = &mut self.cpg {
             crate::callgraph::CallGraphBuilder::resolve_all(cpg, &self.symbol_index);
         }
@@ -347,6 +348,9 @@ impl RepoGraph {
 
         if let Some(cpg) = &mut self.cpg {
             cpg.build_file(path, tree, source, lang);
+        }
+        self.compute_import_bindings_for_file(path);
+        if let Some(cpg) = &mut self.cpg {
             crate::callgraph::CallGraphBuilder::resolve_file(cpg, path, &self.symbol_index);
         }
 
@@ -528,7 +532,8 @@ impl RepoGraph {
                         }
                     }
                 }
-                // Re-resolve call graph for this file
+                // Recompute import bindings and re-resolve call graph for this file
+                self.compute_import_bindings_for_file(file_path);
                 if let Some(cpg) = &mut self.cpg {
                     crate::callgraph::CallGraphBuilder::resolve_file(cpg, file_path, &self.symbol_index);
                 }
@@ -829,7 +834,8 @@ impl RepoGraph {
                     }
                 }
             }
-            // Re-resolve call graph for this file
+            // Recompute import bindings and re-resolve call graph for this file
+            self.compute_import_bindings_for_file(file_path);
             if let Some(cpg) = &mut self.cpg {
                 crate::callgraph::CallGraphBuilder::resolve_file(cpg, file_path, &self.symbol_index);
             }
@@ -1386,7 +1392,8 @@ impl RepoGraph {
             self.build_cpg_for_all_files(&canonical_paths);
         }
 
-        // Call graph resolution (Pass 2): resolve call sites across all files
+        // Compute import bindings and resolve call graph across all files
+        self.compute_all_import_bindings();
         if let Some(cpg) = &mut self.cpg {
             crate::callgraph::CallGraphBuilder::resolve_all(cpg, &self.symbol_index);
         }
@@ -1439,7 +1446,62 @@ impl RepoGraph {
 
         info!("CPG build complete: {} files in {:.1}s", built, start.elapsed().as_secs_f64());
     }
-    
+
+    /// Compute import bindings for all files in the CPG.
+    fn compute_all_import_bindings(&mut self) {
+        let cpg = match &self.cpg {
+            Some(c) => c,
+            None => return,
+        };
+        // Collect (path, bindings) pairs using &self.import_resolver and &cpg (both shared refs)
+        let all_bindings: Vec<(PathBuf, Vec<crate::import_resolver::ImportBinding>)> = cpg
+            .trees
+            .keys()
+            .filter_map(|path| {
+                let tree = cpg.trees.get(path)?;
+                let source = cpg.sources.get(path)?;
+                let bindings = self.import_resolver.find_import_bindings(tree, path, source.as_bytes());
+                if bindings.is_empty() {
+                    None
+                } else {
+                    Some((path.clone(), bindings))
+                }
+            })
+            .collect();
+        // Now take &mut self.cpg to store them
+        if let Some(cpg) = &mut self.cpg {
+            for (path, bindings) in all_bindings {
+                cpg.import_bindings.insert(path, bindings);
+            }
+        }
+    }
+
+    /// Compute import bindings for a single file in the CPG.
+    fn compute_import_bindings_for_file(&mut self, file_path: &Path) {
+        let bindings = {
+            let cpg = match &self.cpg {
+                Some(c) => c,
+                None => return,
+            };
+            let tree = match cpg.trees.get(file_path) {
+                Some(t) => t,
+                None => return,
+            };
+            let source = match cpg.sources.get(file_path) {
+                Some(s) => s,
+                None => return,
+            };
+            self.import_resolver.find_import_bindings(tree, file_path, source.as_bytes())
+        };
+        if let Some(cpg) = &mut self.cpg {
+            if bindings.is_empty() {
+                cpg.import_bindings.remove(file_path);
+            } else {
+                cpg.import_bindings.insert(file_path.to_path_buf(), bindings);
+            }
+        }
+    }
+
     /// Get statistics about the graph
     pub fn get_statistics(&self) -> GraphStatistics {
         let (import_edges, symbol_edges) = self.graph.edge_indices().fold((0, 0), |(i, s), edge_idx| {

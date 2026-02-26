@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tree_sitter::Tree;
 
+use crate::import_resolver::ImportBinding;
 use crate::parser::SupportedLanguage;
 
 /// The kind of a CPG node (sub-file granularity).
@@ -108,6 +109,7 @@ pub struct CpgLayer {
     pub call_sites: HashMap<NodeIndex, Vec<crate::callgraph::CallSite>>,  // func_idx → call sites
     pub name_to_funcs: HashMap<String, Vec<NodeIndex>>,   // func name → defining node indices
     pub function_to_stmts: HashMap<NodeIndex, Vec<NodeIndex>>,  // func_idx → owned Statement/CfgEntry/CfgExit nodes
+    pub import_bindings: HashMap<PathBuf, Vec<ImportBinding>>,  // file → import bindings for call resolution
 }
 
 impl std::fmt::Debug for CpgLayer {
@@ -135,6 +137,7 @@ impl CpgLayer {
             call_sites: HashMap::new(),
             name_to_funcs: HashMap::new(),
             function_to_stmts: HashMap::new(),
+            import_bindings: HashMap::new(),
         }
     }
 
@@ -248,6 +251,8 @@ impl CpgLayer {
 
     /// Remove all CPG nodes for a file.
     pub fn remove_file(&mut self, path: &Path) {
+        // Remove import bindings for this file
+        self.import_bindings.remove(path);
         // Remove from name_to_funcs before removing nodes
         self.remove_from_name_index(path);
 

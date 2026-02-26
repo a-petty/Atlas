@@ -62,6 +62,17 @@ pub enum ImportResolutionResult {
     Unresolved(String),
 }
 
+/// A local binding created by an import statement.
+#[derive(Debug, Clone)]
+pub struct ImportBinding {
+    /// The local name used in this file (e.g., "utils", "HttpClient")
+    pub local_name: String,
+    /// The resolved file path this binding points to
+    pub resolved_path: PathBuf,
+    /// The specific symbol imported (None for module imports like `import utils`)
+    pub imported_symbol: Option<String>,
+}
+
 /// Common interface for language-specific import resolution.
 pub trait ImportResolver: Debug + Send + Sync {
     /// Finds all resolvable, project-local imports in a file's AST.
@@ -71,6 +82,17 @@ pub trait ImportResolver: Debug + Send + Sync {
         current_file: &Path,
         source: &'a [u8],
     ) -> HashSet<PathBuf>;
+
+    /// Finds import bindings: local name → (resolved path, optional symbol).
+    /// Used by call graph resolution to resolve module-qualified calls.
+    fn find_import_bindings<'a>(
+        &self,
+        _tree: &'a Tree,
+        _current_file: &Path,
+        _source: &'a [u8],
+    ) -> Vec<ImportBinding> {
+        Vec::new()
+    }
 
     /// Returns the file extensions this resolver handles.
     fn file_extensions(&self) -> &[&str];
@@ -552,6 +574,155 @@ impl PythonImportResolver {
     }
 }
 
+impl PythonImportResolver {
+    /// Collect import bindings from a bare `import X` or `import X as Y` statement.
+    fn collect_bare_import_bindings(
+        &self,
+        node: tree_sitter::Node,
+        source: &[u8],
+        bindings: &mut Vec<ImportBinding>,
+    ) {
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            match child.kind() {
+                "dotted_name" => {
+                    // `import utils` (unaliased)
+                    let text = child.utf8_text(source).unwrap_or("");
+                    let root_module = text.split('.').next().unwrap_or("");
+                    if PYTHON_STDLIB_MODULES.contains(root_module)
+                        || COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                    {
+                        continue;
+                    }
+                    if let Some(path) = self.resolve_absolute(text) {
+                        bindings.push(ImportBinding {
+                            local_name: root_module.to_string(),
+                            resolved_path: path,
+                            imported_symbol: None,
+                        });
+                    }
+                }
+                "aliased_import" => {
+                    // `import utils as u`
+                    let name_node = child.child_by_field_name("name");
+                    let alias_node = child.child_by_field_name("alias");
+
+                    if let Some(name) = name_node {
+                        let text = name.utf8_text(source).unwrap_or("");
+                        let root_module = text.split('.').next().unwrap_or("");
+                        if PYTHON_STDLIB_MODULES.contains(root_module)
+                            || COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                        {
+                            continue;
+                        }
+                        let local_name = alias_node
+                            .and_then(|a| a.utf8_text(source).ok())
+                            .unwrap_or(root_module);
+                        if let Some(path) = self.resolve_absolute(text) {
+                            bindings.push(ImportBinding {
+                                local_name: local_name.to_string(),
+                                resolved_path: path,
+                                imported_symbol: None,
+                            });
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// Collect import bindings from a `from ... import ...` statement.
+    fn collect_from_import_bindings(
+        &self,
+        node: tree_sitter::Node,
+        current_file: &Path,
+        source: &[u8],
+        bindings: &mut Vec<ImportBinding>,
+    ) {
+        let module_name_node = node.child_by_field_name("module_name");
+
+        // Resolve the module path (absolute or relative)
+        let resolved_module = match module_name_node {
+            Some(mn) if mn.kind() == "dotted_name" => {
+                let text = mn.utf8_text(source).unwrap_or("");
+                let root_module = text.split('.').next().unwrap_or("");
+                if PYTHON_STDLIB_MODULES.contains(root_module)
+                    || COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                {
+                    return;
+                }
+                self.resolve_absolute(text)
+            }
+            Some(mn) if mn.kind() == "relative_import" => {
+                let mut dots = 0usize;
+                let mut module_path: Option<String> = None;
+                let mut cursor = mn.walk();
+                for child in mn.children(&mut cursor) {
+                    match child.kind() {
+                        "import_prefix" => {
+                            dots = child.utf8_text(source).unwrap_or("")
+                                .chars().filter(|&c| c == '.').count();
+                        }
+                        "dotted_name" => {
+                            module_path = Some(child.utf8_text(source).unwrap_or("").to_string());
+                        }
+                        _ => {}
+                    }
+                }
+                if let Some(ref module) = module_path {
+                    self.resolve_relative(current_file, dots, Some(module))
+                } else {
+                    self.resolve_relative(current_file, dots, None)
+                }
+            }
+            _ => return,
+        };
+
+        let resolved_path = match resolved_module {
+            Some(p) => p,
+            None => return,
+        };
+
+        // Walk imported names: `from X import Y, Z as W`
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            match child.kind() {
+                "dotted_name" => {
+                    // Skip the module name itself (already handled above)
+                    if Some(child) == module_name_node {
+                        continue;
+                    }
+                    // `from X import Y` — bare name
+                    if let Ok(name) = child.utf8_text(source) {
+                        bindings.push(ImportBinding {
+                            local_name: name.to_string(),
+                            resolved_path: resolved_path.clone(),
+                            imported_symbol: Some(name.to_string()),
+                        });
+                    }
+                }
+                "aliased_import" => {
+                    // `from X import Y as Z`
+                    let original = child.child_by_field_name("name")
+                        .and_then(|n| n.utf8_text(source).ok());
+                    let alias = child.child_by_field_name("alias")
+                        .and_then(|a| a.utf8_text(source).ok());
+                    if let Some(orig) = original {
+                        let local = alias.unwrap_or(orig);
+                        bindings.push(ImportBinding {
+                            local_name: local.to_string(),
+                            resolved_path: resolved_path.clone(),
+                            imported_symbol: Some(orig.to_string()),
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 impl ImportResolver for PythonImportResolver {
     fn find_imports<'a>(
         &self,
@@ -593,6 +764,54 @@ impl ImportResolver for PythonImportResolver {
             }
         }
         imports
+    }
+
+    fn find_import_bindings<'a>(
+        &self,
+        tree: &'a Tree,
+        current_file: &Path,
+        source: &'a [u8],
+    ) -> Vec<ImportBinding> {
+        let mut bindings = Vec::new();
+
+        // Use a tree-sitter query that captures both import forms as whole statements
+        let binding_query = Query::new(
+            tree_sitter_python::language(),
+            r#"
+            (import_statement) @import_stmt
+            (import_from_statement) @from_import
+            "#,
+        ).expect("Failed to create binding query");
+
+        let mut query_cursor = QueryCursor::new();
+        let matches = query_cursor.matches(&binding_query, tree.root_node(), source);
+
+        for match_ in matches {
+            for capture in match_.captures {
+                let capture_name = &binding_query.capture_names()[capture.index as usize];
+                match capture_name.as_str() {
+                    "import_stmt" => {
+                        // `import utils` or `import utils as u` or `import app.models`
+                        self.collect_bare_import_bindings(
+                            capture.node,
+                            source,
+                            &mut bindings,
+                        );
+                    }
+                    "from_import" => {
+                        // `from utils import process` or `from utils import process as p`
+                        self.collect_from_import_bindings(
+                            capture.node,
+                            current_file,
+                            source,
+                            &mut bindings,
+                        );
+                    }
+                    _ => (),
+                }
+            }
+        }
+        bindings
     }
 
     fn file_extensions(&self) -> &[&str] {

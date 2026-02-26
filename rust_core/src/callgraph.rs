@@ -333,8 +333,91 @@ impl CallGraphBuilder {
             }
         }
 
-        // 5. Module-qualified calls (deferred)
-        // 6. Otherwise unresolved
+        // 5. Module-qualified calls: receiver matches an imported module name
+        // 6. Class-qualified calls: receiver matches an imported class name
+        if let Some(receiver) = &site.receiver {
+            if let Some(bindings) = cpg.import_bindings.get(caller_file) {
+                for binding in bindings {
+                    if binding.local_name != *receiver {
+                        continue;
+                    }
+
+                    if binding.imported_symbol.is_none() {
+                        // Module import: `import utils` → utils.process()
+                        if let Some(indices) = cpg.file_to_nodes.get(&binding.resolved_path) {
+                            let matches: Vec<NodeIndex> = indices
+                                .iter()
+                                .filter(|idx| {
+                                    cpg.graph
+                                        .node_weight(**idx)
+                                        .map(|n| {
+                                            matches!(
+                                                n.kind,
+                                                CpgNodeKind::Function | CpgNodeKind::Method
+                                            ) && n.name == *name
+                                        })
+                                        .unwrap_or(false)
+                                })
+                                .copied()
+                                .collect();
+                            if matches.len() == 1 {
+                                return CallResolution::Resolved(matches[0]);
+                            }
+                        }
+                    } else if let Some(ref sym) = binding.imported_symbol {
+                        // Class import: `from http_client import HttpClient` → HttpClient.get()
+                        if let Some(indices) = cpg.file_to_nodes.get(&binding.resolved_path) {
+                            let matches: Vec<NodeIndex> = indices
+                                .iter()
+                                .filter(|idx| {
+                                    cpg.graph
+                                        .node_weight(**idx)
+                                        .map(|n| {
+                                            n.kind == CpgNodeKind::Method
+                                                && n.name == *name
+                                                && n.parent_class.as_deref() == Some(sym.as_str())
+                                        })
+                                        .unwrap_or(false)
+                                })
+                                .copied()
+                                .collect();
+                            if matches.len() == 1 {
+                                return CallResolution::Resolved(matches[0]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback: try SymbolIndex for class-qualified calls
+            // (receiver is a class name defined in another file)
+            if let Some(def_paths) = symbol_index.definitions.get(receiver) {
+                for def_path in def_paths {
+                    if let Some(indices) = cpg.file_to_nodes.get(def_path.as_path()) {
+                        let matches: Vec<NodeIndex> = indices
+                            .iter()
+                            .filter(|idx| {
+                                cpg.graph
+                                    .node_weight(**idx)
+                                    .map(|n| {
+                                        n.kind == CpgNodeKind::Method
+                                            && n.name == *name
+                                            && n.parent_class.as_deref()
+                                                == Some(receiver.as_str())
+                                    })
+                                    .unwrap_or(false)
+                            })
+                            .copied()
+                            .collect();
+                        if matches.len() == 1 {
+                            return CallResolution::Resolved(matches[0]);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 7. Otherwise unresolved
         CallResolution::Unresolved("unresolved".to_string())
     }
 
