@@ -895,3 +895,197 @@ def bar():
     assert_eq!(count_after_first, count_after_second,
         "Second build_cpg_for_file call should be a no-op");
 }
+
+// ============================================================
+// Duplicate-Name Disambiguation Tests (24-27)
+// ============================================================
+
+fn find_all_functions(cpg: &CpgLayer, path: &str, name: &str) -> Vec<(NodeIndex, CpgNodeKind)> {
+    let path = PathBuf::from(path);
+    cpg.file_to_nodes.get(&path)
+        .map(|indices| {
+            indices.iter().filter_map(|idx| {
+                cpg.graph.node_weight(*idx).and_then(|n| {
+                    if matches!(n.kind, CpgNodeKind::Function | CpgNodeKind::Method)
+                        && n.name == name
+                    {
+                        Some((*idx, n.kind.clone()))
+                    } else {
+                        None
+                    }
+                })
+            }).collect()
+        })
+        .unwrap_or_default()
+}
+
+// Test 24: Module-level function + method with same name — internal call resolves
+// Reproduces Airflow's dag.py pattern: DagModel.get_last_dagrun() calls get_last_dagrun()
+#[test]
+fn test_duplicate_name_internal_call_resolves() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "dag.py", r#"
+def get_last_dagrun(dag_id, session=None):
+    """Module-level function."""
+    pass
+
+class DagModel:
+    def get_last_dagrun(self, session=None):
+        """Method that delegates to module-level function."""
+        return get_last_dagrun(self.dag_id, session)
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let paths = vec![root_path.join("dag.py")];
+    graph.build_complete(&paths, &root_path);
+
+    assert!(graph.ensure_cpg_for_file(&root_path.join("dag.py")));
+
+    let cpg = graph.cpg.as_ref().unwrap();
+    let dag_path_str = root_path.join("dag.py").to_string_lossy().to_string();
+
+    // Should have 2 nodes named get_last_dagrun: one Function, one Method
+    let all_matches = find_all_functions(cpg, &dag_path_str, "get_last_dagrun");
+    assert_eq!(all_matches.len(), 2, "Should have 2 nodes named get_last_dagrun");
+
+    let has_function = all_matches.iter().any(|(_, k)| *k == CpgNodeKind::Function);
+    let has_method = all_matches.iter().any(|(_, k)| *k == CpgNodeKind::Method);
+    assert!(has_function, "Should have a Function node");
+    assert!(has_method, "Should have a Method node");
+
+    // The internal call (method → module-level function) should be resolved
+    let calls_count = count_edge_kind(cpg, |e| *e == CpgEdge::Calls);
+    assert!(calls_count > 0, "Internal call from method to module-level function should resolve");
+
+    // Specifically: the Method should call the Function
+    let method_idx = all_matches.iter().find(|(_, k)| *k == CpgNodeKind::Method).unwrap().0;
+    let function_idx = all_matches.iter().find(|(_, k)| *k == CpgNodeKind::Function).unwrap().0;
+    assert!(has_calls_edge(cpg, method_idx, function_idx),
+        "Method should have Calls edge to module-level function");
+    assert!(has_called_by_edge(cpg, function_idx, method_idx),
+        "Module-level function should have CalledBy edge from method");
+}
+
+// Test 25: Cross-file instance method call resolves to Method, not Function
+#[test]
+fn test_cross_file_instance_method_resolves() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "dag.py", r#"
+def get_last_dagrun(dag_id, session=None):
+    pass
+
+class DagModel:
+    def get_last_dagrun(self, session=None):
+        return get_last_dagrun(self.dag_id, session)
+"#);
+
+    create_test_file(&root_path, "assets.py", r#"from dag import DagModel
+
+def get_asset_info(session):
+    dag_model = DagModel()
+    latest_run = dag_model.get_last_dagrun(session=session)
+    return latest_run
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let paths = vec![root_path.join("dag.py"), root_path.join("assets.py")];
+    graph.build_complete(&paths, &root_path);
+
+    // Build CPG for both files, then resolve
+    assert!(graph.ensure_cpg_for_file(&root_path.join("dag.py")));
+    assert!(graph.build_cpg_for_file(&root_path.join("assets.py")));
+
+    let cpg = graph.cpg.as_mut().unwrap();
+    CallGraphBuilder::resolve_file(cpg, &root_path.join("dag.py"), &graph.symbol_index);
+
+    let dag_path_str = root_path.join("dag.py").to_string_lossy().to_string();
+    let assets_path_str = root_path.join("assets.py").to_string_lossy().to_string();
+
+    let all_dag_matches = find_all_functions(cpg, &dag_path_str, "get_last_dagrun");
+    let get_asset_info = find_function(cpg, &assets_path_str, "get_asset_info");
+
+    assert!(get_asset_info.is_some(), "get_asset_info should exist in CPG");
+    let caller_idx = get_asset_info.unwrap();
+
+    // The cross-file call should resolve to the Method (since it has a receiver)
+    let method_idx = all_dag_matches.iter()
+        .find(|(_, k)| *k == CpgNodeKind::Method)
+        .map(|(idx, _)| *idx);
+
+    assert!(method_idx.is_some(), "Should have a Method node for get_last_dagrun");
+    let method_idx = method_idx.unwrap();
+
+    assert!(has_calls_edge(cpg, caller_idx, method_idx),
+        "get_asset_info should have Calls edge to DagModel.get_last_dagrun method");
+    assert!(has_called_by_edge(cpg, method_idx, caller_idx),
+        "DagModel.get_last_dagrun method should have CalledBy edge from get_asset_info");
+}
+
+// Test 26: Unique name still resolves correctly (regression guard)
+#[test]
+fn test_unique_name_still_resolves() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "utils.py", r#"
+def compute_result(data):
+    pass
+"#);
+
+    create_test_file(&root_path, "main.py", r#"from utils import compute_result
+
+def run():
+    compute_result([1, 2, 3])
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
+    graph.build_complete(&paths, &root_path);
+
+    assert!(graph.ensure_cpg_for_file(&root_path.join("utils.py")));
+    assert!(graph.build_cpg_for_file(&root_path.join("main.py")));
+    let cpg = graph.cpg.as_mut().unwrap();
+    CallGraphBuilder::resolve_file(cpg, &root_path.join("utils.py"), &graph.symbol_index);
+
+    let calls_count = count_edge_kind(cpg, |e| *e == CpgEdge::Calls);
+    let called_by_count = count_edge_kind(cpg, |e| *e == CpgEdge::CalledBy);
+
+    assert!(calls_count > 0, "Unique name should resolve — Calls edges expected");
+    assert!(called_by_count > 0, "Unique name should resolve — CalledBy edges expected");
+}
+
+// Test 27: find_all_func_indices returns both Function and Method nodes
+#[test]
+fn test_find_all_func_indices_returns_both() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "dag.py", r#"
+def get_last_dagrun(dag_id, session=None):
+    pass
+
+class DagModel:
+    def get_last_dagrun(self, session=None):
+        pass
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let paths = vec![root_path.join("dag.py")];
+    graph.build_complete(&paths, &root_path);
+
+    assert!(graph.ensure_cpg_for_file(&root_path.join("dag.py")));
+
+    let cpg = graph.cpg.as_ref().unwrap();
+    let dag_path_str = root_path.join("dag.py").to_string_lossy().to_string();
+
+    let all_matches = find_all_functions(cpg, &dag_path_str, "get_last_dagrun");
+    assert_eq!(all_matches.len(), 2, "Should find both Function and Method named get_last_dagrun");
+
+    let kinds: Vec<&CpgNodeKind> = all_matches.iter().map(|(_, k)| k).collect();
+    assert!(kinds.contains(&&CpgNodeKind::Function), "Should include a Function node");
+    assert!(kinds.contains(&&CpgNodeKind::Method), "Should include a Method node");
+}

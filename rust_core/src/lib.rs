@@ -733,20 +733,24 @@ impl PyRepoGraph {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
         let path = canonical_path(file_path);
-        let func_idx = find_func_idx(cpg, &path, function_name);
-        let func_idx = match func_idx {
-            Some(idx) => idx,
-            None => return Ok(Vec::new()),
-        };
+        let func_indices = find_all_func_indices(cpg, &path, function_name);
+        if func_indices.is_empty() {
+            return Ok(Vec::new());
+        }
 
-        let callees = cpg.get_callees(func_idx);
+        let mut seen = HashSet::new();
         let mut result = Vec::new();
-        for (_idx, node) in callees {
-            let dict = PyDict::new(py);
-            dict.set_item("name", &node.name)?;
-            dict.set_item("file", node.file_path.to_string_lossy().as_ref())?;
-            dict.set_item("line", node.start_line)?;
-            result.push(dict.into_py(py));
+        for func_idx in func_indices {
+            for (_idx, node) in cpg.get_callees(func_idx) {
+                let key = (node.name.clone(), node.file_path.clone(), node.start_line);
+                if seen.insert(key) {
+                    let dict = PyDict::new(py);
+                    dict.set_item("name", &node.name)?;
+                    dict.set_item("file", node.file_path.to_string_lossy().as_ref())?;
+                    dict.set_item("line", node.start_line)?;
+                    result.push(dict.into_py(py));
+                }
+            }
         }
         Ok(result)
     }
@@ -758,20 +762,24 @@ impl PyRepoGraph {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
         let path = canonical_path(file_path);
-        let func_idx = find_func_idx(cpg, &path, function_name);
-        let func_idx = match func_idx {
-            Some(idx) => idx,
-            None => return Ok(Vec::new()),
-        };
+        let func_indices = find_all_func_indices(cpg, &path, function_name);
+        if func_indices.is_empty() {
+            return Ok(Vec::new());
+        }
 
-        let callers = cpg.get_callers(func_idx);
+        let mut seen = HashSet::new();
         let mut result = Vec::new();
-        for (_idx, node) in callers {
-            let dict = PyDict::new(py);
-            dict.set_item("name", &node.name)?;
-            dict.set_item("file", node.file_path.to_string_lossy().as_ref())?;
-            dict.set_item("line", node.start_line)?;
-            result.push(dict.into_py(py));
+        for func_idx in func_indices {
+            for (_idx, node) in cpg.get_callers(func_idx) {
+                let key = (node.name.clone(), node.file_path.clone(), node.start_line);
+                if seen.insert(key) {
+                    let dict = PyDict::new(py);
+                    dict.set_item("name", &node.name)?;
+                    dict.set_item("file", node.file_path.to_string_lossy().as_ref())?;
+                    dict.set_item("line", node.start_line)?;
+                    result.push(dict.into_py(py));
+                }
+            }
         }
         Ok(result)
     }
@@ -792,16 +800,21 @@ fn canonical_path(file_path: &str) -> PathBuf {
     path.canonicalize().unwrap_or(path)
 }
 
-/// Helper to find a function/method NodeIndex by file path and name.
-fn find_func_idx(cpg: &cpg::CpgLayer, path: &Path, function_name: &str) -> Option<petgraph::graph::NodeIndex> {
-    cpg.file_to_nodes.get(path)?.iter().find(|idx| {
-        cpg.graph.node_weight(**idx)
-            .map(|n| {
-                matches!(n.kind, cpg::CpgNodeKind::Function | cpg::CpgNodeKind::Method)
-                    && n.name == function_name
-            })
-            .unwrap_or(false)
-    }).copied()
+/// Helper to find all function/method NodeIndices by file path and name.
+/// Returns all matches (e.g. both a module-level function and a method with the same name).
+fn find_all_func_indices(cpg: &cpg::CpgLayer, path: &Path, function_name: &str) -> Vec<petgraph::graph::NodeIndex> {
+    cpg.file_to_nodes.get(path)
+        .map(|indices| {
+            indices.iter().filter(|idx| {
+                cpg.graph.node_weight(**idx)
+                    .map(|n| {
+                        matches!(n.kind, cpg::CpgNodeKind::Function | cpg::CpgNodeKind::Method)
+                            && n.name == function_name
+                    })
+                    .unwrap_or(false)
+            }).copied().collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Helper to convert a CpgNode to a Python dict.

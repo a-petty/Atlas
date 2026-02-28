@@ -253,16 +253,15 @@ impl CallGraphBuilder {
                     // Fallback: callee_name already matched file_func_names,
                     // so look up the function directly in the target file.
                     if let Some(func_indices) = cpg.file_to_nodes.get(file_path) {
+                        // Receiver-qualified call → target is a method, not a function
                         let matches: Vec<NodeIndex> = func_indices
                             .iter()
                             .filter(|idx| {
                                 cpg.graph
                                     .node_weight(**idx)
                                     .map(|n| {
-                                        matches!(
-                                            n.kind,
-                                            CpgNodeKind::Function | CpgNodeKind::Method
-                                        ) && n.name == site.callee_name
+                                        n.kind == CpgNodeKind::Method
+                                            && n.name == site.callee_name
                                     })
                                     .unwrap_or(false)
                             })
@@ -336,6 +335,20 @@ impl CallGraphBuilder {
                 if matches.len() == 1 {
                     return CallResolution::Resolved(matches[0]);
                 }
+                // Disambiguate: unqualified call → prefer module-level function
+                if matches.len() > 1 {
+                    let functions_only: Vec<NodeIndex> = matches.iter()
+                        .filter(|idx| {
+                            cpg.graph.node_weight(**idx)
+                                .map(|n| n.parent_class.is_none())
+                                .unwrap_or(false)
+                        })
+                        .copied()
+                        .collect();
+                    if functions_only.len() == 1 {
+                        return CallResolution::Resolved(functions_only[0]);
+                    }
+                }
             }
 
             // 4. Simple name, cross-file via symbol_index
@@ -358,6 +371,18 @@ impl CallGraphBuilder {
                     return CallResolution::Resolved(all_matches[0]);
                 }
                 if all_matches.len() > 1 {
+                    // Disambiguate: unqualified call → prefer module-level function
+                    let functions_only: Vec<NodeIndex> = all_matches.iter()
+                        .filter(|idx| {
+                            cpg.graph.node_weight(**idx)
+                                .map(|n| n.parent_class.is_none())
+                                .unwrap_or(false)
+                        })
+                        .copied()
+                        .collect();
+                    if functions_only.len() == 1 {
+                        return CallResolution::Resolved(functions_only[0]);
+                    }
                     return CallResolution::Unresolved("ambiguous".to_string());
                 }
             }
@@ -368,6 +393,18 @@ impl CallGraphBuilder {
                     return CallResolution::Resolved(func_indices[0]);
                 }
                 if func_indices.len() > 1 {
+                    // Disambiguate: unqualified call → prefer module-level function
+                    let functions_only: Vec<NodeIndex> = func_indices.iter()
+                        .filter(|idx| {
+                            cpg.graph.node_weight(**idx)
+                                .map(|n| n.parent_class.is_none())
+                                .unwrap_or(false)
+                        })
+                        .copied()
+                        .collect();
+                    if functions_only.len() == 1 {
+                        return CallResolution::Resolved(functions_only[0]);
+                    }
                     return CallResolution::Unresolved("ambiguous".to_string());
                 }
             }
@@ -402,6 +439,20 @@ impl CallGraphBuilder {
                                 .collect();
                             if matches.len() == 1 {
                                 return CallResolution::Resolved(matches[0]);
+                            }
+                            // Disambiguate: module-qualified call → prefer module-level function
+                            if matches.len() > 1 {
+                                let functions_only: Vec<NodeIndex> = matches.iter()
+                                    .filter(|idx| {
+                                        cpg.graph.node_weight(**idx)
+                                            .map(|n| n.parent_class.is_none())
+                                            .unwrap_or(false)
+                                    })
+                                    .copied()
+                                    .collect();
+                                if functions_only.len() == 1 {
+                                    return CallResolution::Resolved(functions_only[0]);
+                                }
                             }
                         }
                     } else if let Some(ref sym) = binding.imported_symbol {
