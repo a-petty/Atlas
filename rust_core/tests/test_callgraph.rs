@@ -792,3 +792,106 @@ def create_user():
     assert!(has_calls_edge(cpg, create_user_idx, save_idx),
         "create_user() should call U.save() (aliased from-import) via class-qualified resolution");
 }
+
+// ===========================================================================
+// build_cpg_for_file tests — build WITHOUT resolve, then resolve separately
+// ===========================================================================
+
+/// Build two files with build_cpg_for_file (no resolve), verify zero call edges,
+/// then resolve_file on the caller, verify correct Calls/CalledBy edges appear.
+#[test]
+fn test_build_cpg_for_file_then_resolve() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "utils.py", r#"def helper():
+    pass
+"#);
+    create_test_file(&root_path, "main.py", r#"from utils import helper
+
+def run():
+    helper()
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
+    graph.build_complete(&paths, &root_path);
+
+    // Build CPG for both files WITHOUT resolution
+    assert!(graph.build_cpg_for_file(&root_path.join("utils.py")));
+    assert!(graph.build_cpg_for_file(&root_path.join("main.py")));
+
+    let cpg = graph.cpg.as_ref().unwrap();
+
+    // No Calls/CalledBy edges should exist yet
+    let calls_count = count_edge_kind(cpg, |e| *e == CpgEdge::Calls);
+    let called_by_count = count_edge_kind(cpg, |e| *e == CpgEdge::CalledBy);
+    assert_eq!(calls_count, 0, "No Calls edges before resolve");
+    assert_eq!(called_by_count, 0, "No CalledBy edges before resolve");
+
+    // Now resolve the caller file
+    let cpg = graph.cpg.as_mut().unwrap();
+    CallGraphBuilder::resolve_file(cpg, &root_path.join("main.py"), &graph.symbol_index);
+
+    let run_idx = find_function(cpg, &root_path.join("main.py").to_string_lossy(), "run").unwrap();
+    let helper_idx = find_function(cpg, &root_path.join("utils.py").to_string_lossy(), "helper").unwrap();
+
+    assert!(has_calls_edge(cpg, run_idx, helper_idx),
+        "run() should call helper() after resolve_file");
+    assert!(has_called_by_edge(cpg, helper_idx, run_idx),
+        "helper() should have CalledBy edge from run() after resolve_file");
+}
+
+/// Build a file with same-file calls using build_cpg_for_file.
+/// Confirm no Calls/CalledBy edges exist (resolution was skipped).
+#[test]
+fn test_build_cpg_for_file_no_interprocedural_edges() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "app.py", r#"def greet():
+    pass
+
+def main():
+    greet()
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let paths = vec![root_path.join("app.py")];
+    graph.build_complete(&paths, &root_path);
+
+    assert!(graph.build_cpg_for_file(&root_path.join("app.py")));
+
+    let cpg = graph.cpg.as_ref().unwrap();
+    let calls_count = count_edge_kind(cpg, |e| *e == CpgEdge::Calls);
+    let called_by_count = count_edge_kind(cpg, |e| *e == CpgEdge::CalledBy);
+    assert_eq!(calls_count, 0, "No Calls edges without resolve");
+    assert_eq!(called_by_count, 0, "No CalledBy edges without resolve");
+}
+
+/// Call build_cpg_for_file twice on the same file — node count should be unchanged.
+#[test]
+fn test_build_cpg_for_file_idempotent() {
+    let root = tempdir().unwrap();
+    let root_path = root.path().canonicalize().unwrap();
+
+    create_test_file(&root_path, "lib.py", r#"def foo():
+    pass
+
+def bar():
+    pass
+"#);
+
+    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let paths = vec![root_path.join("lib.py")];
+    graph.build_complete(&paths, &root_path);
+
+    assert!(graph.build_cpg_for_file(&root_path.join("lib.py")));
+    let count_after_first = graph.cpg.as_ref().unwrap().graph.node_count();
+
+    assert!(graph.build_cpg_for_file(&root_path.join("lib.py")));
+    let count_after_second = graph.cpg.as_ref().unwrap().graph.node_count();
+
+    assert_eq!(count_after_first, count_after_second,
+        "Second build_cpg_for_file call should be a no-op");
+}

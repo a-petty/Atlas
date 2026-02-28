@@ -554,7 +554,7 @@ def _build_cpg_for_neighbors(normalized: str, neighbor_paths: list, *, max_files
         if built >= max_files:
             break
         if Path(dep_path).suffix in SUPPORTED_CPG_EXTENSIONS:
-            _graph.ensure_cpg_for_file(dep_path)
+            _graph.build_cpg_for_file(dep_path)
             built += 1
     _cpg_enabled = True
 

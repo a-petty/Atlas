@@ -460,6 +460,15 @@ impl PyRepoGraph {
         self.graph.ensure_cpg_for_file(&canonical)
     }
 
+    /// Build CPG data for a single file WITHOUT running cross-file call resolution.
+    /// Use this in batch scenarios to avoid O(n²) resolve overhead.
+    /// Returns true if CPG data is available for the file after this call.
+    fn build_cpg_for_file(&mut self, file_path: &str) -> bool {
+        let path = PathBuf::from(file_path);
+        let canonical = path.canonicalize().unwrap_or(path);
+        self.graph.build_cpg_for_file(&canonical)
+    }
+
     /// Re-resolve call graph edges for a single file without rebuilding its CPG.
     /// Call this after building CPG for a file's dependents, so that cross-file
     /// CalledBy edges are discovered. The file must already have CPG data

@@ -314,7 +314,28 @@ impl RepoGraph {
     /// Build CPG data for a single file on demand (incremental).
     /// Creates the CPG layer if not yet created. Skips if already built for this file.
     /// Returns true if CPG data is available for the file after this call.
+    ///
+    /// This builds the file AND runs cross-file call resolution. For batch
+    /// scenarios where you want to defer resolution, use `build_cpg_for_file`
+    /// followed by a single `resolve_file` call.
     pub fn ensure_cpg_for_file(&mut self, path: &Path) -> bool {
+        if !self.build_cpg_for_file(path) {
+            return false;
+        }
+        if let Some(cpg) = &mut self.cpg {
+            crate::callgraph::CallGraphBuilder::resolve_file(cpg, path, &self.symbol_index);
+        }
+        true
+    }
+
+    /// Build CPG data for a single file WITHOUT running cross-file call resolution.
+    ///
+    /// Use this in batch scenarios: call `build_cpg_for_file` on many files first,
+    /// then run `resolve_file` once on the target file. This avoids O(n²) behavior
+    /// where each `ensure_cpg_for_file` re-scans all previously-built files.
+    ///
+    /// Returns true if CPG data is available for the file after this call.
+    pub fn build_cpg_for_file(&mut self, path: &Path) -> bool {
         if self.cpg.is_none() {
             self.cpg = Some(CpgLayer::new());
         }
@@ -353,9 +374,6 @@ impl RepoGraph {
             cpg.build_file(path, tree, source, lang);
         }
         self.compute_import_bindings_for_file(path);
-        if let Some(cpg) = &mut self.cpg {
-            crate::callgraph::CallGraphBuilder::resolve_file(cpg, path, &self.symbol_index);
-        }
 
         true
     }
