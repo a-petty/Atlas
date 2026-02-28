@@ -214,8 +214,7 @@ def _ensure_embeddings() -> None:
     from atlas.context import ContextManager
 
     _embedding_manager = EmbeddingManager(repo_graph=_graph, project_root=_project_root)
-    # Cap at 20K tokens (~80K chars) to stay within MCP tool result limits
-    _context_manager = ContextManager(_graph, _embedding_manager, max_tokens=20_000)
+    _context_manager = ContextManager(_graph, _embedding_manager, max_tokens=100_000)
     log.info("Embedding manager ready")
 
 
@@ -621,7 +620,16 @@ async def get_callers(file_path: str, function_name: str) -> str:
                 _graph.ensure_cpg_for_file(normalized)
                 _cpg_enabled = True
                 dependents = _graph.get_dependents(normalized)
-                _build_cpg_for_neighbors(normalized, dependents, max_files=MAX_CALLER_NEIGHBOR_FILES)
+                # Follow one level of __init__.py re-exports so that files
+                # importing via a package (e.g. `from airflow.models import X`)
+                # are included even though they depend on __init__.py, not the
+                # source file directly.
+                init_dependents = []
+                for dep_path, _ in dependents:
+                    if dep_path.endswith("__init__.py"):
+                        init_dependents.extend(_graph.get_dependents(dep_path))
+                all_dependents = dependents + init_dependents
+                _build_cpg_for_neighbors(normalized, all_dependents, max_files=MAX_CALLER_NEIGHBOR_FILES)
                 # Re-resolve target to find incoming calls from all built dependents
                 _graph.resolve_cpg_for_file(normalized)
                 callers = _graph.get_callers(normalized, function_name)

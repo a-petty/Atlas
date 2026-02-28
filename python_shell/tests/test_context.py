@@ -401,10 +401,10 @@ class TestAdaptiveParams:
         assert params.tier1_tokens == int(60_000 * 0.08)  # 4800, not 20000
 
     def test_tier_budgets_sum_to_total(self):
-        """tier1 + tier2 + tier3 must equal total_budget."""
+        """tier1 + content must equal total_budget."""
         for node_count, edge_count in [(10, 15), (200, 600), (1000, 4000)]:
             params = self._get_params(node_count, edge_count, total_budget=60_000)
-            assert params.tier1_tokens + params.tier2_tokens + params.tier3_tokens == 60_000
+            assert params.tier1_tokens + params.content_tokens == 60_000
 
     def test_anchor_count_bounds(self):
         """Anchor count should be clamped between 3 and 10."""

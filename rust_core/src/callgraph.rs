@@ -234,11 +234,51 @@ impl CallGraphBuilder {
         // Resolve all collected sites
         let mut edges_to_add: Vec<EdgeToAdd> = Vec::new();
 
-        for (site, caller_file) in local_sites.iter().chain(cross_file_sites.iter()) {
+        // Resolve local sites normally
+        for (site, caller_file) in local_sites.iter() {
             if let CallResolution::Resolved(callee_idx) =
                 Self::resolve_callee(cpg, site, caller_file, symbol_index, &builtins)
             {
                 collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
+            }
+        }
+
+        // Resolve cross-file sites with instance-method fallback
+        for (site, caller_file) in cross_file_sites.iter() {
+            match Self::resolve_callee(cpg, site, caller_file, symbol_index, &builtins) {
+                CallResolution::Resolved(callee_idx) => {
+                    collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
+                }
+                CallResolution::Unresolved(_) if site.receiver.is_some() => {
+                    // Fallback: callee_name already matched file_func_names,
+                    // so look up the function directly in the target file.
+                    if let Some(func_indices) = cpg.file_to_nodes.get(file_path) {
+                        let matches: Vec<NodeIndex> = func_indices
+                            .iter()
+                            .filter(|idx| {
+                                cpg.graph
+                                    .node_weight(**idx)
+                                    .map(|n| {
+                                        matches!(
+                                            n.kind,
+                                            CpgNodeKind::Function | CpgNodeKind::Method
+                                        ) && n.name == site.callee_name
+                                    })
+                                    .unwrap_or(false)
+                            })
+                            .copied()
+                            .collect();
+                        if matches.len() == 1 {
+                            collect_edges_for_resolved_call(
+                                cpg,
+                                site,
+                                matches[0],
+                                &mut edges_to_add,
+                            );
+                        }
+                    }
+                }
+                _ => {}
             }
         }
 

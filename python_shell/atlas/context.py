@@ -48,8 +48,7 @@ DEFAULT_CONTEXT_WINDOW = 100_000  # Fallback for unknown models
 class ContextParams:
     """Adaptive context assembly parameters computed from repo characteristics."""
     tier1_tokens: int            # Map budget (measured actual, capped)
-    tier2_tokens: int            # Full content budget
-    tier3_tokens: int            # Skeleton budget
+    content_tokens: int          # Skeleton content budget (all non-map)
     anchor_count: int            # Vector search top_n (3–10)
     map_max_files: int           # Ranked list length (20–75)
     neighborhood_max_hops: int   # BFS depth (2–3)
@@ -108,11 +107,8 @@ class ContextManager:
         map_tokens = self.count_tokens(map_text)
         tier1_tokens = min(map_tokens, int(total_budget * 0.08))
 
-        # Tier 2 vs Tier 3 split: continuous function of node_count
-        remaining = total_budget - tier1_tokens
-        tier2_share = max(0.40, min(0.75, 0.75 - (node_count / 1500)))
-        tier2_tokens = int(remaining * tier2_share)
-        tier3_tokens = remaining - tier2_tokens
+        # All remaining budget goes to skeleton content
+        content_tokens = total_budget - tier1_tokens
 
         # Anchor count: scale with repo size, clamped 3–10
         anchor_count = min(max(3, node_count // 10), 10)
@@ -128,8 +124,7 @@ class ContextManager:
 
         params = ContextParams(
             tier1_tokens=tier1_tokens,
-            tier2_tokens=tier2_tokens,
-            tier3_tokens=tier3_tokens,
+            content_tokens=content_tokens,
             anchor_count=anchor_count,
             map_max_files=map_max_files,
             neighborhood_max_hops=neighborhood_max_hops,
@@ -138,7 +133,7 @@ class ContextManager:
 
         logger.info(
             f"Adaptive params: repo={node_count} files, density={density:.1f}, "
-            f"tiers={params.tier1_tokens}/{params.tier2_tokens}/{params.tier3_tokens}, "
+            f"map={params.tier1_tokens}, content={params.content_tokens}, "
             f"anchors={params.anchor_count}, hops={params.neighborhood_max_hops}, "
             f"neighborhood_cap={params.neighborhood_max_files}"
         )
@@ -152,11 +147,12 @@ class ContextManager:
         include_map: bool = True
     ) -> str:
         """
-        Build context using adaptive three-tier budgeting.
+        Build context using skeleton-based budgeting.
 
-        Tier ratios, anchor counts, BFS depth, and neighborhood caps are all
-        computed dynamically based on repository size, graph density, and
-        actual map token cost.
+        After a compact repository map, all remaining budget is filled with
+        file skeletons (signatures + docstrings) — anchors first, then their
+        dependency neighborhood, then extended context. The LLM can use Read
+        to get full source for any file it needs to inspect further.
         """
         context_parts = []
         total_budget = self.max_tokens
@@ -206,31 +202,29 @@ class ContextManager:
                 context_parts.append(("REPOSITORY_MAP (truncated)", truncated_map))
                 logger.debug(f"Added truncated repo map ({params.tier1_tokens} tokens)")
 
-        # === TIER 2: Neighborhood Files - FULL CONTENT ===
-        neighborhood_budget = params.tier2_tokens
+        # === CONTENT: All skeletons, single budget ===
+        content_budget = params.content_tokens
 
-        # 2a. Explicit files in scope (highest priority)
+        # 1. Explicit files in scope (highest priority)
         explicit_content, explicit_processed = self._fill_with_content(
             files_in_scope,
-            neighborhood_budget,
+            content_budget,
             processed_files,
-            is_skeleton=False
+            is_skeleton=True
         )
         if explicit_content:
-            context_parts.append(("EXPLICIT_FILES (full content)", explicit_content))
+            context_parts.append(("EXPLICIT_FILES (skeletons)", explicit_content))
             processed_files.update(explicit_processed)
-            neighborhood_budget -= self.count_tokens(explicit_content)
+            content_budget -= self.count_tokens(explicit_content)
 
-        # 2b. Vector search anchors (with similarity + PageRank re-ranking)
+        # 2. Vector search anchors (with similarity + PageRank re-ranking)
         stats = self.repo_graph.get_statistics()
         all_graph_files = [Path(p) for p, _ in self.repo_graph.get_top_ranked_files(stats.node_count)]
-        # Fetch extra candidates for re-ranking
         scored = self.embedding_manager.find_relevant_files_scored(
             user_query,
             all_graph_files,
             top_n=params.anchor_count * 3,
         )
-        # Re-rank: combine embedding similarity with PageRank
         pagerank_map = dict(self.repo_graph.get_top_ranked_files(stats.node_count))
         max_pr = max(pagerank_map.values()) if pagerank_map else 1.0
         reranked = []
@@ -244,16 +238,16 @@ class ContextManager:
 
         anchor_content, anchor_processed = self._fill_with_content(
             anchor_files,
-            neighborhood_budget,
+            content_budget,
             processed_files,
-            is_skeleton=False
+            is_skeleton=True
         )
         if anchor_content:
-            context_parts.append(("ANCHOR_FILES (full content)", anchor_content))
+            context_parts.append(("ANCHOR_FILES (skeletons)", anchor_content))
             processed_files.update(anchor_processed)
-            neighborhood_budget -= self.count_tokens(anchor_content)
+            content_budget -= self.count_tokens(anchor_content)
 
-        # 2c. Neighborhood expansion (dependencies + dependents)
+        # 3. Neighborhood expansion (dependencies + dependents of anchors)
         expansion_base = list(files_in_scope) + anchor_files
         weighted_neighborhood = self._get_dependency_neighborhood(
             expansion_base,
@@ -265,64 +259,61 @@ class ContextManager:
 
         neighborhood_content, neighborhood_processed = self._fill_with_content(
             neighborhood_paths,
-            neighborhood_budget,
+            content_budget,
             processed_files,
-            is_skeleton=False
+            is_skeleton=True
         )
         if neighborhood_content:
-            context_parts.append(("NEIGHBORHOOD_FILES (full content)", neighborhood_content))
+            context_parts.append(("NEIGHBORHOOD_FILES (skeletons)", neighborhood_content))
             processed_files.update(neighborhood_processed)
+            content_budget -= self.count_tokens(neighborhood_content)
 
-        # === TIER 3: Architectural Context - SKELETONS ===
-        # Use dependency neighbors of anchor/explicit/neighborhood files (query-relevant)
-        # instead of static global PageRank top files.
-        skeleton_seed_files = list(files_in_scope) + anchor_files + neighborhood_paths
-        skeleton_neighbors = self._get_dependency_neighborhood(
-            skeleton_seed_files,
+        # 4. Extended neighbors (1-hop from everything above)
+        all_seed_files = list(files_in_scope) + anchor_files + neighborhood_paths
+        extended_neighbors = self._get_dependency_neighborhood(
+            all_seed_files,
             processed_files,
             max_hops=1,
             max_files=100,
         )
-        skeleton_candidates = [path for path, _weight in skeleton_neighbors]
+        extended_candidates = [path for path, _weight in extended_neighbors]
 
-        # If neighbor set is sparse, fall back to embedding similarity (query-relevant)
-        # instead of static PageRank top files
-        if len(skeleton_candidates) < 20:
-            seen = set(skeleton_candidates)
+        # If neighbor set is sparse, supplement with embedding similarity
+        if len(extended_candidates) < 20:
+            seen = set(extended_candidates)
             if self.embedding_manager is not None:
                 try:
-                    all_graph_files = [Path(p) for p, _ in self.repo_graph.get_top_ranked_files(stats.node_count)]
                     embedding_candidates = self.embedding_manager.find_relevant_files(
                         user_query, all_graph_files, top_n=50
                     )
                     for p in embedding_candidates:
                         if p not in seen and p not in processed_files:
-                            skeleton_candidates.append(p)
+                            extended_candidates.append(p)
                             seen.add(p)
                 except Exception as e:
                     logger.debug(f"Embedding skeleton fallback failed: {e}")
 
             # Final fallback to PageRank if still sparse
-            if len(skeleton_candidates) < 20:
+            if len(extended_candidates) < 20:
                 top_ranked = self.repo_graph.get_top_ranked_files(100)
                 top_ranked_paths = [Path(p) for p, _ in top_ranked]
                 for p in top_ranked_paths:
                     if p not in seen and p not in processed_files:
-                        skeleton_candidates.append(p)
+                        extended_candidates.append(p)
                         seen.add(p)
 
-        # Filter noise files before filling with content
-        skeleton_candidates = [p for p in skeleton_candidates if not self._is_noise_file(p)]
+        # Filter noise files
+        extended_candidates = [p for p in extended_candidates if not self._is_noise_file(p)]
 
-        skeleton_content, skeleton_processed = self._fill_with_content(
-            skeleton_candidates,
-            params.tier3_tokens,
+        extended_content, extended_processed = self._fill_with_content(
+            extended_candidates,
+            content_budget,
             processed_files,
             is_skeleton=True
         )
-        if skeleton_content:
-            context_parts.append(("ARCHITECTURAL_CONTEXT (skeletons)", skeleton_content))
-            processed_files.update(skeleton_processed)
+        if extended_content:
+            context_parts.append(("EXTENDED_CONTEXT (skeletons)", extended_content))
+            processed_files.update(extended_processed)
 
         final_budget = total_budget - sum(self.count_tokens(c[1]) for c in context_parts)
         logger.info(f"Context assembled: {len(processed_files)} files, {final_budget} tokens remaining")
@@ -484,14 +475,8 @@ class ContextManager:
                     token_count += tokens
                     processed_in_this_call.add(file_path)
                 else:
-                    # Truncate if necessary
-                    remaining = max_tokens - token_count
-                    if remaining > 100:  # Only add if meaningful space left
-                        truncated = self._truncate_to_tokens(formatted, remaining)
-                        content_parts.append(truncated)
-                        token_count = max_tokens
-                        processed_in_this_call.add(file_path)
-                    break
+                    # Skip files that don't fit and try the next one
+                    continue
                     
             except Exception as e:
                 logger.debug(f"Could not process {file_path}: {e}")

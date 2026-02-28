@@ -491,7 +491,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let nodes = cpg.get_functions_in_file(&path);
         let mut result = Vec::new();
         for node in nodes {
@@ -530,7 +530,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let indices = match cpg.file_to_nodes.get(&path) {
             Some(indices) => indices.clone(),
             None => return Ok(Vec::new()),
@@ -564,7 +564,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let indices = match cpg.file_to_nodes.get(&path) {
             Some(indices) => indices.clone(),
             None => return Ok(Vec::new()),
@@ -600,7 +600,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let indices = match cpg.file_to_nodes.get(&path) {
             Some(indices) => indices.clone(),
             None => return Ok(Vec::new()),
@@ -635,7 +635,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let indices = match cpg.file_to_nodes.get(&path) {
             Some(indices) => indices.clone(),
             None => return Ok(Vec::new()),
@@ -680,7 +680,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let indices = match cpg.file_to_nodes.get(&path) {
             Some(indices) => indices.clone(),
             None => return Ok(Vec::new()),
@@ -732,7 +732,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let func_idx = find_func_idx(cpg, &path, function_name);
         let func_idx = match func_idx {
             Some(idx) => idx,
@@ -757,7 +757,7 @@ impl PyRepoGraph {
         let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
             PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
         })?;
-        let path = PathBuf::from(file_path);
+        let path = canonical_path(file_path);
         let func_idx = find_func_idx(cpg, &path, function_name);
         let func_idx = match func_idx {
             Some(idx) => idx,
@@ -786,8 +786,14 @@ impl PyRepoGraph {
     }
 }
 
+/// Canonicalize a file path for CPG lookup (matches how build_cpg_for_file stores keys).
+fn canonical_path(file_path: &str) -> PathBuf {
+    let path = PathBuf::from(file_path);
+    path.canonicalize().unwrap_or(path)
+}
+
 /// Helper to find a function/method NodeIndex by file path and name.
-fn find_func_idx(cpg: &cpg::CpgLayer, path: &PathBuf, function_name: &str) -> Option<petgraph::graph::NodeIndex> {
+fn find_func_idx(cpg: &cpg::CpgLayer, path: &Path, function_name: &str) -> Option<petgraph::graph::NodeIndex> {
     cpg.file_to_nodes.get(path)?.iter().find(|idx| {
         cpg.graph.node_weight(**idx)
             .map(|n| {
