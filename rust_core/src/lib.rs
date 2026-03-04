@@ -220,7 +220,33 @@ fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>) -> PyResult<Ve
             }
         }
     }
-    
+
+    // Recover git-tracked files that .gitignore excluded.
+    // Git only applies .gitignore to untracked files; we should match that behavior.
+    use std::process::Command;
+    let git_output = Command::new("git")
+        .args(["ls-files", "--full-name"])
+        .current_dir(path)
+        .output();
+
+    if let Ok(output) = git_output {
+        if output.status.success() {
+            let existing: HashSet<String> = files.iter().cloned().collect();
+            let stdout = String::from_utf8_lossy(&output.stdout);
+
+            for rel in stdout.lines() {
+                let full = PathBuf::from(path).join(rel);
+                if let Ok(canonical) = full.canonicalize() {
+                    if let Some(s) = canonical.to_str() {
+                        if !existing.contains(s) {
+                            files.push(s.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Ok(files)
 }
 
