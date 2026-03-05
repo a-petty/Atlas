@@ -265,7 +265,36 @@ generated/
 
 **Default ignored directories**: `node_modules`, `target`, `.git`, `__pycache__`, `dist`, `build`, `.venv`, `venv`
 
-Atlas also respects `.gitignore` files during repository scanning.
+Atlas also respects `.gitignore` files during repository scanning. See [Troubleshooting](#troubleshooting) if this causes issues.
+
+## Troubleshooting
+
+### High unresolved import count / missing files
+
+Atlas uses `.gitignore` rules during file scanning. If your `.gitignore` contains broad directory patterns (e.g., `models/` to ignore ML model binaries), those patterns may also exclude source code directories that happen to share the same name.
+
+**Symptoms:**
+- `atlas_status` reports a high percentage of unresolved imports
+- Files that exist on disk don't appear in the dependency graph
+- Import edges are missing for an entire package
+
+**Diagnosis:** Check whether your source files are being excluded by `.gitignore`:
+
+```bash
+# Check if a specific file is ignored
+git check-ignore -v path/to/suspected/file.py
+
+# Compare files on disk vs files Atlas can see
+ls path/to/package/*.py
+git ls-files path/to/package/
+```
+
+**Common cause:** A `.gitignore` rule like `models/` (intended for ML binary artifacts) matching a Python package like `app/models/`. If those files were never `git add -f`'d, they'll be invisible to both git and Atlas — even though they exist on disk and Python imports them fine.
+
+**Fixes:**
+1. Make the `.gitignore` pattern more specific (e.g., `*.bin`, `*.gguf`, `*.onnx` instead of `models/`)
+2. Force-add the source files: `git add -f path/to/package/*.py`
+3. Or add the directory as a negation in `.gitignore`: `!app/models/`
 
 ## How It Works — A Concrete Example
 

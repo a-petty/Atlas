@@ -112,6 +112,15 @@ pub trait ImportResolver: Debug + Send + Sync {
 
     /// Get the number of failed import resolutions. Default: 0.
     fn get_failed_imports(&self) -> usize { 0 }
+
+    /// Diagnostic: look up a module path in the index and return what it resolves to.
+    fn debug_module_lookup(&self, _module_path: &str) -> Option<PathBuf> { None }
+
+    /// Diagnostic: trace resolution of a from-import statement from a given file.
+    /// Returns a list of (step_description, result) pairs showing the resolution process.
+    fn debug_resolve_import(&self, _import_source: &str, _current_file: &Path) -> Vec<(String, String)> {
+        Vec::new()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -909,12 +918,15 @@ impl PythonImportResolver {
 
 impl PythonImportResolver {
     /// Resolves a `from ... import ...` statement by walking its AST node.
+    /// `depth` controls recursion: 0 = normal (will follow __init__.py re-exports),
+    /// 1+ = called from follow_init_reexports (won't recurse further).
     fn resolve_from_import(
         &self,
         node: tree_sitter::Node,
         current_file: &Path,
         source: &[u8],
         imports: &mut HashSet<PathBuf>,
+        depth: usize,
     ) {
         let module_name_node = node.child_by_field_name("module_name");
 
@@ -927,6 +939,9 @@ impl PythonImportResolver {
                     && !COMMON_THIRD_PARTY_MODULES.contains(root_module)
                 {
                     if let Some(path) = self.resolve_absolute(text) {
+                        if depth == 0 && path.ends_with("__init__.py") {
+                            self.follow_init_reexports(&path, imports);
+                        }
                         imports.insert(path);
                     }
                 }
@@ -960,6 +975,9 @@ impl PythonImportResolver {
                 if let Some(ref module) = module_path {
                     // `from .module import X` — resolve the module directly
                     if let Some(path) = self.resolve_relative(current_file, dots, Some(module)) {
+                        if depth == 0 && path.ends_with("__init__.py") {
+                            self.follow_init_reexports(&path, imports);
+                        }
                         imports.insert(path);
                     }
                 } else {
@@ -974,6 +992,9 @@ impl PythonImportResolver {
                     if has_wildcard {
                         // `from . import *` — resolve to the package's __init__.py
                         if let Some(path) = self.resolve_relative(current_file, dots, None) {
+                            if depth == 0 && path.ends_with("__init__.py") {
+                                self.follow_init_reexports(&path, imports);
+                            }
                             imports.insert(path);
                         }
                     } else {
@@ -993,6 +1014,9 @@ impl PythonImportResolver {
                                 if let Some(path) =
                                     self.resolve_relative(current_file, dots, Some(name))
                                 {
+                                    if depth == 0 && path.ends_with("__init__.py") {
+                                        self.follow_init_reexports(&path, imports);
+                                    }
                                     imports.insert(path);
                                     any_resolved = true;
                                 }
@@ -1004,6 +1028,9 @@ impl PythonImportResolver {
                             if let Some(path) =
                                 self.resolve_relative(current_file, dots, None)
                             {
+                                if depth == 0 && path.ends_with("__init__.py") {
+                                    self.follow_init_reexports(&path, imports);
+                                }
                                 imports.insert(path);
                             }
                         }
@@ -1012,6 +1039,46 @@ impl PythonImportResolver {
             }
             _ => {
                 // No module_name field or unrecognized kind — skip
+            }
+        }
+    }
+
+    /// Parse an `__init__.py` file and follow its from-imports to discover
+    /// re-exported submodules. Adds resolved paths as additional edges.
+    /// Only goes one level deep (won't recurse into nested `__init__.py`).
+    fn follow_init_reexports(&self, init_path: &Path, imports: &mut HashSet<PathBuf>) {
+        let source = match std::fs::read(init_path) {
+            Ok(s) => s,
+            Err(_) => return,
+        };
+        if source.is_empty() {
+            return;
+        }
+
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(tree_sitter_python::language())
+            .expect("Failed to set Python language");
+        let tree = match parser.parse(&source, None) {
+            Some(t) => t,
+            None => return,
+        };
+
+        let mut query_cursor = QueryCursor::new();
+        let matches = query_cursor.matches(&self.import_query, tree.root_node(), source.as_slice());
+
+        for match_ in matches {
+            for capture in match_.captures {
+                let capture_name = &self.import_query.capture_names()[capture.index as usize];
+                if capture_name == "from_import" {
+                    self.resolve_from_import(
+                        capture.node,
+                        init_path,
+                        &source,
+                        imports,
+                        1, // depth=1 prevents further recursion
+                    );
+                }
             }
         }
     }
@@ -1205,6 +1272,7 @@ impl ImportResolver for PythonImportResolver {
                             current_file,
                             source,
                             &mut imports,
+                            0,
                         );
                         if imports.len() == before {
                             self.failed_imports.fetch_add(1, Ordering::Relaxed);
@@ -1295,6 +1363,158 @@ impl ImportResolver for PythonImportResolver {
 
     fn get_failed_imports(&self) -> usize {
         self.failed_imports.load(Ordering::Relaxed)
+    }
+
+    fn debug_module_lookup(&self, module_path: &str) -> Option<PathBuf> {
+        self.resolve_absolute(module_path)
+    }
+
+    fn debug_resolve_import(&self, import_source: &str, current_file: &Path) -> Vec<(String, String)> {
+        let mut steps = Vec::new();
+
+        // Show source roots
+        steps.push((
+            "source_roots".to_string(),
+            format!("{:?}", self.source_roots),
+        ));
+
+        // Parse the import source as a from-import statement
+        let code = format!("{}\n", import_source);
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(tree_sitter_python::language()).unwrap();
+        let tree = match parser.parse(code.as_bytes(), None) {
+            Some(t) => t,
+            None => {
+                steps.push(("parse_error".to_string(), "Failed to parse".to_string()));
+                return steps;
+            }
+        };
+
+        // Run import query
+        let mut query_cursor = QueryCursor::new();
+        let matches = query_cursor.matches(&self.import_query, tree.root_node(), code.as_bytes());
+
+        let mut found_from_import = false;
+        for match_ in matches {
+            for capture in match_.captures {
+                let capture_name = &self.import_query.capture_names()[capture.index as usize];
+                match capture_name.as_str() {
+                    "from_import" => {
+                        found_from_import = true;
+                        let node = capture.node;
+
+                        // Extract module_name info
+                        let module_name_node = node.child_by_field_name("module_name");
+                        match module_name_node {
+                            Some(mn) => {
+                                let text = mn.utf8_text(code.as_bytes()).unwrap_or("?");
+                                steps.push((
+                                    "module_name".to_string(),
+                                    format!("kind={}, text={}", mn.kind(), text),
+                                ));
+
+                                if mn.kind() == "dotted_name" {
+                                    // Absolute import
+                                    let root_mod = text.split('.').next().unwrap_or("");
+                                    let is_stdlib = PYTHON_STDLIB_MODULES.contains(root_mod);
+                                    let is_third = COMMON_THIRD_PARTY_MODULES.contains(root_mod);
+                                    steps.push((
+                                        "filter_check".to_string(),
+                                        format!("root={}, stdlib={}, third_party={}", root_mod, is_stdlib, is_third),
+                                    ));
+
+                                    if !is_stdlib && !is_third {
+                                        // Try resolve
+                                        match self.resolve_absolute(text) {
+                                            Some(p) => steps.push((
+                                                "resolve_absolute".to_string(),
+                                                format!("OK → {}", p.display()),
+                                            )),
+                                            None => {
+                                                // Show what's in the index for nearby keys
+                                                let prefix = text.split('.').take(2).collect::<Vec<_>>().join(".");
+                                                let nearby: Vec<_> = self.module_index.keys()
+                                                    .filter(|k| k.starts_with(&prefix))
+                                                    .take(10)
+                                                    .cloned()
+                                                    .collect();
+                                                steps.push((
+                                                    "resolve_absolute".to_string(),
+                                                    format!("FAILED for '{}'. Nearby index entries with prefix '{}': {:?}", text, prefix, nearby),
+                                                ));
+                                            }
+                                        }
+                                    }
+                                } else if mn.kind() == "relative_import" {
+                                    // Relative import — trace resolution
+                                    steps.push((
+                                        "relative_import".to_string(),
+                                        format!("current_file={}", current_file.display()),
+                                    ));
+
+                                    let mut dots = 0usize;
+                                    let mut module_path: Option<String> = None;
+                                    let mut cursor = mn.walk();
+                                    for child in mn.children(&mut cursor) {
+                                        match child.kind() {
+                                            "import_prefix" => {
+                                                dots = child.utf8_text(code.as_bytes()).unwrap_or("").chars().filter(|&c| c == '.').count();
+                                            }
+                                            "dotted_name" => {
+                                                module_path = Some(child.utf8_text(code.as_bytes()).unwrap_or("").to_string());
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    steps.push((
+                                        "relative_parts".to_string(),
+                                        format!("dots={}, module={:?}", dots, module_path),
+                                    ));
+
+                                    match self.resolve_relative(current_file, dots, module_path.as_deref()) {
+                                        Some(p) => steps.push((
+                                            "resolve_relative".to_string(),
+                                            format!("OK → {}", p.display()),
+                                        )),
+                                        None => steps.push((
+                                            "resolve_relative".to_string(),
+                                            "FAILED".to_string(),
+                                        )),
+                                    }
+                                }
+                            }
+                            None => {
+                                steps.push(("module_name".to_string(), "NONE".to_string()));
+                            }
+                        }
+
+                        // Now do the actual resolution
+                        let mut resolved = HashSet::new();
+                        self.resolve_from_import(node, current_file, code.as_bytes(), &mut resolved, 0);
+                        let resolved_strs: Vec<String> = resolved.iter().map(|p| p.display().to_string()).collect();
+                        steps.push((
+                            "final_resolved".to_string(),
+                            format!("{:?}", resolved_strs),
+                        ));
+                    }
+                    "module" => {
+                        let text = capture.node.utf8_text(code.as_bytes()).unwrap_or("?");
+                        steps.push(("bare_import".to_string(), text.to_string()));
+                        match self.resolve_absolute(text) {
+                            Some(p) => steps.push(("resolve".to_string(), format!("OK → {}", p.display()))),
+                            None => steps.push(("resolve".to_string(), format!("FAILED for '{}'", text))),
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if !found_from_import {
+            steps.push(("warning".to_string(), "No from-import found in parsed code".to_string()));
+        }
+
+        steps
     }
 }
 

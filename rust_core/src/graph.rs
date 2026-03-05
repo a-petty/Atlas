@@ -1650,6 +1650,14 @@ impl RepoGraph {
         self.get_outgoing_dependencies(file_path)
     }
 
+    pub fn debug_module_lookup(&self, module_path: &str) -> Option<PathBuf> {
+        self.import_resolver.debug_module_lookup(module_path)
+    }
+
+    pub fn debug_resolve_import(&self, import_source: &str, current_file: &Path) -> Vec<(String, String)> {
+        self.import_resolver.debug_resolve_import(import_source, current_file)
+    }
+
 
     fn calculate_stars(&self, rank: f64, max_rank: f64) -> usize {
         if max_rank == 0.0 { return 1; }

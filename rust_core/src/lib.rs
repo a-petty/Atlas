@@ -443,6 +443,17 @@ impl PyRepoGraph {
             .collect()
     }
 
+    /// Diagnostic: look up a module path in the import resolver's index.
+    fn debug_module_lookup(&self, module_path: &str) -> Option<String> {
+        self.graph.debug_module_lookup(module_path)
+            .map(|p| p.to_string_lossy().into_owned())
+    }
+
+    /// Diagnostic: trace resolution of an import statement from a given file.
+    fn debug_resolve_import(&self, import_source: &str, current_file: &str) -> Vec<(String, String)> {
+        self.graph.debug_resolve_import(import_source, Path::new(current_file))
+    }
+
     fn get_top_ranked_files(&mut self, limit: usize) -> Vec<(String, f64)> {
         self.graph.get_top_ranked_files(limit)
             .into_iter()
