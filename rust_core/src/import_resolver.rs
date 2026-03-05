@@ -113,6 +113,9 @@ pub trait ImportResolver: Debug + Send + Sync {
     /// Get the number of failed import resolutions. Default: 0.
     fn get_failed_imports(&self) -> usize { 0 }
 
+    /// Get the number of detected third-party packages. Default: 0.
+    fn get_third_party_count(&self) -> usize { 0 }
+
     /// Diagnostic: look up a module path in the index and return what it resolves to.
     fn debug_module_lookup(&self, _module_path: &str) -> Option<PathBuf> { None }
 
@@ -139,6 +142,7 @@ struct PyProjectToml {
 #[allow(dead_code)]
 struct ProjectSection {
     name: Option<String>,
+    dependencies: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -196,6 +200,7 @@ struct SetuptoolsFind {
 #[derive(Debug, Deserialize)]
 struct PoetryConfig {
     packages: Option<Vec<PoetryPackage>>,
+    dependencies: Option<toml::value::Table>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -403,6 +408,8 @@ pub struct PythonImportResolver {
     attempted_imports: AtomicUsize,
     /// Number of failed import resolutions (atomic for thread-safe counting).
     failed_imports: AtomicUsize,
+    /// Third-party package root module names (auto-detected + hardcoded fallback).
+    third_party_packages: HashSet<String>,
 }
 
 impl std::fmt::Debug for PythonImportResolver {
@@ -413,6 +420,7 @@ impl std::fmt::Debug for PythonImportResolver {
             .field("source_roots", &self.source_roots)
             .field("attempted_imports", &self.attempted_imports.load(Ordering::Relaxed))
             .field("failed_imports", &self.failed_imports.load(Ordering::Relaxed))
+            .field("third_party_packages_count", &self.third_party_packages.len())
             .finish()
     }
 }
@@ -425,6 +433,7 @@ impl PythonImportResolver {
         let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
         let canonical_root = project_root.canonicalize()
             .unwrap_or_else(|_| project_root.to_path_buf());
+        let third_party_packages = Self::discover_third_party_packages(&canonical_root);
         let mut resolver = Self {
             project_root: canonical_root.clone(),
             module_index: HashMap::new(),
@@ -432,6 +441,7 @@ impl PythonImportResolver {
             source_roots: Vec::new(),
             attempted_imports: AtomicUsize::new(0),
             failed_imports: AtomicUsize::new(0),
+            third_party_packages,
             // Pre-compile the query for performance
             // Pattern 0: absolute import (e.g., `import app.models`)
             // Pattern 1: entire from-import statement for programmatic AST walking
@@ -469,6 +479,211 @@ impl PythonImportResolver {
         };
         resolver.index_modules();
         resolver
+    }
+
+    // -----------------------------------------------------------------------
+    // Third-party package discovery
+    // -----------------------------------------------------------------------
+
+    /// Known pip-name → import-name mismatches.
+    fn known_package_mappings() -> HashMap<&'static str, &'static str> {
+        [
+            ("python-jose", "jose"),
+            ("python-dateutil", "dateutil"),
+            ("python-multipart", "multipart"),
+            ("python-dotenv", "dotenv"),
+            ("pillow", "PIL"),
+            ("scikit-learn", "sklearn"),
+            ("beautifulsoup4", "bs4"),
+            ("pyyaml", "yaml"),
+            ("pymongo", "pymongo"),
+            ("psycopg2-binary", "psycopg2"),
+            ("opencv-python", "cv2"),
+            ("opencv-python-headless", "cv2"),
+        ].iter().cloned().collect()
+    }
+
+    /// Normalize a pip package name to likely import name(s).
+    fn normalize_package_name(raw: &str) -> Vec<String> {
+        // Strip version specifiers, extras, inline comments
+        let name = raw.split(|c: char| c == '=' || c == '>' || c == '<' || c == '~' || c == '!' || c == ';')
+            .next()
+            .unwrap_or(raw)
+            .trim();
+        // Strip extras like [standard]
+        let name = name.split('[').next().unwrap_or(name).trim();
+        if name.is_empty() {
+            return Vec::new();
+        }
+
+        let lower = name.to_lowercase();
+        let mappings = Self::known_package_mappings();
+
+        let mut results = Vec::new();
+        if let Some(&mapped) = mappings.get(lower.as_str()) {
+            results.push(mapped.to_string());
+        }
+
+        // Standard normalization: hyphens → underscores, lowercase
+        let normalized = lower.replace('-', "_");
+        if !results.contains(&normalized) {
+            results.push(normalized.clone());
+        }
+
+        // Also add root prefix (first segment before - or _) as secondary match
+        let root = lower.split(|c: char| c == '-' || c == '_').next().unwrap_or(&lower);
+        let root = root.to_string();
+        if root != normalized && !results.contains(&root) {
+            results.push(root);
+        }
+
+        results
+    }
+
+    /// Parse a requirements.txt file, returning normalized import names.
+    fn parse_requirements_txt(path: &Path) -> HashSet<String> {
+        let mut packages = HashSet::new();
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(_) => return packages,
+        };
+        for line in content.lines() {
+            let line = line.trim();
+            // Strip inline comments
+            let line = line.split('#').next().unwrap_or("").trim();
+            if line.is_empty() {
+                continue;
+            }
+            // Skip flags: -r, --requirement, -e, -f, --index-url, etc.
+            if line.starts_with('-') {
+                continue;
+            }
+            for name in Self::normalize_package_name(line) {
+                packages.insert(name);
+            }
+        }
+        packages
+    }
+
+    /// Extract dependency names from a parsed pyproject.toml.
+    fn extract_dependencies_from_pyproject(pyproject: &PyProjectToml) -> HashSet<String> {
+        let mut packages = HashSet::new();
+
+        // [project.dependencies]
+        if let Some(project) = &pyproject.project {
+            if let Some(deps) = &project.dependencies {
+                for dep in deps {
+                    for name in Self::normalize_package_name(dep) {
+                        packages.insert(name);
+                    }
+                }
+            }
+        }
+
+        // [tool.poetry.dependencies]
+        if let Some(tool) = &pyproject.tool {
+            if let Some(poetry) = &tool.poetry {
+                if let Some(deps) = &poetry.dependencies {
+                    for key in deps.keys() {
+                        if key == "python" {
+                            continue;
+                        }
+                        for name in Self::normalize_package_name(key) {
+                            packages.insert(name);
+                        }
+                    }
+                }
+            }
+        }
+
+        packages
+    }
+
+    /// Discover third-party packages from requirements.txt and pyproject.toml files.
+    /// Merges with the hardcoded COMMON_THIRD_PARTY_MODULES fallback.
+    fn discover_third_party_packages(project_root: &Path) -> HashSet<String> {
+        let mut packages: HashSet<String> = COMMON_THIRD_PARTY_MODULES.iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        let mut discovered = 0usize;
+
+        // requirements.txt in project root
+        let req_path = project_root.join("requirements.txt");
+        if req_path.is_file() {
+            let found = Self::parse_requirements_txt(&req_path);
+            discovered += found.len();
+            debug!("Found {} packages in {}", found.len(), req_path.display());
+            packages.extend(found);
+        }
+
+        // requirements/*.txt (all files in requirements/ dir)
+        let req_dir = project_root.join("requirements");
+        if req_dir.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(&req_dir) {
+                for entry in entries.filter_map(Result::ok) {
+                    let p = entry.path();
+                    if p.extension().and_then(|e| e.to_str()) == Some("txt") {
+                        let found = Self::parse_requirements_txt(&p);
+                        discovered += found.len();
+                        debug!("Found {} packages in {}", found.len(), p.display());
+                        packages.extend(found);
+                    }
+                }
+            }
+        }
+
+        // One level deep: */requirements.txt
+        if let Ok(entries) = std::fs::read_dir(project_root) {
+            for entry in entries.filter_map(Result::ok) {
+                let p = entry.path();
+                if p.is_dir() {
+                    let sub_req = p.join("requirements.txt");
+                    if sub_req.is_file() {
+                        let found = Self::parse_requirements_txt(&sub_req);
+                        discovered += found.len();
+                        debug!("Found {} packages in {}", found.len(), sub_req.display());
+                        packages.extend(found);
+                    }
+                }
+            }
+        }
+
+        // pyproject.toml in project root
+        let pyproject_path = project_root.join("pyproject.toml");
+        if pyproject_path.is_file() {
+            if let Some(pyproject) = parse_pyproject_toml(&pyproject_path) {
+                let found = Self::extract_dependencies_from_pyproject(&pyproject);
+                discovered += found.len();
+                debug!("Found {} packages in {}", found.len(), pyproject_path.display());
+                packages.extend(found);
+            }
+        }
+
+        // One level deep: */pyproject.toml
+        if let Ok(entries) = std::fs::read_dir(project_root) {
+            for entry in entries.filter_map(Result::ok) {
+                let p = entry.path();
+                if p.is_dir() {
+                    let sub_pyproject = p.join("pyproject.toml");
+                    if sub_pyproject.is_file() {
+                        if let Some(pyproject) = parse_pyproject_toml(&sub_pyproject) {
+                            let found = Self::extract_dependencies_from_pyproject(&pyproject);
+                            discovered += found.len();
+                            debug!("Found {} packages in {}", found.len(), sub_pyproject.display());
+                            packages.extend(found);
+                        }
+                    }
+                }
+            }
+        }
+
+        if discovered > 0 {
+            info!("Third-party packages: {} total ({} from dependency files, {} hardcoded)",
+                  packages.len(), discovered, COMMON_THIRD_PARTY_MODULES.len());
+        }
+
+        packages
     }
 
     /// Main source root detection pipeline.
@@ -936,7 +1151,7 @@ impl PythonImportResolver {
                 let text = mn.utf8_text(source).unwrap_or("");
                 let root_module = text.split('.').next().unwrap_or("");
                 if !PYTHON_STDLIB_MODULES.contains(root_module)
-                    && !COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                    && !self.third_party_packages.contains(root_module)
                 {
                     if let Some(path) = self.resolve_absolute(text) {
                         if depth == 0 && path.ends_with("__init__.py") {
@@ -1100,7 +1315,7 @@ impl PythonImportResolver {
                     let text = child.utf8_text(source).unwrap_or("");
                     let root_module = text.split('.').next().unwrap_or("");
                     if PYTHON_STDLIB_MODULES.contains(root_module)
-                        || COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                        || self.third_party_packages.contains(root_module)
                     {
                         continue;
                     }
@@ -1121,7 +1336,7 @@ impl PythonImportResolver {
                         let text = name.utf8_text(source).unwrap_or("");
                         let root_module = text.split('.').next().unwrap_or("");
                         if PYTHON_STDLIB_MODULES.contains(root_module)
-                            || COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                            || self.third_party_packages.contains(root_module)
                         {
                             continue;
                         }
@@ -1158,7 +1373,7 @@ impl PythonImportResolver {
                 let text = mn.utf8_text(source).unwrap_or("");
                 let root_module = text.split('.').next().unwrap_or("");
                 if PYTHON_STDLIB_MODULES.contains(root_module)
-                    || COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                    || self.third_party_packages.contains(root_module)
                 {
                     return;
                 }
@@ -1253,7 +1468,7 @@ impl ImportResolver for PythonImportResolver {
                         let text = capture.node.utf8_text(source).unwrap_or("");
                         let root_module = text.split('.').next().unwrap_or("");
                         if !PYTHON_STDLIB_MODULES.contains(root_module)
-                            && !COMMON_THIRD_PARTY_MODULES.contains(root_module)
+                            && !self.third_party_packages.contains(root_module)
                         {
                             self.attempted_imports.fetch_add(1, Ordering::Relaxed);
                             if let Some(path) = self.resolve_absolute(text) {
@@ -1365,6 +1580,10 @@ impl ImportResolver for PythonImportResolver {
         self.failed_imports.load(Ordering::Relaxed)
     }
 
+    fn get_third_party_count(&self) -> usize {
+        self.third_party_packages.len()
+    }
+
     fn debug_module_lookup(&self, module_path: &str) -> Option<PathBuf> {
         self.resolve_absolute(module_path)
     }
@@ -1417,7 +1636,7 @@ impl ImportResolver for PythonImportResolver {
                                     // Absolute import
                                     let root_mod = text.split('.').next().unwrap_or("");
                                     let is_stdlib = PYTHON_STDLIB_MODULES.contains(root_mod);
-                                    let is_third = COMMON_THIRD_PARTY_MODULES.contains(root_mod);
+                                    let is_third = self.third_party_packages.contains(root_mod);
                                     steps.push((
                                         "filter_check".to_string(),
                                         format!("root={}, stdlib={}, third_party={}", root_mod, is_stdlib, is_third),
