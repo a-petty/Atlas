@@ -37,6 +37,19 @@ lazy_static! {
     ].iter().cloned().collect();
 }
 
+// ---------------------------------------------------------------------------
+// package.json parsing struct
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+struct PackageJson {
+    dependencies: Option<HashMap<String, serde_json::Value>>,
+    #[serde(rename = "devDependencies")]
+    dev_dependencies: Option<HashMap<String, serde_json::Value>>,
+    #[serde(rename = "peerDependencies")]
+    peer_dependencies: Option<HashMap<String, serde_json::Value>>,
+}
+
 #[derive(Debug, Deserialize)]
 struct TsConfig {
     #[serde(rename = "compilerOptions")]
@@ -1751,6 +1764,8 @@ pub struct JsTsImportResolver {
     base_url: Option<PathBuf>,
     /// Directory names to exclude from module indexing.
     ignored_dirs: HashSet<String>,
+    /// Third-party package names from package.json (+ Node built-ins).
+    third_party_packages: HashSet<String>,
 }
 
 impl JsTsImportResolver {
@@ -1758,6 +1773,7 @@ impl JsTsImportResolver {
         let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
         let canonical_root = project_root.canonicalize()
             .unwrap_or_else(|_| project_root.to_path_buf());
+        let third_party_packages = Self::discover_third_party_packages(&canonical_root);
         let mut resolver = Self {
             project_root: canonical_root,
             module_index: HashMap::new(),
@@ -1774,11 +1790,143 @@ impl JsTsImportResolver {
             .expect("Failed to create TS import query"),
             path_aliases: HashMap::new(),
             base_url: None,
+            third_party_packages,
         };
 
         resolver.load_tsconfig();
         resolver.index_modules();
         resolver
+    }
+
+    // -----------------------------------------------------------------------
+    // Third-party package discovery (JS/TS)
+    // -----------------------------------------------------------------------
+
+    /// Extract dependency names from a package.json file.
+    fn parse_package_json(path: &Path) -> HashSet<String> {
+        let mut packages = HashSet::new();
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(_) => return packages,
+        };
+        let pkg: PackageJson = match serde_json::from_str(&content) {
+            Ok(p) => p,
+            Err(e) => {
+                debug!("Cannot parse {}: {}", path.display(), e);
+                return packages;
+            }
+        };
+        for deps in [&pkg.dependencies, &pkg.dev_dependencies, &pkg.peer_dependencies] {
+            if let Some(deps) = deps {
+                for key in deps.keys() {
+                    packages.insert(key.clone());
+                    // For scoped packages like @babel/core, also add the scope prefix
+                    // so `@babel/preset-env` is recognized as third-party when imported
+                    if let Some(scope) = key.strip_prefix('@') {
+                        if let Some(scope_name) = scope.split('/').next() {
+                            packages.insert(format!("@{}", scope_name));
+                        }
+                    }
+                }
+            }
+        }
+        packages
+    }
+
+    /// Discover third-party packages from package.json files.
+    /// Merges with NODE_BUILTIN_MODULES as a base set.
+    fn discover_third_party_packages(project_root: &Path) -> HashSet<String> {
+        let mut packages: HashSet<String> = NODE_BUILTIN_MODULES.iter()
+            .map(|s| s.to_string())
+            .collect();
+
+        let mut discovered = 0usize;
+
+        // package.json in project root
+        let pkg_path = project_root.join("package.json");
+        if pkg_path.is_file() {
+            let found = Self::parse_package_json(&pkg_path);
+            discovered += found.len();
+            debug!("Found {} packages in {}", found.len(), pkg_path.display());
+            packages.extend(found);
+        }
+
+        // One level deep: */package.json (monorepo packages)
+        if let Ok(entries) = std::fs::read_dir(project_root) {
+            for entry in entries.filter_map(Result::ok) {
+                let p = entry.path();
+                if p.is_dir() {
+                    let sub_pkg = p.join("package.json");
+                    if sub_pkg.is_file() {
+                        let found = Self::parse_package_json(&sub_pkg);
+                        discovered += found.len();
+                        debug!("Found {} packages in {}", found.len(), sub_pkg.display());
+                        packages.extend(found);
+                    }
+                }
+            }
+        }
+
+        // Monorepo: packages/*/package.json and apps/*/package.json
+        for subdir in &["packages", "apps", "libs"] {
+            let mono_dir = project_root.join(subdir);
+            if mono_dir.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(&mono_dir) {
+                    for entry in entries.filter_map(Result::ok) {
+                        let p = entry.path();
+                        if p.is_dir() {
+                            let sub_pkg = p.join("package.json");
+                            if sub_pkg.is_file() {
+                                let found = Self::parse_package_json(&sub_pkg);
+                                discovered += found.len();
+                                debug!("Found {} packages in {}", found.len(), sub_pkg.display());
+                                packages.extend(found);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if discovered > 0 {
+            info!("JS/TS third-party packages: {} total ({} from package.json, {} built-in)",
+                  packages.len(), discovered, NODE_BUILTIN_MODULES.len());
+        }
+
+        packages
+    }
+
+    /// Check if a bare import specifier is a known third-party package.
+    fn is_third_party_package(&self, specifier: &str) -> bool {
+        // Direct match: "react", "lodash", "@babel/core"
+        if self.third_party_packages.contains(specifier) {
+            return true;
+        }
+        // Check if it's a subpath import: "react/jsx-runtime" → check "react"
+        // or "@scope/pkg/sub" → check "@scope/pkg"
+        if specifier.starts_with('@') {
+            // Scoped: @scope/pkg/sub → @scope/pkg
+            let parts: Vec<&str> = specifier.splitn(3, '/').collect();
+            if parts.len() >= 2 {
+                let scoped_name = format!("{}/{}", parts[0], parts[1]);
+                if self.third_party_packages.contains(&scoped_name) {
+                    return true;
+                }
+            }
+            // Also check just the scope: @scope
+            if let Some(scope) = specifier.split('/').next() {
+                if self.third_party_packages.contains(scope) {
+                    return true;
+                }
+            }
+        } else {
+            // Unscoped: "lodash/merge" → check "lodash"
+            let root = specifier.split('/').next().unwrap_or(specifier);
+            if self.third_party_packages.contains(root) {
+                return true;
+            }
+        }
+        false
     }
 
     fn load_tsconfig(&mut self) {
@@ -1849,18 +1997,14 @@ impl JsTsImportResolver {
         specifier: &str,
         current_file: &Path,
     ) -> Option<PathBuf> {
-        // 1. Filter out Node.js built-ins
-        if NODE_BUILTIN_MODULES.contains(specifier) {
-            return None;
-        }
-
-        // 2. Handle Path Aliases or Node Modules
+        // 1. Handle bare specifiers (not starting with . or /)
         if !specifier.starts_with('.') && !specifier.starts_with('/') {
             // Try to resolve as a path alias first
             if let Some(resolved) = self.resolve_path_alias(specifier) {
                 return Some(resolved);
             }
-            // If not an alias, assume it's a node_modules package and ignore it
+            // Known third-party or Node built-in — skip
+            // For bare specifiers not in our known set, still skip (likely node_modules)
             return None;
         }
 
@@ -1976,6 +2120,10 @@ impl ImportResolver for JsTsImportResolver {
 
     fn file_extensions(&self) -> &[&str] {
         &["js", "jsx", "ts", "tsx", "mjs", "cjs"]
+    }
+
+    fn get_third_party_count(&self) -> usize {
+        self.third_party_packages.len()
     }
 }
 
