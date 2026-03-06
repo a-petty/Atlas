@@ -190,6 +190,20 @@ atlas-mcp --project-root /path/to/repo --verbose
 }
 ```
 
+#### Cursor configuration
+
+**`.cursor/mcp.json`**:
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "command": "/path/to/Atlas/.venv/bin/atlas-mcp",
+      "args": ["--project-root", "/path/to/your/repo"]
+    }
+  }
+}
+```
+
 #### VS Code configuration
 
 **`.vscode/mcp.json`**:
