@@ -124,7 +124,6 @@ When a user asks a question, `ContextManager` assembles an optimized prompt usin
 
 - Python >= 3.10
 - Rust toolchain ([rustup](https://rustup.rs/))
-- [Maturin](https://www.maturin.rs/) (`pip install maturin`)
 
 ### Installation
 
@@ -136,20 +135,17 @@ cd Atlas
 python -m venv .venv
 source .venv/bin/activate
 
-# Install Python dependencies
-pip install -e ".[dev]"
-
-# Build the Rust core as a Python extension
-maturin develop
+# Install dependencies and build the Rust core (one command)
+pip install -e ".[mcp]" && maturin develop
 ```
 
-After any change to Rust code, you must run `maturin develop` before Python code will reflect those changes.
+This installs all Python dependencies (including MCP server support) and compiles the Rust core as a Python extension. After any change to Rust code, re-run `maturin develop`.
 
 ### Optional Dependencies
 
 ```bash
-# MCP server support (for Claude Code / VS Code integration)
-pip install -e ".[mcp]"
+# Development tools (pytest, mypy)
+pip install -e ".[dev]"
 
 # Apple Silicon local LLM inference via MLX
 pip install -e ".[mlx]"
@@ -162,14 +158,16 @@ pip install -e ".[mlx]"
 The primary way to use Atlas is as an MCP server that provides semantic code intelligence to AI coding tools.
 
 ```bash
-# Start the MCP server
+# Start the MCP server (defaults to current directory if --project-root is omitted)
 atlas-mcp --project-root /path/to/repo
 
 # With debug logging
 atlas-mcp --project-root /path/to/repo --verbose
 ```
 
-**Claude Code configuration** (`.claude/settings.json` or `~/.claude/settings.json`):
+#### Claude Code configuration
+
+**Global** (`~/.claude/settings.json`) — use `--project-root` to target a specific repo:
 ```json
 {
   "mcpServers": {
@@ -181,7 +179,20 @@ atlas-mcp --project-root /path/to/repo --verbose
 }
 ```
 
-**VS Code configuration** (`.vscode/mcp.json`):
+**Per-project** (`.claude/settings.json` in the repo you want to analyze) — no `--project-root` needed since Claude Code sets the working directory to the project root:
+```json
+{
+  "mcpServers": {
+    "atlas": {
+      "command": "/path/to/Atlas/.venv/bin/atlas-mcp"
+    }
+  }
+}
+```
+
+#### VS Code configuration
+
+**`.vscode/mcp.json`**:
 ```json
 {
   "servers": {
@@ -379,7 +390,6 @@ Atlas/
 │       └── llm.py              # LLM clients: Ollama, MLX, Stub
 ├── pyproject.toml              # Python package config, entry points, optional deps
 ├── rust_core/Cargo.toml        # Rust dependencies and test declarations
-├── CLAUDE.md                   # Instructions for AI coding assistants
 └── docs/                       # Architecture docs, evaluation reports, roadmaps
 ```
 
