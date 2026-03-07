@@ -10,6 +10,7 @@ pub mod cpg;
 pub mod cfg;
 pub mod dataflow;
 pub mod callgraph;
+pub mod diag;
 
 use pyo3::prelude::*;
 use pyo3::create_exception;

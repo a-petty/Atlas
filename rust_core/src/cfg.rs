@@ -49,10 +49,6 @@ impl CfgBuilder {
         func_idx: NodeIndex,
         source: &str,
     ) -> Option<()> {
-        if self.language != SupportedLanguage::Python {
-            return None;
-        }
-
         let func_node = cpg.graph.node_weight(func_idx)?;
         let file_path = func_node.file_path.clone();
         let start_byte = func_node.start_byte;
@@ -119,14 +115,16 @@ impl CfgBuilder {
         )?;
 
         // When a class body block shares the same byte range as its sole
-        // function_definition child, find_ts_node_at_bytes returns the block.
+        // function child, find_ts_node_at_bytes returns the block.
         // Descend into it to find the actual function definition.
-        if func_ts_node.kind() == "block" {
+        if func_ts_node.kind() == "block" || func_ts_node.kind() == "class_body" {
             let mut cursor = func_ts_node.walk();
             for child in func_ts_node.named_children(&mut cursor) {
-                if (child.kind() == "function_definition"
-                    || child.kind() == "async_function_definition")
-                    && child.start_byte() == start_byte
+                if matches!(child.kind(),
+                    "function_definition" | "async_function_definition"
+                    | "function_declaration" | "generator_function_declaration"
+                    | "method_definition"
+                ) && child.start_byte() == start_byte
                     && child.end_byte() == end_byte
                 {
                     func_ts_node = child;
@@ -282,13 +280,29 @@ impl CfgBuilder {
             }
         }
 
-        // alternative: could be elif (another if_statement) or else (block)
+        // alternative: could be elif/else_clause (Python) or if_statement/statement_block (JS)
         if let Some(alternative) = ts_node.child_by_field_name("alternative") {
             match alternative.kind() {
                 "else_clause" => {
                     has_else = true;
-                    if let Some(body) = alternative.child_by_field_name("body") {
-                        if let Some(result) = self.build_block_cfg(cpg, body, ctx, source) {
+                    // Python: else_clause has a "body" field
+                    // JS: else_clause wraps a statement_block (or if_statement) directly
+                    let body_node = alternative.child_by_field_name("body")
+                        .or_else(|| {
+                            // JS: find the first named child that is a block-like node
+                            let mut c = alternative.walk();
+                            alternative.named_children(&mut c).find(|child| {
+                                matches!(child.kind(), "statement_block" | "if_statement")
+                            })
+                        });
+                    if let Some(body) = body_node {
+                        if body.kind() == "if_statement" {
+                            // JS: else if
+                            if let Some(result) = self.build_if_cfg(cpg, body, ctx, source) {
+                                cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowFalse);
+                                all_exits.extend(result.exits);
+                            }
+                        } else if let Some(result) = self.build_block_cfg(cpg, body, ctx, source) {
                             cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowFalse);
                             all_exits.extend(result.exits);
                         }
@@ -296,8 +310,23 @@ impl CfgBuilder {
                 }
                 "elif_clause" => {
                     has_else = true;
-                    // elif is like a nested if in the false branch
                     if let Some(result) = self.build_elif_cfg(cpg, alternative, ctx, source) {
+                        cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowFalse);
+                        all_exits.extend(result.exits);
+                    }
+                }
+                "if_statement" => {
+                    // JS: else if (...) { ... } — alternative is another if_statement
+                    has_else = true;
+                    if let Some(result) = self.build_if_cfg(cpg, alternative, ctx, source) {
+                        cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowFalse);
+                        all_exits.extend(result.exits);
+                    }
+                }
+                "statement_block" => {
+                    // JS: else { ... } — alternative is a statement_block
+                    has_else = true;
+                    if let Some(result) = self.build_block_cfg(cpg, alternative, ctx, source) {
                         cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowFalse);
                         all_exits.extend(result.exits);
                     }
@@ -512,29 +541,33 @@ impl CfgBuilder {
         for child in &children {
             match child.kind() {
                 "block" => {
-                    // This is the try body (first block child)
+                    // Python: try body (first block child)
                     if body_exits.is_empty() {
                         if let Some(result) = self.build_block_cfg(cpg, *child, ctx, source) {
                             cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowNext);
-
-                            // Each statement in the try body can raise an exception
-                            // Connect try body statements to exception handlers
+                            body_exits = result.exits;
+                        }
+                    }
+                }
+                "statement_block" => {
+                    // JS: try body
+                    if body_exits.is_empty() {
+                        if let Some(result) = self.build_block_cfg(cpg, *child, ctx, source) {
+                            cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowNext);
                             body_exits = result.exits;
                         }
                     }
                 }
                 "except_clause" => {
-                    // Exception handler
+                    // Python exception handler
                     if let Some(body) = child.child_by_field_name("body") {
                         if let Some(result) = self.build_block_cfg(cpg, body, ctx, source) {
                             cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowException);
                             handler_exits.extend(result.exits);
                         }
                     } else {
-                        // bare except with inline body — try children directly
                         let mut inner_cursor = child.walk();
                         let inner_children: Vec<_> = child.named_children(&mut inner_cursor).collect();
-                        // Find the block node inside except_clause
                         for inner in &inner_children {
                             if inner.kind() == "block" {
                                 if let Some(result) = self.build_block_cfg(cpg, *inner, ctx, source) {
@@ -545,11 +578,19 @@ impl CfgBuilder {
                         }
                     }
                 }
-                "else_clause" => {
-                    // else clause: runs if no exception
+                "catch_clause" => {
+                    // JS: catch (e) { ... }
                     if let Some(body) = child.child_by_field_name("body") {
                         if let Some(result) = self.build_block_cfg(cpg, body, ctx, source) {
-                            // Connect body exits to else (no-exception path)
+                            cpg.graph.add_edge(stmt_idx, result.entry, CpgEdge::ControlFlowException);
+                            handler_exits.extend(result.exits);
+                        }
+                    }
+                }
+                "else_clause" => {
+                    // Python: else clause runs if no exception
+                    if let Some(body) = child.child_by_field_name("body") {
+                        if let Some(result) = self.build_block_cfg(cpg, body, ctx, source) {
                             for exit in &body_exits {
                                 cpg.graph.add_edge(*exit, result.entry, CpgEdge::ControlFlowNext);
                             }
@@ -559,13 +600,12 @@ impl CfgBuilder {
                 }
                 "finally_clause" => {
                     has_finally = true;
-                    // finally: all paths route through it
+                    // JS/Python: finally block — look for block or statement_block child
                     let mut inner_cursor = child.walk();
                     let inner_children: Vec<_> = child.named_children(&mut inner_cursor).collect();
                     for inner in &inner_children {
-                        if inner.kind() == "block" {
+                        if inner.kind() == "block" || inner.kind() == "statement_block" {
                             if let Some(result) = self.build_block_cfg(cpg, *inner, ctx, source) {
-                                // Route all body exits and handler exits through finally
                                 for exit in &body_exits {
                                     cpg.graph.add_edge(*exit, result.entry, CpgEdge::ControlFlowNext);
                                 }
@@ -720,24 +760,36 @@ impl CfgBuilder {
 /// Classify a tree-sitter node into a StatementKind.
 fn classify_statement(ts_node: tree_sitter::Node) -> StatementKind {
     match ts_node.kind() {
+        // Python + JS/TS shared
         "if_statement" => StatementKind::If,
-        "for_statement" => StatementKind::For,
         "while_statement" => StatementKind::While,
         "try_statement" => StatementKind::Try,
-        "with_statement" => StatementKind::With,
-        "match_statement" => StatementKind::Match,
         "return_statement" => StatementKind::Return,
         "break_statement" => StatementKind::Break,
         "continue_statement" => StatementKind::Continue,
-        "raise_statement" => StatementKind::Raise,
         "expression_statement" => StatementKind::ExpressionStatement,
+
+        // Python-specific
+        "for_statement" => StatementKind::For,
+        "with_statement" => StatementKind::With,
+        "match_statement" => StatementKind::Match,
+        "raise_statement" => StatementKind::Raise,
         "assignment" => StatementKind::Assignment,
         "augmented_assignment" => StatementKind::Assignment,
         "assert_statement" => StatementKind::Assert,
         "pass_statement" => StatementKind::Pass,
         "import_statement" | "import_from_statement" => StatementKind::Import,
         "delete_statement" => StatementKind::Delete,
-        "elif_clause" => StatementKind::If, // treated as if for CFG purposes
+        "elif_clause" => StatementKind::If,
+
+        // JS/TS-specific
+        "for_in_statement" => StatementKind::For,
+        "do_statement" => StatementKind::While,
+        "switch_statement" => StatementKind::Match,
+        "throw_statement" => StatementKind::Raise,
+        "variable_declaration" | "lexical_declaration" => StatementKind::Assignment,
+        "export_statement" => StatementKind::Import,
+
         other => StatementKind::Other(other.to_string()),
     }
 }
@@ -748,7 +800,12 @@ fn get_statement_label(ts_node: tree_sitter::Node, source: &str, kind: &Statemen
     let text = ts_node.utf8_text(source.as_bytes()).unwrap_or("");
     let first_line = text.lines().next().unwrap_or("");
     let truncated = if first_line.len() > 60 {
-        format!("{}...", &first_line[..60])
+        // Find a char boundary at or before byte 60
+        let mut end = 60;
+        while end > 0 && !first_line.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}...", &first_line[..end])
     } else {
         first_line.to_string()
     };

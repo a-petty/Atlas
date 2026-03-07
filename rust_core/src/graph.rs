@@ -282,6 +282,9 @@ impl RepoGraph {
     /// Used when CPG is enabled after build_complete().
     /// `excluded_prefixes` optionally filters out files under certain directories.
     pub fn enable_cpg_and_build(&mut self, excluded_prefixes: Option<&[String]>) {
+        use crate::diag::{diag_log, diag_reset};
+        diag_reset();
+        let total_start = Instant::now();
         self.cpg = Some(CpgLayer::new());
         let all_count = self.graph.node_count();
         let paths: Vec<PathBuf> = self.graph.node_weights()
@@ -290,7 +293,6 @@ impl RepoGraph {
                 if let Some(prefixes) = excluded_prefixes {
                     let path_str = p.to_string_lossy();
                     !prefixes.iter().any(|prefix| {
-                        // Match directory name as a path component
                         path_str.contains(&format!("/{prefix}/"))
                             || path_str.contains(&format!("\\{prefix}\\"))
                             || path_str.ends_with(&format!("/{prefix}"))
@@ -300,15 +302,23 @@ impl RepoGraph {
                 }
             })
             .collect();
-        let excluded = all_count - paths.len();
-        if excluded > 0 {
-            info!("CPG build: {} files ({} excluded by ignore rules)", paths.len(), excluded);
-        }
+        diag_log(&format!("[DIAG] enable_cpg_and_build: {} total files, {} after exclusion", all_count, paths.len()));
+
+        let phase_start = Instant::now();
         self.build_cpg_for_all_files(&paths);
+        diag_log(&format!("[DIAG] CPG build_all: {} files built in {:.2}s", paths.len(), phase_start.elapsed().as_secs_f64()));
+
+        let phase_start = Instant::now();
         self.compute_all_import_bindings();
+        diag_log(&format!("[DIAG] CPG import_bindings: {:.2}s", phase_start.elapsed().as_secs_f64()));
+
+        let phase_start = Instant::now();
         if let Some(cpg) = &mut self.cpg {
             crate::callgraph::CallGraphBuilder::resolve_all(cpg, &self.symbol_index);
         }
+        diag_log(&format!("[DIAG] CPG resolve_all: {:.2}s", phase_start.elapsed().as_secs_f64()));
+
+        diag_log(&format!("[DIAG] CPG total: {:.2}s", total_start.elapsed().as_secs_f64()));
     }
 
     /// Build CPG data for a single file on demand (incremental).
@@ -346,7 +356,14 @@ impl RepoGraph {
         }
 
         let lang = SupportedLanguage::from_path(path);
-        if lang != SupportedLanguage::Python {
+        if !matches!(
+            lang,
+            SupportedLanguage::Python
+                | SupportedLanguage::JavaScript
+                | SupportedLanguage::JavaScriptJsx
+                | SupportedLanguage::TypeScript
+                | SupportedLanguage::TypeScriptTsx
+        ) {
             return false;
         }
 
@@ -1425,12 +1442,15 @@ impl RepoGraph {
         let total = paths.len();
         let start = Instant::now();
         let mut built = 0usize;
+        let mut lang_counts: HashMap<String, usize> = HashMap::new();
 
         for (i, path) in paths.iter().enumerate() {
             let lang = SupportedLanguage::from_path(path);
             if lang == SupportedLanguage::Unknown {
+                *lang_counts.entry("Unknown(skipped)".to_string()).or_default() += 1;
                 continue;
             }
+            *lang_counts.entry(format!("{:?}", lang)).or_default() += 1;
             let ts_lang = match lang.get_parser() {
                 Some(l) => l,
                 None => continue,
@@ -1448,6 +1468,7 @@ impl RepoGraph {
                 None => continue,
             };
 
+            crate::diag::diag_log(&format!("[DIAG] building file #{}: {}", built + 1, path.display()));
             let file_start = Instant::now();
             if let Some(cpg) = &mut self.cpg {
                 cpg.build_file(path, tree, source, lang);
@@ -1455,16 +1476,21 @@ impl RepoGraph {
             let file_elapsed = file_start.elapsed();
             built += 1;
 
-            if file_elapsed.as_secs() > 5 {
-                warn!("CPG: slow file ({:.1}s): {}", file_elapsed.as_secs_f64(), path.display());
+            if file_elapsed.as_millis() > 500 {
+                crate::diag::diag_log(&format!("[DIAG] slow file #{} ({:.2}s): {}",
+                    built, file_elapsed.as_secs_f64(), path.display()));
             }
 
             if built % 50 == 0 || i == total - 1 {
-                info!("CPG progress: {}/{} files built ({:.1}s elapsed)",
-                      built, total, start.elapsed().as_secs_f64());
+                crate::diag::diag_log(&format!("[DIAG] CPG progress: {}/{} files built ({:.1}s elapsed)",
+                    built, total, start.elapsed().as_secs_f64()));
             }
         }
 
+        let lang_summary: Vec<String> = lang_counts.iter()
+            .map(|(k, v)| format!("{}={}", k, v))
+            .collect();
+        crate::diag::diag_log(&format!("[DIAG] CPG files by language: {}", lang_summary.join(", ")));
         info!("CPG build complete: {} files in {:.1}s", built, start.elapsed().as_secs_f64());
     }
 

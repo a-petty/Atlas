@@ -53,6 +53,35 @@ fn python_builtins() -> HashSet<&'static str> {
     ].into_iter().collect()
 }
 
+/// Common JS/TS builtins that should not be resolved.
+fn js_builtins() -> HashSet<&'static str> {
+    [
+        "console", "setTimeout", "setInterval", "clearTimeout", "clearInterval",
+        "fetch", "Promise", "JSON", "Math", "Object", "Array", "String",
+        "Number", "Boolean", "Symbol", "Map", "Set", "WeakMap", "WeakSet",
+        "Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError",
+        "parseInt", "parseFloat", "isNaN", "isFinite", "require",
+        "encodeURI", "decodeURI", "encodeURIComponent", "decodeURIComponent",
+        "alert", "document", "window", "globalThis", "undefined", "NaN",
+        "Infinity", "Date", "RegExp", "Proxy", "Reflect", "Buffer",
+        "process", "module", "exports", "__dirname", "__filename",
+        "queueMicrotask", "structuredClone", "atob", "btoa",
+    ].into_iter().collect()
+}
+
+/// Get the appropriate builtins set for a file path.
+fn builtins_for_path(path: &std::path::Path) -> HashSet<&'static str> {
+    use crate::parser::SupportedLanguage;
+    let lang = SupportedLanguage::from_path(path);
+    match lang {
+        SupportedLanguage::JavaScript
+        | SupportedLanguage::JavaScriptJsx
+        | SupportedLanguage::TypeScript
+        | SupportedLanguage::TypeScriptTsx => js_builtins(),
+        _ => python_builtins(),
+    }
+}
+
 /// Stateless builder for call graph construction.
 pub struct CallGraphBuilder;
 
@@ -106,7 +135,8 @@ impl CallGraphBuilder {
     /// Creates Calls/CalledBy edges and DataFlowArgument/DataFlowReturn edges.
     pub fn resolve_all(cpg: &mut CpgLayer, symbol_index: &SymbolIndex) {
         let resolve_start = Instant::now();
-        let builtins = python_builtins();
+        let py_builtins = python_builtins();
+        let js_builtins_set = js_builtins();
 
         // Collect all call sites with their caller file paths
         let collect_start = Instant::now();
@@ -120,8 +150,8 @@ impl CallGraphBuilder {
                     .map(|n| (site.clone(), n.file_path.clone()))
             })
             .collect();
-        eprintln!("[DIAG] resolve_all: collected {} call sites from {} functions in {:.2}s",
-            all_sites.len(), cpg.call_sites.len(), collect_start.elapsed().as_secs_f64());
+        crate::diag::diag_log(&format!("[DIAG] resolve_all: collected {} call sites from {} functions in {:.2}s",
+            all_sites.len(), cpg.call_sites.len(), collect_start.elapsed().as_secs_f64()));
 
         // Resolve each call site
         let mut edges_to_add: Vec<EdgeToAdd> = Vec::new();
@@ -130,36 +160,47 @@ impl CallGraphBuilder {
         let resolve_loop_start = Instant::now();
         for (i, (site, caller_file)) in all_sites.iter().enumerate() {
             let site_start = Instant::now();
+            let builtins = {
+                use crate::parser::SupportedLanguage;
+                let lang = SupportedLanguage::from_path(caller_file);
+                match lang {
+                    SupportedLanguage::JavaScript
+                    | SupportedLanguage::JavaScriptJsx
+                    | SupportedLanguage::TypeScript
+                    | SupportedLanguage::TypeScriptTsx => &js_builtins_set,
+                    _ => &py_builtins,
+                }
+            };
             if let CallResolution::Resolved(callee_idx) =
-                Self::resolve_callee(cpg, site, caller_file, symbol_index, &builtins)
+                Self::resolve_callee(cpg, site, caller_file, symbol_index, builtins)
             {
                 collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
                 resolved_count += 1;
             }
             let site_elapsed = site_start.elapsed();
             if site_elapsed.as_millis() > 100 {
-                eprintln!("[DIAG] resolve_all: slow call site #{} ({:.2}s): {} -> {} in {}",
+                crate::diag::diag_log(&format!("[DIAG] resolve_all: slow call site #{} ({:.2}s): {} -> {} in {}",
                     i, site_elapsed.as_secs_f64(),
                     site.callee_name,
                     cpg.graph.node_weight(site.caller_func_idx)
                         .map(|n| n.name.as_str()).unwrap_or("?"),
-                    caller_file.display());
+                    caller_file.display()));
             }
             if (i + 1) % 1000 == 0 {
-                eprintln!("[DIAG] resolve_all: progress {}/{} sites ({} resolved, {:.2}s elapsed)",
-                    i + 1, all_sites.len(), resolved_count, resolve_loop_start.elapsed().as_secs_f64());
+                crate::diag::diag_log(&format!("[DIAG] resolve_all: progress {}/{} sites ({} resolved, {:.2}s elapsed)",
+                    i + 1, all_sites.len(), resolved_count, resolve_loop_start.elapsed().as_secs_f64()));
             }
         }
-        eprintln!("[DIAG] resolve_all: resolution loop completed in {:.2}s ({}/{} resolved)",
-            resolve_loop_start.elapsed().as_secs_f64(), resolved_count, all_sites.len());
+        crate::diag::diag_log(&format!("[DIAG] resolve_all: resolution loop completed in {:.2}s ({}/{} resolved)",
+            resolve_loop_start.elapsed().as_secs_f64(), resolved_count, all_sites.len()));
 
         // Apply all edges
         let apply_start = Instant::now();
         for edge in edges_to_add {
             cpg.graph.add_edge(edge.source, edge.target, edge.weight);
         }
-        eprintln!("[DIAG] resolve_all: edge application completed in {:.2}s", apply_start.elapsed().as_secs_f64());
-        eprintln!("[DIAG] resolve_all: total time {:.2}s", resolve_start.elapsed().as_secs_f64());
+        crate::diag::diag_log(&format!("[DIAG] resolve_all: edge application completed in {:.2}s", apply_start.elapsed().as_secs_f64()));
+        crate::diag::diag_log(&format!("[DIAG] resolve_all: total time {:.2}s", resolve_start.elapsed().as_secs_f64()));
     }
 
     // -----------------------------------------------------------------------
@@ -168,7 +209,7 @@ impl CallGraphBuilder {
 
     /// After updating a file, re-resolve its call sites and any cross-file references.
     pub fn resolve_file(cpg: &mut CpgLayer, file_path: &Path, symbol_index: &SymbolIndex) {
-        let builtins = python_builtins();
+        let builtins = builtins_for_path(file_path);
 
         // Remove existing inter-procedural edges for functions in this file
         Self::remove_interprocedural_edges_for_file(cpg, file_path);
@@ -587,7 +628,7 @@ impl CallGraphBuilder {
     /// Used by the MCP get_callers tool to add new CalledBy edges after building
     /// more dependent files, without destroying edges from prior tool calls.
     pub fn resolve_new_callers(cpg: &mut CpgLayer, file_path: &Path, symbol_index: &SymbolIndex) {
-        let builtins = python_builtins();
+        let builtins = builtins_for_path(file_path);
 
         // Collect function names defined in this file
         let file_func_names: HashSet<String> = cpg
@@ -922,7 +963,7 @@ fn extract_calls_from_node(
     func_idx: NodeIndex,
     sites: &mut Vec<CallSite>,
 ) {
-    if node.kind() == "call" {
+    if node.kind() == "call" || node.kind() == "call_expression" {
         if let Some(site) = parse_call_node(node, source, stmt_idx, func_idx) {
             sites.push(site);
         }
@@ -955,6 +996,7 @@ fn parse_call_node(
             (name, None)
         }
         "attribute" => {
+            // Python: obj.method
             let attr_name = function_node
                 .child_by_field_name("attribute")?
                 .utf8_text(source.as_bytes())
@@ -966,6 +1008,20 @@ fn parse_call_node(
                 .ok()?
                 .to_string();
             (attr_name, Some(object))
+        }
+        "member_expression" => {
+            // JS/TS: obj.method
+            let prop_name = function_node
+                .child_by_field_name("property")?
+                .utf8_text(source.as_bytes())
+                .ok()?
+                .to_string();
+            let object = function_node
+                .child_by_field_name("object")?
+                .utf8_text(source.as_bytes())
+                .ok()?
+                .to_string();
+            (prop_name, Some(object))
         }
         _ => return None,
     };
@@ -1009,8 +1065,8 @@ fn extract_arguments(
                     .to_string();
                 keyword.push((name, value));
             }
-            "list_splat" | "dictionary_splat" => {
-                // *args, **kwargs — skip for now
+            "list_splat" | "dictionary_splat" | "spread_element" => {
+                // *args, **kwargs, ...args — skip for now
             }
             _ => {
                 if let Ok(text) = child.utf8_text(source.as_bytes()) {

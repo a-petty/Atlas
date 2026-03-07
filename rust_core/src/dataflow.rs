@@ -122,13 +122,15 @@ impl DataFlowAnalyzer {
 
         // Initialize worklist with all nodes
         let mut worklist: VecDeque<NodeIndex> = cfg_nodes.iter().copied().collect();
+        let mut in_worklist: HashSet<NodeIndex> = cfg_nodes.iter().copied().collect();
 
         // Safety cap: reaching definitions converges in O(nodes * variables) iterations.
         // This limit prevents hangs from pathological CFG shapes or bugs.
-        const MAX_ITERATIONS: usize = 100_000;
+        const MAX_ITERATIONS: usize = 5_000;
         let mut iterations: usize = 0;
 
         while let Some(node_idx) = worklist.pop_front() {
+            in_worklist.remove(&node_idx);
             iterations += 1;
             if iterations > MAX_ITERATIONS {
                 break;
@@ -165,7 +167,9 @@ impl DataFlowAnalyzer {
                             | CpgEdge::ControlFlowFalse
                             | CpgEdge::ControlFlowException
                             | CpgEdge::ControlFlowBack => {
-                                worklist.push_back(target);
+                                if in_worklist.insert(target) {
+                                    worklist.push_back(target);
+                                }
                             }
                             _ => {}
                         }
@@ -257,12 +261,19 @@ fn extract_def_use(
 fn dispatch_def_use(ts_node: tree_sitter::Node, source: &str, stmt_kind: Option<&StatementKind>) -> StmtDefUse {
     // Primary dispatch: use the actual tree-sitter node kind
     match ts_node.kind() {
-        "assignment" | "augmented_assignment" => extract_assignment_def_use(ts_node, source),
-        "for_statement" => extract_for_def_use(ts_node, source),
+        "assignment" | "augmented_assignment"
+        | "assignment_expression" | "augmented_assignment_expression" => {
+            extract_assignment_def_use(ts_node, source)
+        }
+        "for_statement" | "for_in_statement" => extract_for_def_use(ts_node, source),
         "with_statement" => extract_with_def_use(ts_node, source),
-        "if_statement" | "while_statement" | "elif_clause" => extract_if_while_def_use(ts_node, source),
+        "if_statement" | "while_statement" | "elif_clause"
+        | "do_statement" | "switch_statement" => extract_if_while_def_use(ts_node, source),
         "import_statement" | "import_from_statement" => extract_import_def_use(ts_node, source),
         "expression_statement" => extract_expression_statement_def_use(ts_node, source),
+        "variable_declaration" | "lexical_declaration" => {
+            extract_js_var_declaration_def_use(ts_node, source)
+        }
         _ => {
             // Secondary dispatch: use stored statement kind
             match stmt_kind {
@@ -294,7 +305,7 @@ fn extract_assignment_def_use(ts_node: tree_sitter::Node, source: &str) -> StmtD
     let mut uses = Vec::new();
 
     match ts_node.kind() {
-        "assignment" => {
+        "assignment" | "assignment_expression" => {
             if let Some(left) = ts_node.child_by_field_name("left") {
                 collect_target_identifiers(left, source, &mut defs);
             }
@@ -306,11 +317,10 @@ fn extract_assignment_def_use(ts_node: tree_sitter::Node, source: &str) -> StmtD
                 collect_expression_identifiers(type_node, source, &mut uses);
             }
         }
-        "augmented_assignment" => {
+        "augmented_assignment" | "augmented_assignment_expression" => {
             // x += y  →  defs: {x}, uses: {x, y}
             if let Some(left) = ts_node.child_by_field_name("left") {
                 collect_target_identifiers(left, source, &mut defs);
-                // Augmented assignment also reads the target
                 collect_expression_identifiers(left, source, &mut uses);
             }
             if let Some(right) = ts_node.child_by_field_name("right") {
@@ -318,6 +328,26 @@ fn extract_assignment_def_use(ts_node: tree_sitter::Node, source: &str) -> StmtD
             }
         }
         _ => {}
+    }
+
+    StmtDefUse { defs, uses }
+}
+
+/// Extract defs/uses from a JS variable_declaration or lexical_declaration.
+fn extract_js_var_declaration_def_use(ts_node: tree_sitter::Node, source: &str) -> StmtDefUse {
+    let mut defs = Vec::new();
+    let mut uses = Vec::new();
+
+    let mut cursor = ts_node.walk();
+    for child in ts_node.named_children(&mut cursor) {
+        if child.kind() == "variable_declarator" {
+            if let Some(name) = child.child_by_field_name("name") {
+                collect_target_identifiers(name, source, &mut defs);
+            }
+            if let Some(value) = child.child_by_field_name("value") {
+                collect_expression_identifiers(value, source, &mut uses);
+            }
+        }
     }
 
     StmtDefUse { defs, uses }
@@ -634,28 +664,37 @@ fn collect_expression_identifiers(node: tree_sitter::Node, source: &str, out: &m
                 // Filter out special names
                 if name != "self"
                     && name != "cls"
+                    && name != "this"
                     && name != "True"
                     && name != "False"
                     && name != "None"
+                    && name != "true"
+                    && name != "false"
+                    && name != "null"
+                    && name != "undefined"
                     && !out.contains(&name)
                 {
                     out.push(name);
                 }
             }
         }
-        "attribute" => {
+        "attribute" | "member_expression" => {
             // For `obj.attr`, only collect `obj` (the root object), not `attr`
             if let Some(object) = node.child_by_field_name("object") {
                 collect_expression_identifiers(object, source, out);
             }
         }
         "string" | "integer" | "float" | "true" | "false" | "none"
-        | "concatenated_string" | "string_content" | "escape_sequence" => {
+        | "concatenated_string" | "string_content" | "escape_sequence"
+        | "number" | "template_string" | "template_literal_type"
+        | "regex" | "null" | "undefined" => {
             // Skip literals
         }
         "comment" => {}
-        // For function/class definitions nested inside (shouldn't happen in statements, but be safe)
-        "function_definition" | "async_function_definition" | "class_definition" => {}
+        // For function/class definitions nested inside — don't descend
+        "function_definition" | "async_function_definition" | "class_definition"
+        | "function_declaration" | "generator_function_declaration"
+        | "class_declaration" | "arrow_function" | "function" | "function_expression" => {}
         "lambda" => {
             // Don't descend into lambda bodies for now
         }
