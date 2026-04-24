@@ -1,5 +1,5 @@
 use crate::cpg::CpgLayer;
-use crate::import_resolver::{ImportResolver, JsTsImportResolver, PythonImportResolver};
+use crate::import_resolver::{ImportResolver, JsTsImportResolver, PythonImportResolver, ResolverGroup};
 use crate::parser::{self, Symbol, SymbolHarvester, SupportedLanguage};
 use crate::symbol_table::SymbolIndex;
 use log::{debug, info, warn};
@@ -232,7 +232,11 @@ pub struct RepoGraph {
     pub path_to_idx: HashMap<PathBuf, NodeIndex>,
     /// The global index of all symbols in the repository.
     pub symbol_index: SymbolIndex,
-    pub import_resolver: Box<dyn ImportResolver>,
+    /// Per-language import resolvers, keyed by `ResolverGroup` so JS/TS
+    /// variants share a single resolver. `BTreeMap` gives deterministic
+    /// iteration order across runs, which matters for stable statistics
+    /// output (tests, snapshot diffs).
+    pub import_resolvers: BTreeMap<ResolverGroup, Box<dyn ImportResolver>>,
     pub symbol_harvester: SymbolHarvester,
     /// Flag to indicate if PageRank needs recalculation.
     pub pagerank_dirty: bool,
@@ -247,16 +251,50 @@ pub struct RepoGraph {
 }
 
 impl RepoGraph {
+    /// Legacy single-language constructor. Preserved for backward
+    /// compatibility; forwards to `new_multi` with a one-element list.
+    /// Panics on unrecognized language strings, matching prior behavior.
+    ///
+    /// Prefer `new_multi` for new code — it supports polyglot repos.
     pub fn new(project_root: &Path, language: &str, ignored_dirs: &[String], source_roots: Option<&[String]>) -> Self {
+        let group = ResolverGroup::from_legacy_str(language)
+            .unwrap_or_else(|| panic!("Unsupported language: {}", language));
+        Self::new_multi(project_root, &[group], ignored_dirs, source_roots)
+    }
+
+    /// Multi-language constructor. Builds one resolver per `ResolverGroup`
+    /// in `groups`. An empty `groups` list is valid and produces a graph
+    /// that tracks files but has no import/symbol edges (embeddings-only
+    /// usage).
+    pub fn new_multi(
+        project_root: &Path,
+        groups: &[ResolverGroup],
+        ignored_dirs: &[String],
+        source_roots: Option<&[String]>,
+    ) -> Self {
         let canonical_root = project_root.canonicalize()
             .unwrap_or_else(|_| project_root.to_path_buf());
-        let import_resolver: Box<dyn ImportResolver> = match language.to_lowercase().as_str() {
-            "python" => Box::new(PythonImportResolver::new(&canonical_root, ignored_dirs, source_roots)),
-            "javascript" | "typescript" | "js" | "ts" => {
-                Box::new(JsTsImportResolver::new(&canonical_root, ignored_dirs))
+
+        let mut import_resolvers: BTreeMap<ResolverGroup, Box<dyn ImportResolver>> = BTreeMap::new();
+        for group in groups {
+            // Skip duplicates silently — callers may have built the list
+            // via detection that can yield repeats.
+            if import_resolvers.contains_key(group) {
+                continue;
             }
-            _ => panic!("Unsupported language: {}", language),
-        };
+            let resolver: Box<dyn ImportResolver> = match group {
+                ResolverGroup::Python => Box::new(PythonImportResolver::new(
+                    &canonical_root,
+                    ignored_dirs,
+                    source_roots,
+                )),
+                ResolverGroup::JsTs => Box::new(JsTsImportResolver::new(
+                    &canonical_root,
+                    ignored_dirs,
+                )),
+            };
+            import_resolvers.insert(*group, resolver);
+        }
 
         let cache_size = NonZeroUsize::new(500).unwrap(); // Cache 500 skeletons
 
@@ -264,7 +302,7 @@ impl RepoGraph {
             graph: DiGraph::new(),
             path_to_idx: HashMap::new(),
             symbol_index: SymbolIndex::new(),
-            import_resolver,
+            import_resolvers,
             symbol_harvester: SymbolHarvester::new(),
             pagerank_dirty: true,
             unresolved_imports: HashMap::new(),
@@ -272,6 +310,22 @@ impl RepoGraph {
             skeleton_cache: RwLock::new(LruCache::new(cache_size)),
             cpg: None,
         }
+    }
+
+    /// Resolver for a file's language, or None if no resolver is registered
+    /// for it. Files whose language has no registered resolver fall through
+    /// silently — they still appear as graph nodes (for PageRank centrality
+    /// and embeddings) but contribute no import/symbol edges.
+    fn resolver_for(&self, lang: SupportedLanguage) -> Option<&dyn ImportResolver> {
+        ResolverGroup::from_language(lang)
+            .and_then(|g| self.import_resolvers.get(&g))
+            .map(|b| b.as_ref())
+    }
+
+    /// Resolver for a file at a specific path. Convenience wrapper around
+    /// `resolver_for` that uses `SupportedLanguage::from_path`.
+    fn resolver_for_path(&self, path: &Path) -> Option<&dyn ImportResolver> {
+        self.resolver_for(SupportedLanguage::from_path(path))
     }
 
     /// Enable the CPG overlay layer.
@@ -508,8 +562,13 @@ impl RepoGraph {
         let new_uses: Vec<String> = symbols.iter().filter(|s| !s.is_definition).map(|s| s.name.clone()).collect();
 
 
-        // Get NEW imports (using the existing tree)
-        let new_import_paths = self.import_resolver.find_imports(&tree, file_path, new_source.as_bytes());
+        // Get NEW imports (using the existing tree). Files whose language
+        // has no registered resolver produce no imports — same behavior as
+        // a file with zero imports; graph edges for this file will be bare.
+        let new_import_paths = self
+            .resolver_for(lang)
+            .map(|r| r.find_imports(&tree, file_path, new_source.as_bytes()))
+            .unwrap_or_default();
 
         // Compare hashes
         let new_imports_hash = FileNode::hash_imports(&new_import_paths);
@@ -695,7 +754,10 @@ impl RepoGraph {
             }
         }
 
-        let new_import_paths = self.import_resolver.find_imports(&tree, file_path, source_code.as_bytes());
+        let new_import_paths = self
+            .resolver_for(lang)
+            .map(|r| r.find_imports(&tree, file_path, source_code.as_bytes()))
+            .unwrap_or_default();
 
         // 4. Update the node in the graph
         {
@@ -932,7 +994,10 @@ impl RepoGraph {
 
                         let symbol_harvester = SymbolHarvester::new(); // Per-thread harvester
                         let symbols = symbol_harvester.harvest(&tree, &source_code, lang);
-                        let imports = self.import_resolver.find_imports(&tree, path, source_code.as_bytes());
+                        let imports = self
+                            .resolver_for(lang)
+                            .map(|r| r.find_imports(&tree, path, source_code.as_bytes()))
+                            .unwrap_or_default();
                         let content_hash = FileNode::hash_content(&source_code);
 
                         return Some(FileParseResult {
@@ -1087,7 +1152,10 @@ impl RepoGraph {
         let symbols: Vec<Symbol> = self.symbol_harvester.harvest(&tree, content, lang);
         let defs: Vec<String> = symbols.iter().filter(|s| s.is_definition).map(|s| s.name.clone()).collect();
         let uses: Vec<String> = symbols.iter().filter(|s| !s.is_definition).map(|s| s.name.clone()).collect();
-        let imports = self.import_resolver.find_imports(&tree, &path, content.as_bytes());
+        let imports = self
+            .resolver_for(lang)
+            .map(|r| r.find_imports(&tree, &path, content.as_bytes()))
+            .unwrap_or_default();
         
         // 3. NODE CREATION
         let file_node = FileNode::new(
@@ -1544,14 +1612,19 @@ impl RepoGraph {
             Some(c) => c,
             None => return,
         };
-        // Collect (path, bindings) pairs using &self.import_resolver and &cpg (both shared refs)
+        // Collect (path, bindings) pairs using &self.import_resolvers and
+        // &cpg (both shared refs). Files whose language has no resolver
+        // contribute no bindings, same behavior as files with no imports.
         let all_bindings: Vec<(PathBuf, Vec<crate::import_resolver::ImportBinding>)> = cpg
             .trees
             .keys()
             .filter_map(|path| {
                 let tree = cpg.trees.get(path)?;
                 let source = cpg.sources.get(path)?;
-                let bindings = self.import_resolver.find_import_bindings(tree, path, source.as_bytes());
+                let bindings = self
+                    .resolver_for_path(path)
+                    .map(|r| r.find_import_bindings(tree, path, source.as_bytes()))
+                    .unwrap_or_default();
                 if bindings.is_empty() {
                     None
                 } else {
@@ -1582,7 +1655,10 @@ impl RepoGraph {
                 Some(s) => s,
                 None => return,
             };
-            self.import_resolver.find_import_bindings(tree, file_path, source.as_bytes())
+            self
+                .resolver_for_path(file_path)
+                .map(|r| r.find_import_bindings(tree, file_path, source.as_bytes()))
+                .unwrap_or_default()
         };
         if let Some(cpg) = &mut self.cpg {
             if bindings.is_empty() {
@@ -1602,6 +1678,30 @@ impl RepoGraph {
             }
         });
 
+        // Aggregate per-resolver stats across all registered resolvers.
+        // Counts sum; list-valued stats (source_roots, known_root_modules)
+        // concatenate and dedupe for stable output.
+        let source_roots: Vec<PathBuf> = {
+            let mut v: Vec<PathBuf> = self
+                .import_resolvers
+                .values()
+                .flat_map(|r| r.get_source_roots())
+                .collect();
+            v.sort();
+            v.dedup();
+            v
+        };
+        let known_root_modules: Vec<String> = {
+            let mut v: Vec<String> = self
+                .import_resolvers
+                .values()
+                .flat_map(|r| r.get_known_root_modules())
+                .collect();
+            v.sort();
+            v.dedup();
+            v
+        };
+
         GraphStatistics {
             node_count: self.graph.node_count(),
             edge_count: self.graph.edge_count(),
@@ -1610,11 +1710,23 @@ impl RepoGraph {
             total_definitions: self.symbol_index.definitions.len(),
             total_files_with_usages: self.symbol_index.usages.len(),
             unresolved_import_count: self.unresolved_imports.values().map(|s| s.len()).sum(),
-            source_roots: self.import_resolver.get_source_roots(),
-            module_index_size: self.import_resolver.module_index_size(),
-            known_root_modules: self.import_resolver.get_known_root_modules(),
-            attempted_imports: self.import_resolver.get_attempted_imports(),
-            failed_imports: self.import_resolver.get_failed_imports(),
+            source_roots,
+            module_index_size: self
+                .import_resolvers
+                .values()
+                .map(|r| r.module_index_size())
+                .sum(),
+            known_root_modules,
+            attempted_imports: self
+                .import_resolvers
+                .values()
+                .map(|r| r.get_attempted_imports())
+                .sum(),
+            failed_imports: self
+                .import_resolvers
+                .values()
+                .map(|r| r.get_failed_imports())
+                .sum(),
         }
     }
 
@@ -1633,7 +1745,22 @@ impl RepoGraph {
     /// couldn't turn into paths at all (e.g., "celery", "app.models.ghost"),
     /// which is what diagnostics actually want.
     pub fn get_failed_import_names(&self, limit: usize) -> Vec<(String, usize)> {
-        self.import_resolver.get_failed_import_names(limit)
+        // Merge counts across all registered resolvers, then re-sort and
+        // truncate. Over-fetch per resolver so the merge has enough tail
+        // to produce a good top-N after de-duplicating any name that
+        // appears in multiple resolvers (rare but possible — e.g., a
+        // module name that matches both a Python and a JS package).
+        let per_resolver_limit = limit.saturating_mul(2).max(limit);
+        let mut merged: HashMap<String, usize> = HashMap::new();
+        for r in self.import_resolvers.values() {
+            for (name, count) in r.get_failed_import_names(per_resolver_limit) {
+                *merged.entry(name).or_insert(0) += count;
+            }
+        }
+        let mut v: Vec<(String, usize)> = merged.into_iter().collect();
+        v.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        v.truncate(limit);
+        v
     }
 
     /// Get incoming dependencies for a file
@@ -1731,11 +1858,24 @@ impl RepoGraph {
     }
 
     pub fn debug_module_lookup(&self, module_path: &str) -> Option<PathBuf> {
-        self.import_resolver.debug_module_lookup(module_path)
+        // Try each registered resolver in `ResolverGroup` order (Python
+        // before JsTs via BTreeMap ordering). Python dotted names and
+        // JS/TS slash paths don't collide in practice, so "first match
+        // wins" yields the same result as any other policy.
+        for r in self.import_resolvers.values() {
+            if let Some(p) = r.debug_module_lookup(module_path) {
+                return Some(p);
+            }
+        }
+        None
     }
 
     pub fn debug_resolve_import(&self, import_source: &str, current_file: &Path) -> Vec<(String, String)> {
-        self.import_resolver.debug_resolve_import(import_source, current_file)
+        // Dispatch to the resolver owning this file's language, if any.
+        self
+            .resolver_for_path(current_file)
+            .map(|r| r.debug_resolve_import(import_source, current_file))
+            .unwrap_or_default()
     }
 
 

@@ -17,6 +17,55 @@ use crate::parser::SupportedLanguage;
 /// pathological inputs without losing signal for the common hot names.
 const MAX_TRACKED_FAILED_NAMES: usize = 2000;
 
+/// Resolver groups — coarser than `SupportedLanguage` because a single
+/// resolver serves multiple language variants (e.g., all four of
+/// JavaScript/JavaScriptJsx/TypeScript/TypeScriptTsx share
+/// `JsTsImportResolver`). Used as the key for `RepoGraph`'s resolver map,
+/// with `from_language` performing the variant→group mapping.
+///
+/// The match in `from_language` is intentionally exhaustive (no wildcard):
+/// adding a new `SupportedLanguage` variant forces a compile error here,
+/// making the "which resolver group owns this language?" decision explicit
+/// rather than silently defaulting to None.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ResolverGroup {
+    Python,
+    JsTs,
+}
+
+impl ResolverGroup {
+    /// Returns the resolver group responsible for the given language, or
+    /// None if Atlas has no resolver for it. Languages with no resolver
+    /// are still scanned for embeddings; they just don't contribute to
+    /// the import/symbol graph.
+    pub fn from_language(lang: SupportedLanguage) -> Option<Self> {
+        match lang {
+            SupportedLanguage::Python => Some(ResolverGroup::Python),
+            SupportedLanguage::JavaScript
+            | SupportedLanguage::JavaScriptJsx
+            | SupportedLanguage::TypeScript
+            | SupportedLanguage::TypeScriptTsx => Some(ResolverGroup::JsTs),
+            SupportedLanguage::Go | SupportedLanguage::Rust => None,
+            SupportedLanguage::Unknown => None,
+            // No wildcard arm. New SupportedLanguage variants must be
+            // mapped explicitly here or this file will not compile.
+        }
+    }
+
+    /// Parse a legacy `language: &str` argument (from the pre-multi-language
+    /// API) into a `ResolverGroup`. Returns None for unknown strings so
+    /// callers can decide between erroring and falling back.
+    pub fn from_legacy_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "python" | "py" => Some(ResolverGroup::Python),
+            "javascript" | "js" | "typescript" | "ts" | "jsx" | "tsx" => {
+                Some(ResolverGroup::JsTs)
+            }
+            _ => None,
+        }
+    }
+}
+
 /// Directory names always excluded from module indexing, regardless of
 /// user-supplied ignored_dirs. These are caches, virtualenvs, VCS metadata,
 /// and package-manager directories — content that must never be treated as
