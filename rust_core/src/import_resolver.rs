@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use log::{debug, info};
+use parking_lot::Mutex;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
@@ -9,6 +10,12 @@ use tree_sitter::{Query, QueryCursor, Tree};
 use walkdir::WalkDir;
 use crate::diag::diag_log;
 use crate::parser::SupportedLanguage;
+
+/// Maximum number of distinct unresolved-import names tracked for diagnostics.
+/// The `failed_import_names` registry stops accepting new names beyond this cap
+/// but keeps incrementing counts for names already present. Bounds memory on
+/// pathological inputs without losing signal for the common hot names.
+const MAX_TRACKED_FAILED_NAMES: usize = 2000;
 
 /// Directory names always excluded from module indexing, regardless of
 /// user-supplied ignored_dirs. These are caches, virtualenvs, VCS metadata,
@@ -153,6 +160,14 @@ pub trait ImportResolver: Debug + Send + Sync {
 
     /// Get the number of failed import resolutions. Default: 0.
     fn get_failed_imports(&self) -> usize { 0 }
+
+    /// Get the top `limit` unresolved import names sorted by request count
+    /// descending (ties broken alphabetically). Default: empty — resolvers
+    /// that don't track per-name failures return nothing here so callers
+    /// can safely fall back to the scalar `get_failed_imports()` count.
+    fn get_failed_import_names(&self, _limit: usize) -> Vec<(String, usize)> {
+        Vec::new()
+    }
 
     /// Get the number of detected third-party packages. Default: 0.
     fn get_third_party_count(&self) -> usize { 0 }
@@ -449,6 +464,13 @@ pub struct PythonImportResolver {
     attempted_imports: AtomicUsize,
     /// Number of failed import resolutions (atomic for thread-safe counting).
     failed_imports: AtomicUsize,
+    /// Per-name counter of unresolved module names — e.g. `{"celery": 42,
+    /// "app.models.ghost": 1}`. Lets diagnostics distinguish cosmetic
+    /// failures (third-party deps not in source roots) from structural ones
+    /// (project modules that actually should resolve). Capped at
+    /// `MAX_TRACKED_FAILED_NAMES` distinct entries; once full, existing
+    /// counts keep climbing but new names are dropped.
+    failed_import_names: Mutex<HashMap<String, usize>>,
     /// Third-party package root module names (auto-detected + hardcoded fallback).
     third_party_packages: HashSet<String>,
 }
@@ -461,6 +483,7 @@ impl std::fmt::Debug for PythonImportResolver {
             .field("source_roots", &self.source_roots)
             .field("attempted_imports", &self.attempted_imports.load(Ordering::Relaxed))
             .field("failed_imports", &self.failed_imports.load(Ordering::Relaxed))
+            .field("failed_import_names_tracked", &self.failed_import_names.lock().len())
             .field("third_party_packages_count", &self.third_party_packages.len())
             .finish()
     }
@@ -482,6 +505,7 @@ impl PythonImportResolver {
             source_roots: Vec::new(),
             attempted_imports: AtomicUsize::new(0),
             failed_imports: AtomicUsize::new(0),
+            failed_import_names: Mutex::new(HashMap::new()),
             third_party_packages,
             // Pre-compile the query for performance
             // Pattern 0: absolute import (e.g., `import app.models`)
@@ -520,6 +544,63 @@ impl PythonImportResolver {
         };
         resolver.index_modules();
         resolver
+    }
+
+    // -----------------------------------------------------------------------
+    // Failed-import name tracking (for diagnostics)
+    // -----------------------------------------------------------------------
+
+    /// Record a module name that failed to resolve. Increments the count for
+    /// an existing entry, or adds a new one if we haven't hit the cap. Silent
+    /// drop once `MAX_TRACKED_FAILED_NAMES` is reached.
+    fn record_failed_import(&self, name: &str) {
+        if name.is_empty() {
+            return;
+        }
+        let mut map = self.failed_import_names.lock();
+        if let Some(count) = map.get_mut(name) {
+            *count += 1;
+        } else if map.len() < MAX_TRACKED_FAILED_NAMES {
+            map.insert(name.to_string(), 1);
+        }
+    }
+
+    /// Extract a readable module-name string from an `import_from_statement`
+    /// tree-sitter node so failures can be recorded. Handles both absolute
+    /// (`from app.models import X` → `"app.models"`) and relative
+    /// (`from .foo import X` → `".foo"`, `from .. import Y` → `".."`)
+    /// forms. Returns `None` if the node shape is unexpected.
+    fn extract_from_import_module_name(
+        node: tree_sitter::Node,
+        source: &[u8],
+    ) -> Option<String> {
+        let mn = node.child_by_field_name("module_name")?;
+        match mn.kind() {
+            "dotted_name" => mn.utf8_text(source).ok().map(|s| s.to_string()),
+            "relative_import" => {
+                let mut dots = String::new();
+                let mut module_path: Option<String> = None;
+                let mut cursor = mn.walk();
+                for child in mn.children(&mut cursor) {
+                    match child.kind() {
+                        "import_prefix" => {
+                            dots = child.utf8_text(source).unwrap_or("").to_string();
+                        }
+                        "dotted_name" => {
+                            module_path = child.utf8_text(source).ok().map(|s| s.to_string());
+                        }
+                        _ => {}
+                    }
+                }
+                match (dots.is_empty(), module_path) {
+                    (false, Some(p)) => Some(format!("{}{}", dots, p)),
+                    (false, None) => Some(dots),
+                    (true, Some(p)) => Some(p),
+                    (true, None) => None,
+                }
+            }
+            _ => None,
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -1590,6 +1671,7 @@ impl ImportResolver for PythonImportResolver {
                                 imports.insert(path);
                             } else {
                                 self.failed_imports.fetch_add(1, Ordering::Relaxed);
+                                self.record_failed_import(text);
                             }
                         }
                     }
@@ -1606,6 +1688,11 @@ impl ImportResolver for PythonImportResolver {
                         );
                         if imports.len() == before {
                             self.failed_imports.fetch_add(1, Ordering::Relaxed);
+                            if let Some(name) =
+                                Self::extract_from_import_module_name(capture.node, source)
+                            {
+                                self.record_failed_import(&name);
+                            }
                         }
                     }
                     _ => (),
@@ -1693,6 +1780,16 @@ impl ImportResolver for PythonImportResolver {
 
     fn get_failed_imports(&self) -> usize {
         self.failed_imports.load(Ordering::Relaxed)
+    }
+
+    fn get_failed_import_names(&self, limit: usize) -> Vec<(String, usize)> {
+        let map = self.failed_import_names.lock();
+        let mut v: Vec<(String, usize)> =
+            map.iter().map(|(k, v)| (k.clone(), *v)).collect();
+        // Sort by count descending, then alphabetically for stable output.
+        v.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        v.truncate(limit);
+        v
     }
 
     fn get_third_party_count(&self) -> usize {
@@ -3221,5 +3318,184 @@ where = ["src"]
                 banned, keys
             );
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Failed-import name tracking (Priority 1: diagnose failure composition)
+    // -----------------------------------------------------------------------
+
+    /// Real parse path: a source file importing an unresolvable module
+    /// should surface in `get_failed_import_names`.
+    #[test]
+    fn test_failed_import_names_records_unresolvable_module() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+
+        // Real package so the resolver has something to index, plus one
+        // file that imports something that doesn't exist anywhere.
+        create_dummy_file(&root_path, "src/app/__init__.py", "");
+        create_dummy_file(
+            &root_path,
+            "src/app/main.py",
+            "from totally_nonexistent_pkg import Widget\nimport app.missing_module\n",
+        );
+
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+        let mut parser = Parser::new();
+        parser.set_language(tree_sitter_python::language()).unwrap();
+
+        let source = "from totally_nonexistent_pkg import Widget\nimport app.missing_module\n";
+        let tree = parser.parse(source, None).unwrap();
+        let main_path = root_path.join("src/app/main.py");
+        let _ = resolver.find_imports(&tree, &main_path, source.as_bytes());
+
+        let names = resolver.get_failed_import_names(10);
+        let name_set: HashSet<&String> = names.iter().map(|(n, _)| n).collect();
+
+        assert!(
+            name_set.contains(&"totally_nonexistent_pkg".to_string()),
+            "Should record unresolved `from` import. Got: {:?}",
+            names
+        );
+        assert!(
+            name_set.contains(&"app.missing_module".to_string()),
+            "Should record unresolved bare `import`. Got: {:?}",
+            names
+        );
+    }
+
+    /// Repeated calls to `record_failed_import` with the same name must
+    /// aggregate into a single entry with an accumulated count.
+    #[test]
+    fn test_failed_import_names_aggregates_by_count() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+        create_dummy_file(&root_path, "src/app/__init__.py", "");
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+
+        for _ in 0..5 { resolver.record_failed_import("celery"); }
+        for _ in 0..2 { resolver.record_failed_import("redis"); }
+        resolver.record_failed_import("jose");
+
+        let names = resolver.get_failed_import_names(10);
+        let map: HashMap<String, usize> = names.into_iter().collect();
+
+        assert_eq!(map.get("celery"), Some(&5), "celery should aggregate to 5");
+        assert_eq!(map.get("redis"), Some(&2), "redis should aggregate to 2");
+        assert_eq!(map.get("jose"), Some(&1), "jose should have count 1");
+        assert_eq!(map.len(), 3, "no spurious entries: {:?}", map);
+    }
+
+    /// Hitting `MAX_TRACKED_FAILED_NAMES` must stop recording new names but
+    /// keep incrementing existing ones. Bounds memory on pathological input.
+    #[test]
+    fn test_failed_import_names_respects_cap() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+        create_dummy_file(&root_path, "src/app/__init__.py", "");
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+
+        // Drive MAX + 500 unique names
+        for i in 0..(MAX_TRACKED_FAILED_NAMES + 500) {
+            resolver.record_failed_import(&format!("pkg_{}", i));
+        }
+
+        let stored = resolver.failed_import_names.lock().len();
+        assert_eq!(
+            stored, MAX_TRACKED_FAILED_NAMES,
+            "Registry should cap at {}, got {}",
+            MAX_TRACKED_FAILED_NAMES, stored
+        );
+
+        // Existing names still increment post-cap.
+        let name_in_registry = format!("pkg_{}", 0);
+        let before = *resolver
+            .failed_import_names
+            .lock()
+            .get(&name_in_registry)
+            .expect("pkg_0 should be in registry (added pre-cap)");
+        resolver.record_failed_import(&name_in_registry);
+        let after = *resolver
+            .failed_import_names
+            .lock()
+            .get(&name_in_registry)
+            .unwrap();
+        assert_eq!(after, before + 1, "Existing names must still increment after cap");
+
+        // New names dropped silently post-cap.
+        resolver.record_failed_import("pkg_that_wasnt_there");
+        assert!(
+            !resolver.failed_import_names.lock().contains_key("pkg_that_wasnt_there"),
+            "New names must be dropped once cap is reached"
+        );
+    }
+
+    /// Output of `get_failed_import_names` must be sorted by count descending,
+    /// with ties broken alphabetically for stable output.
+    #[test]
+    fn test_failed_import_names_sorted_by_count_desc() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+        create_dummy_file(&root_path, "src/app/__init__.py", "");
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+
+        for _ in 0..10 { resolver.record_failed_import("hot_module"); }
+        for _ in 0..3  { resolver.record_failed_import("warm_module"); }
+        resolver.record_failed_import("zzz_tie");
+        resolver.record_failed_import("aaa_tie");
+
+        let names = resolver.get_failed_import_names(10);
+
+        assert_eq!(names[0], ("hot_module".to_string(), 10),  "Highest count first");
+        assert_eq!(names[1], ("warm_module".to_string(), 3),  "Then next-highest");
+        // Tie-break: alphabetical, so "aaa_tie" before "zzz_tie"
+        assert_eq!(names[2], ("aaa_tie".to_string(), 1),      "Alphabetical tie-break: aaa first");
+        assert_eq!(names[3], ("zzz_tie".to_string(), 1),      "Alphabetical tie-break: zzz second");
+    }
+
+    /// `limit` parameter must truncate output; unreachable entries should not
+    /// appear, but all remaining entries still come in sorted order.
+    #[test]
+    fn test_failed_import_names_respects_limit() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+        create_dummy_file(&root_path, "src/app/__init__.py", "");
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+
+        for i in 0..10 {
+            // Make counts descend so ordering is deterministic.
+            for _ in 0..(10 - i) {
+                resolver.record_failed_import(&format!("name_{:02}", i));
+            }
+        }
+
+        let names = resolver.get_failed_import_names(3);
+        assert_eq!(names.len(), 3, "limit=3 must return exactly 3 entries");
+        assert_eq!(names[0].0, "name_00");
+        assert_eq!(names[1].0, "name_01");
+        assert_eq!(names[2].0, "name_02");
+    }
+
+    /// Default trait impl returns empty — used by JsTsImportResolver today,
+    /// and by any future resolver that doesn't opt into per-name tracking.
+    /// Callers must tolerate an empty result and fall back to the scalar
+    /// `get_failed_imports` count.
+    #[test]
+    fn test_failed_import_names_default_impl_empty() {
+        #[derive(Debug)]
+        struct Stub;
+        impl ImportResolver for Stub {
+            fn find_imports<'a>(
+                &self,
+                _tree: &'a Tree,
+                _current_file: &Path,
+                _source: &'a [u8],
+            ) -> HashSet<PathBuf> {
+                HashSet::new()
+            }
+            fn file_extensions(&self) -> &[&str] { &[] }
+        }
+        let names = Stub.get_failed_import_names(100);
+        assert!(names.is_empty(), "Default trait impl must return empty, got {:?}", names);
     }
 }

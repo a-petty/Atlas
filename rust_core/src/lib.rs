@@ -444,6 +444,14 @@ impl PyRepoGraph {
             .collect()
     }
 
+    /// Top unresolved-import *names* with their request counts, sorted by
+    /// count desc. Use this to tell whether a high `failed_imports` total
+    /// is cosmetic (third-party deps) or structural (project modules).
+    #[pyo3(signature = (limit = 50))]
+    fn get_failed_import_names(&self, limit: usize) -> Vec<(String, usize)> {
+        self.graph.get_failed_import_names(limit)
+    }
+
     /// Diagnostic: look up a module path in the import resolver's index.
     fn debug_module_lookup(&self, module_path: &str) -> Option<String> {
         self.graph.debug_module_lookup(module_path)

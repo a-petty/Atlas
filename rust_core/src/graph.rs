@@ -1626,6 +1626,16 @@ impl RepoGraph {
             .collect()
     }
 
+    /// Top unresolved-import *names* with their request counts, sorted by
+    /// count desc. Distinct from `get_unresolved_imports_sample`, which
+    /// returns resolved paths that weren't yet in the graph — those are
+    /// almost always empty. This method surfaces the names the resolver
+    /// couldn't turn into paths at all (e.g., "celery", "app.models.ghost"),
+    /// which is what diagnostics actually want.
+    pub fn get_failed_import_names(&self, limit: usize) -> Vec<(String, usize)> {
+        self.import_resolver.get_failed_import_names(limit)
+    }
+
     /// Get incoming dependencies for a file
     pub fn get_incoming_dependencies(&self, file_path: &Path) -> Vec<(PathBuf, EdgeKind)> {
         let canonical = file_path.canonicalize().unwrap_or_else(|_| file_path.to_path_buf());
