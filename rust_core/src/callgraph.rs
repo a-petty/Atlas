@@ -194,10 +194,15 @@ impl CallGraphBuilder {
         crate::diag::diag_log(&format!("[DIAG] resolve_all: resolution loop completed in {:.2}s ({}/{} resolved)",
             resolve_loop_start.elapsed().as_secs_f64(), resolved_count, all_sites.len()));
 
-        // Apply all edges
+        // Apply all edges (with dedup — same pattern as resolve_file / resolve_new_callers)
         let apply_start = Instant::now();
         for edge in edges_to_add {
-            cpg.graph.add_edge(edge.source, edge.target, edge.weight);
+            let already_exists = cpg.graph
+                .edges_connecting(edge.source, edge.target)
+                .any(|e| *e.weight() == edge.weight);
+            if !already_exists {
+                cpg.graph.add_edge(edge.source, edge.target, edge.weight);
+            }
         }
         crate::diag::diag_log(&format!("[DIAG] resolve_all: edge application completed in {:.2}s", apply_start.elapsed().as_secs_f64()));
         crate::diag::diag_log(&format!("[DIAG] resolve_all: total time {:.2}s", resolve_start.elapsed().as_secs_f64()));

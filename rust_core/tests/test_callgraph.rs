@@ -1292,3 +1292,44 @@ fn test_resolve_new_callers_idempotent() {
     CallGraphBuilder::resolve_new_callers(&mut cpg, &path_a, &symbol_index);
     assert_eq!(count_calls_edges(&cpg, use1_idx, helper_idx), 1, "Second resolve: still 1 edge");
 }
+
+// ============================================================
+// resolve_all Dedup Regression Test (32)
+// ============================================================
+
+// Test 32: resolve_all should NOT produce duplicate Calls/CalledBy edges
+// when a function calls another function multiple times.
+// This was a gap in coverage: tests 22-23 covered resolve_file, tests 30-31
+// covered resolve_new_callers, but nothing verified resolve_all's edge application loop.
+#[test]
+fn test_resolve_all_no_duplicate_edges_multi_call() {
+    // caller() calls helper() THREE times at different lines
+    // → resolve_all should produce exactly 1 Calls(caller,helper) edge, not 3
+    let mut cpg = CpgLayer::new();
+    let source = "def helper():\n    pass\n\ndef caller():\n    helper()\n    x = 1\n    helper()\n    y = 2\n    helper()\n";
+
+    let _path = PathBuf::from("/test/dup_resolve_all.py");
+    build_cpg_for_source(&mut cpg, "/test/dup_resolve_all.py", source);
+
+    let symbol_index = SymbolIndex::new();
+    CallGraphBuilder::resolve_all(&mut cpg, &symbol_index);
+
+    let caller_idx = find_function(&cpg, "/test/dup_resolve_all.py", "caller").unwrap();
+    let helper_idx = find_function(&cpg, "/test/dup_resolve_all.py", "helper").unwrap();
+
+    // CRITICAL ASSERTION: exactly 1 Calls edge, not 3
+    assert_eq!(
+        count_calls_edges(&cpg, caller_idx, helper_idx), 1,
+        "resolve_all must deduplicate Calls edges from multiple call sites to same callee"
+    );
+    assert_eq!(
+        count_called_by_edges(&cpg, helper_idx, caller_idx), 1,
+        "resolve_all must deduplicate CalledBy edges from multiple call sites to same callee"
+    );
+
+    // get_callees/get_callers already have their own HashSet dedup
+    let callees = cpg.get_callees(caller_idx);
+    assert_eq!(callees.len(), 1, "get_callees returns unique callees");
+    let callers = cpg.get_callers(helper_idx);
+    assert_eq!(callers.len(), 1, "get_callers returns unique callers");
+}
