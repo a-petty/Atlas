@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tree_sitter::{Query, QueryCursor, Tree};
 use walkdir::WalkDir;
+use crate::diag::diag_log;
 use crate::parser::SupportedLanguage;
 
 lazy_static! {
@@ -700,22 +701,42 @@ impl PythonImportResolver {
     }
 
     /// Main source root detection pipeline.
-    /// Priority: pyproject.toml → src/ heuristic → legacy depth-1 scan.
+    /// Priority: pyproject.toml → src/ heuristic → pyrightconfig.json → legacy depth-1 scan.
     fn detect_source_roots(&self) -> Vec<PathBuf> {
+        diag_log(&format!("[DIAG] detect_source_roots: project_root={}", self.project_root.display()));
+
         // Priority 1: pyproject.toml-driven discovery
         let pyproject_roots = self.discover_source_roots_from_pyproject();
         if !pyproject_roots.is_empty() {
+            diag_log(&format!("[DIAG] detect_source_roots: pyproject.toml strategy found {} roots: {:?}",
+                pyproject_roots.len(), pyproject_roots));
             return pyproject_roots;
         }
+        diag_log("[DIAG] detect_source_roots: pyproject.toml strategy found nothing");
 
         // Priority 2: src/ layout heuristic
         let src_roots = self.detect_src_layout_heuristic();
         if !src_roots.is_empty() {
+            diag_log(&format!("[DIAG] detect_source_roots: src/ heuristic found {} roots: {:?}",
+                src_roots.len(), src_roots));
             return src_roots;
         }
+        diag_log("[DIAG] detect_source_roots: src/ heuristic found nothing");
 
-        // Priority 3: Legacy depth-1 scan
-        self.detect_source_roots_legacy()
+        // Priority 3: pyrightconfig.json in depth-1 directories
+        let pyright_roots = self.detect_pyright_source_roots();
+        if !pyright_roots.is_empty() {
+            diag_log(&format!("[DIAG] detect_source_roots: pyrightconfig.json strategy found {} roots: {:?}",
+                pyright_roots.len(), pyright_roots));
+            return pyright_roots;
+        }
+        diag_log("[DIAG] detect_source_roots: pyrightconfig.json strategy found nothing");
+
+        // Priority 4: Legacy depth-1 scan
+        let legacy_roots = self.detect_source_roots_legacy();
+        diag_log(&format!("[DIAG] detect_source_roots: legacy scan found {} roots: {:?}",
+            legacy_roots.len(), legacy_roots));
+        legacy_roots
     }
 
     /// Detect source roots for src/ layout projects.
@@ -779,13 +800,55 @@ impl PythonImportResolver {
         roots
     }
 
+    /// Detect source roots by looking for pyrightconfig.json in depth-1 directories.
+    /// The presence of pyrightconfig.json in a subdirectory is a strong signal that
+    /// the subdirectory is a Python source root (e.g., monorepo `backend/` dir).
+    fn detect_pyright_source_roots(&self) -> Vec<PathBuf> {
+        let mut roots = Vec::new();
+
+        let read_dir = match std::fs::read_dir(&self.project_root) {
+            Ok(rd) => rd,
+            Err(_) => return roots,
+        };
+
+        for entry in read_dir.filter_map(Result::ok) {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let dir_name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(n) => n.to_string(),
+                None => continue,
+            };
+            if self.ignored_dirs.contains(&dir_name) {
+                continue;
+            }
+
+            if path.join("pyrightconfig.json").exists() {
+                let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+                diag_log(&format!("[DIAG] pyrightconfig: found pyrightconfig.json in '{}' → source root {}",
+                    dir_name, canonical.display()));
+                info!("Detected source root via pyrightconfig.json: {}", canonical.display());
+                roots.push(canonical);
+            }
+        }
+
+        roots
+    }
+
     /// Discover source roots by reading pyproject.toml files.
     /// Handles UV workspaces (multi-member) and single projects.
     fn discover_source_roots_from_pyproject(&self) -> Vec<PathBuf> {
         let pyproject_path = self.project_root.join("pyproject.toml");
         let pyproject = match parse_pyproject_toml(&pyproject_path) {
-            Some(p) => p,
-            None => return Vec::new(),
+            Some(p) => {
+                diag_log(&format!("[DIAG] pyproject: parsed {}", pyproject_path.display()));
+                p
+            }
+            None => {
+                diag_log(&format!("[DIAG] pyproject: no pyproject.toml at {}", pyproject_path.display()));
+                return Vec::new();
+            }
         };
 
         let mut roots = Vec::new();
@@ -852,6 +915,8 @@ impl PythonImportResolver {
     fn detect_source_roots_legacy(&self) -> Vec<PathBuf> {
         let mut roots = Vec::new();
 
+        diag_log(&format!("[DIAG] legacy scan: project_root={}, ignored_dirs={:?}",
+            self.project_root.display(), self.ignored_dirs));
         info!("Source root detection: scanning project root {:?}", self.project_root);
         info!("Source root detection: ignored_dirs = {:?}", self.ignored_dirs);
 
@@ -876,9 +941,12 @@ impl PythonImportResolver {
 
             // Skip ignored directories
             if self.ignored_dirs.contains(&dir_name) {
+                diag_log(&format!("[DIAG] legacy scan: skipping ignored dir {}", dir_name));
                 debug!("Source root detection: skipping ignored dir {}", dir_name);
                 continue;
             }
+
+            diag_log(&format!("[DIAG] legacy scan: checking depth-1 dir '{}'", dir_name));
 
             // Check if this directory contains at least one Python package.
             // A child dir is a Python package if:
@@ -902,6 +970,8 @@ impl PythonImportResolver {
                     // Check 1: traditional package (has __init__.py)
                     if sub_path.join("__init__.py").exists() {
                         let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+                        diag_log(&format!("[DIAG] legacy scan: '{}' accepted — sub-dir '{}' has __init__.py",
+                            dir_name, sub_name));
                         info!("Detected source root: {} (found package {})",
                               canonical.display(), sub_name);
                         roots.push(canonical);
@@ -923,6 +993,8 @@ impl PythonImportResolver {
                         });
                         if has_python {
                             let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+                            diag_log(&format!("[DIAG] legacy scan: '{}' accepted — sub-dir '{}' is namespace package (has .py files)",
+                                dir_name, sub_name));
                             info!("Detected source root: {} (found namespace package {})",
                                   canonical.display(), sub_name);
                             roots.push(canonical);
@@ -935,6 +1007,7 @@ impl PythonImportResolver {
                 info!("Source root detection: cannot read_dir {}", path.display());
             }
             if !found_package {
+                diag_log(&format!("[DIAG] legacy scan: '{}' rejected — no Python package subdirs found", dir_name));
                 debug!("Source root detection: {} has no Python package subdirs", dir_name);
             }
         }
@@ -1072,6 +1145,8 @@ impl PythonImportResolver {
             }
         }
 
+        diag_log(&format!("[DIAG] index_modules: {} entries ({} source-root-relative variants), source_roots={:?}",
+            self.module_index.len(), sr_variant_count, self.source_roots));
         info!(
             "Module index: {} entries ({} source-root-relative variants)",
             self.module_index.len(),
@@ -2917,5 +2992,103 @@ where = ["src"]
             "Should index 'mylib.core'. Keys: {:?}",
             resolver.module_index.keys().collect::<Vec<_>>()
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: Monorepo backend/ with NO __init__.py anywhere above app/
+    // Mimics FountainOfYouth layout exactly — no backend/__init__.py
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_monorepo_backend_no_init_anywhere() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+
+        // backend/ has NO __init__.py
+        // backend/app/ has NO __init__.py (namespace package)
+        // backend/app/models/ HAS __init__.py (traditional sub-package)
+        create_dummy_file(&root_path, "backend/app/main.py", "from app.models.enums import Foo");
+        create_dummy_file(&root_path, "backend/app/models/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/models/enums.py", "class Foo: pass");
+        create_dummy_file(&root_path, "backend/app/services/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/services/auth.py", "def login(): pass");
+
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+
+        // backend/ should be detected as source root (legacy scan: app/ is namespace package with .py files)
+        let root_names: HashSet<String> = resolver.source_roots.iter()
+            .filter_map(|p| p.file_name().and_then(|n| n.to_str()).map(String::from))
+            .collect();
+        assert!(root_names.contains("backend"),
+            "backend/ should be detected as source root. Found: {:?}", root_names);
+
+        // Source-root-relative module keys should exist
+        assert!(resolver.module_index.contains_key("app.main"),
+            "app.main should be in module index. Keys: {:?}",
+            resolver.module_index.keys().collect::<Vec<_>>());
+        assert!(resolver.module_index.contains_key("app.models.enums"),
+            "app.models.enums should be in module index. Keys: {:?}",
+            resolver.module_index.keys().collect::<Vec<_>>());
+        assert!(resolver.module_index.contains_key("app.services.auth"),
+            "app.services.auth should be in module index. Keys: {:?}",
+            resolver.module_index.keys().collect::<Vec<_>>());
+
+        // Verify import resolution
+        let mut parser = Parser::new();
+        parser.set_language(tree_sitter_python::language()).unwrap();
+        let source = "from app.models.enums import Foo";
+        let tree = parser.parse(source, None).unwrap();
+        let main_path = root_path.join("backend/app/main.py");
+        let imports = resolver.find_imports(&tree, &main_path, source.as_bytes());
+
+        let expected = root_path.join("backend/app/models/enums.py");
+        assert!(imports.contains(&expected),
+            "'from app.models.enums import Foo' should resolve.\nExpected: {:?}\nGot: {:?}",
+            expected, imports);
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: Monorepo with pyrightconfig.json in subdirectory
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_monorepo_with_pyrightconfig() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+
+        // Same layout but with pyrightconfig.json in backend/
+        create_dummy_file(&root_path, "backend/pyrightconfig.json", r#"{"extraPaths": ["."]}"#);
+        create_dummy_file(&root_path, "backend/app/main.py", "from app.models.enums import Foo");
+        create_dummy_file(&root_path, "backend/app/models/__init__.py", "");
+        create_dummy_file(&root_path, "backend/app/models/enums.py", "class Foo: pass");
+        // Add a pyproject.toml at root that does NOT have source root config
+        // (so pyproject detection returns empty, pyrightconfig should kick in)
+        create_dummy_file(&root_path, "pyproject.toml", "[project]\nname = \"myapp\"\n");
+
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+
+        // backend/ should be detected via pyrightconfig.json strategy
+        let root_names: HashSet<String> = resolver.source_roots.iter()
+            .filter_map(|p| p.file_name().and_then(|n| n.to_str()).map(String::from))
+            .collect();
+        assert!(root_names.contains("backend"),
+            "backend/ should be detected as source root via pyrightconfig.json. Found: {:?}\nSource roots: {:?}",
+            root_names, resolver.source_roots);
+
+        // Source-root-relative module keys should exist
+        assert!(resolver.module_index.contains_key("app.models.enums"),
+            "app.models.enums should be in module index. Keys: {:?}",
+            resolver.module_index.keys().collect::<Vec<_>>());
+
+        // Verify import resolution
+        let mut parser = Parser::new();
+        parser.set_language(tree_sitter_python::language()).unwrap();
+        let source = "from app.models.enums import Foo";
+        let tree = parser.parse(source, None).unwrap();
+        let main_path = root_path.join("backend/app/main.py");
+        let imports = resolver.find_imports(&tree, &main_path, source.as_bytes());
+
+        let expected = root_path.join("backend/app/models/enums.py");
+        assert!(imports.contains(&expected),
+            "'from app.models.enums import Foo' should resolve via pyrightconfig source root.\nExpected: {:?}\nGot: {:?}",
+            expected, imports);
     }
 }
