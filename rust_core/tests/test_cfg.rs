@@ -1,4 +1,5 @@
 use semantic_engine::cpg::{CpgEdge, CpgLayer, CpgNodeKind, StatementKind};
+use semantic_engine::import_resolver::ResolverGroup;
 use semantic_engine::graph::RepoGraph;
 use semantic_engine::parser::SupportedLanguage;
 use petgraph::graph::NodeIndex;
@@ -569,7 +570,7 @@ def conditional(x):
     return "non-positive"
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("example.py")];
     graph.build_complete(&paths, &root_path);

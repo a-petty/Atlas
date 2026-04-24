@@ -255,7 +255,13 @@ impl RepoGraph {
     /// compatibility; forwards to `new_multi` with a one-element list.
     /// Panics on unrecognized language strings, matching prior behavior.
     ///
-    /// Prefer `new_multi` for new code — it supports polyglot repos.
+    /// Deprecated: use `new_multi` instead. Supports polyglot repositories,
+    /// takes `&[ResolverGroup]` for type-safe language specification, and
+    /// is the API that Phase 3b auto-detection will build on.
+    #[deprecated(
+        since = "0.2.0",
+        note = "use `new_multi(&[ResolverGroup::X, ...])` instead; this function will be removed in a future release"
+    )]
     pub fn new(project_root: &Path, language: &str, ignored_dirs: &[String], source_roots: Option<&[String]>) -> Self {
         let group = ResolverGroup::from_legacy_str(language)
             .unwrap_or_else(|| panic!("Unsupported language: {}", language));

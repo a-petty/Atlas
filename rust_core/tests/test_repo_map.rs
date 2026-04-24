@@ -1,4 +1,5 @@
 use semantic_engine::graph::RepoGraph;
+use semantic_engine::import_resolver::ResolverGroup;
 use std::fs;
 use tempfile::tempdir;
 
@@ -53,7 +54,7 @@ def test_user():
 "#);
     
     // Build graph
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![
         root_path.join("src/core.py"),
         root_path.join("src/models/user.py"),

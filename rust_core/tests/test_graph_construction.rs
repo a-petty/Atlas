@@ -1,4 +1,5 @@
 use semantic_engine::graph::{RepoGraph, EdgeKind};
+use semantic_engine::import_resolver::ResolverGroup;
 use std::fs;
 use tempfile::tempdir;
 
@@ -26,7 +27,7 @@ utils.helper()
 "#);
     
     // Build graph
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![
         root_path.join("utils.py"),
         root_path.join("main.py"),
@@ -63,7 +64,7 @@ from models import User
 user = User()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![
         root_path.join("models.py"),
         root_path.join("app.py"),
@@ -98,7 +99,7 @@ class MyClass:
 obj = MyClass()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("self_import.py")];
     
     graph.build_complete(&paths, &root_path);
@@ -129,7 +130,7 @@ from util1 import process
 process()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![
         root_path.join("util1.py"),
         root_path.join("util2.py"),
@@ -173,7 +174,7 @@ from models import User
 user = User()
 "#);
     
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![
         root_path.join("core.py"),
         root_path.join("models.py"),

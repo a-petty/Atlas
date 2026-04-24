@@ -1,11 +1,12 @@
 use semantic_engine::graph::{RepoGraph, EdgeKind};
+use semantic_engine::import_resolver::ResolverGroup;
 use std::path::PathBuf;
 use tempfile::tempdir;
 
 fn create_test_graph() -> RepoGraph {
     let root = tempdir().unwrap();
     let root_path = root.path();
-    let mut graph = RepoGraph::new(root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root_path, &[ResolverGroup::Python], &[], None);
 
     // Add files (nodes) with initial rank 0.0
     let core_path = PathBuf::from("src/core.py");
@@ -73,7 +74,7 @@ fn test_pagerank_identifies_core_file() {
 fn test_pagerank_handles_empty_graph() {
     let root = tempdir().unwrap();
     let root_path = root.path();
-    let mut graph = RepoGraph::new(root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root_path, &[ResolverGroup::Python], &[], None);
     graph.calculate_pagerank(20, 0.85);
     let top_files = graph.get_top_ranked_files(1);
     assert!(top_files.is_empty());

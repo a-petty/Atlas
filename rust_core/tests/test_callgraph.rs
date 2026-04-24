@@ -1,4 +1,5 @@
 use semantic_engine::callgraph::{CallGraphBuilder, CallSite};
+use semantic_engine::import_resolver::ResolverGroup;
 use semantic_engine::cpg::{CpgEdge, CpgLayer, CpgNodeKind, StatementKind};
 use semantic_engine::graph::RepoGraph;
 use semantic_engine::symbol_table::SymbolIndex;
@@ -399,7 +400,7 @@ def main():
     return a + b
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("main.py"), root_path.join("helpers.py")];
     graph.build_complete(&paths, &root_path);
@@ -425,7 +426,7 @@ fn test_incremental_update_adds_call_edges() {
 
     create_test_file(&root_path, "funcs.py", "def g():\n    pass\n\ndef f():\n    pass\n");
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("funcs.py")];
     graph.build_complete(&paths, &root_path);
@@ -455,7 +456,7 @@ fn test_remove_file_no_dangling_edges() {
     create_test_file(&root_path, "a.py", "def f():\n    g()\n");
     create_test_file(&root_path, "b.py", "def g():\n    pass\n");
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("a.py"), root_path.join("b.py")];
     graph.build_complete(&paths, &root_path);
@@ -666,7 +667,7 @@ def run():
     utils.process(42)
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
     graph.build_complete(&paths, &root_path);
@@ -698,7 +699,7 @@ def create_user():
     User.save(instance)
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("models.py"), root_path.join("views.py")];
     graph.build_complete(&paths, &root_path);
@@ -727,7 +728,7 @@ def run():
     u.process(42)
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
     graph.build_complete(&paths, &root_path);
@@ -751,7 +752,7 @@ fn test_unresolved_receiver_no_import() {
     unknown.process(42)
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("main.py")];
     graph.build_complete(&paths, &root_path);
@@ -779,7 +780,7 @@ def create_user():
     U.save(instance)
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("models.py"), root_path.join("views.py")];
     graph.build_complete(&paths, &root_path);
@@ -813,7 +814,7 @@ def run():
     helper()
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
     graph.build_complete(&paths, &root_path);
 
@@ -856,7 +857,7 @@ def main():
     greet()
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("app.py")];
     graph.build_complete(&paths, &root_path);
 
@@ -882,7 +883,7 @@ def bar():
     pass
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("lib.py")];
     graph.build_complete(&paths, &root_path);
 
@@ -937,7 +938,7 @@ class DagModel:
         return get_last_dagrun(self.dag_id, session)
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("dag.py")];
     graph.build_complete(&paths, &root_path);
 
@@ -991,7 +992,7 @@ def get_asset_info(session):
     return latest_run
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("dag.py"), root_path.join("assets.py")];
     graph.build_complete(&paths, &root_path);
 
@@ -1042,7 +1043,7 @@ def run():
     compute_result([1, 2, 3])
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("utils.py"), root_path.join("main.py")];
     graph.build_complete(&paths, &root_path);
 
@@ -1073,7 +1074,7 @@ class DagModel:
         pass
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![root_path.join("dag.py")];
     graph.build_complete(&paths, &root_path);
 
@@ -1162,7 +1163,7 @@ def create_user():
     User.save(instance)
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("models.py"), root_path.join("views.py")];
     graph.build_complete(&paths, &root_path);
@@ -1213,7 +1214,7 @@ def use_b():
     target()
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     let paths = vec![
         root_path.join("target.py"),
         root_path.join("helper_mod.py"),

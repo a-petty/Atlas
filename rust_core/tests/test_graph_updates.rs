@@ -1,6 +1,7 @@
 // rust_core/tests/test_graph_updates.rs
 
 use semantic_engine::graph::{RepoGraph, EdgeKind};
+use semantic_engine::import_resolver::ResolverGroup;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 use std::fs;
@@ -24,7 +25,7 @@ fn setup_test_repo_graph() -> (tempfile::TempDir, RepoGraph) {
         root.join("src/models/user.py"),
     ];
 
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files_to_scan, root);
 
     (dir, graph)
@@ -121,7 +122,7 @@ fn test_lazy_pagerank_recalculation() {
 fn test_update_performance() {
     let dir = tempdir().unwrap();
     let root = &dir.path().canonicalize().unwrap();
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     
     let num_files = 500;
     let mut file_paths = Vec::new();
@@ -183,7 +184,7 @@ fn test_symbol_definition_removal() {
         root.join("src/module_b.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, root);
     
     // VERIFY: Initial state has Import edge B -> A (B imports from A)
@@ -245,7 +246,7 @@ fn test_symbol_definition_addition() {
         root.join("src/module_b.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, root);
     
     let module_a = root.join("src/module_a.py");
@@ -310,7 +311,7 @@ fn test_symbol_usage_change() {
         root.join("src/module_c.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, root);
     
     let module_a = root.join("src/module_a.py");
@@ -388,7 +389,7 @@ fn test_symbol_collision_handling() {
         root.join("src/module_c.py"),
     ];
 
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, root);
 
     let module_a = root.join("src/module_a.py");
@@ -429,7 +430,7 @@ fn test_file_creation_with_symbols() {
     
     let files = vec![root.join("src/old_file.py")];
     
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, root);
     
     let old_file = root.join("src/old_file.py");
@@ -485,7 +486,7 @@ fn test_file_deletion_cleanup() {
         root.join("src/module_b.py"),
     ];
     
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, root);
     
     let _module_b = root.join("src/module_b.py");
@@ -554,7 +555,7 @@ fn test_batch_updates_maintain_consistency() {
         .map(|i| root.join(format!("src/module_{}.py", i)))
         .collect();
     
-    let mut graph = RepoGraph::new(root, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(root, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, root);
     
     graph.validate_consistency().expect("Initial build should be consistent");

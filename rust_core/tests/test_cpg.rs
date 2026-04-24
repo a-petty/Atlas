@@ -1,4 +1,5 @@
 use semantic_engine::cpg::{CpgLayer, CpgNodeKind};
+use semantic_engine::import_resolver::ResolverGroup;
 use semantic_engine::graph::RepoGraph;
 use semantic_engine::parser::SupportedLanguage;
 use std::fs;
@@ -250,7 +251,7 @@ def format_name(first: str, last: str) -> str:
     return f"{first} {last}"
 "#);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
 
     let paths = vec![
@@ -289,7 +290,7 @@ def hello():
 "#;
     create_test_file(&root_path, "mod.py", original);
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("mod.py")];
     graph.build_complete(&paths, &root_path);
@@ -330,7 +331,7 @@ fn test_cpg_file_removal() {
     create_test_file(&root_path, "a.py", "def func_a():\n    pass\n");
     create_test_file(&root_path, "b.py", "def func_b():\n    pass\n");
 
-    let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
     graph.enable_cpg();
     let paths = vec![root_path.join("a.py"), root_path.join("b.py")];
     graph.build_complete(&paths, &root_path);

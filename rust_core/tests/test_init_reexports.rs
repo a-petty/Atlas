@@ -5,6 +5,7 @@
 /// edges to BOTH `__init__.py` AND `user.py`.
 
 use semantic_engine::graph::RepoGraph;
+use semantic_engine::import_resolver::ResolverGroup;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -54,7 +55,7 @@ fn test_barrel_reexport_creates_edge_to_submodule() {
 
     let canonical_root = r.canonicalize().unwrap();
     let files = scan_py_files(r);
-    let mut graph = RepoGraph::new(r, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(r, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, r);
 
     let views_path = canonical_root.join("app/views.py");
@@ -92,7 +93,7 @@ fn test_multiple_reexports_from_init() {
 
     let canonical_root = r.canonicalize().unwrap();
     let files = scan_py_files(r);
-    let mut graph = RepoGraph::new(r, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(r, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, r);
 
     let views_path = canonical_root.join("app/views.py");
@@ -124,7 +125,7 @@ fn test_non_init_import_unchanged() {
 
     let canonical_root = r.canonicalize().unwrap();
     let files = scan_py_files(r);
-    let mut graph = RepoGraph::new(r, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(r, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, r);
 
     let main_path = canonical_root.join("app/main.py");
@@ -165,7 +166,7 @@ fn test_backend_source_root_with_init_reexports() {
 
     let canonical_root = r.canonicalize().unwrap();
     let files = scan_py_files(r);
-    let mut graph = RepoGraph::new(r, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(r, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, r);
 
     let planner = canonical_root.join("backend/app/services/planner.py");
@@ -207,7 +208,7 @@ fn test_no_unresolved_for_valid_reexports() {
     create_file(r, "app/views.py", "from app.models import User\n");
 
     let files = scan_py_files(r);
-    let mut graph = RepoGraph::new(r, "python", &[], None);
+    let mut graph = RepoGraph::new_multi(r, &[ResolverGroup::Python], &[], None);
     graph.build_complete(&files, r);
 
     let stats = graph.get_statistics();

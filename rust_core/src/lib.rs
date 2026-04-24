@@ -14,7 +14,7 @@ pub mod diag;
 
 use pyo3::prelude::*;
 use pyo3::create_exception;
-use pyo3::exceptions::{PyException, PyRuntimeError};
+use pyo3::exceptions::{PyDeprecationWarning, PyException, PyRuntimeError, PyValueError};
 use pyo3::types::PyDict;
 use std::time::Duration;
 use std::path::{Path, PathBuf};
@@ -22,6 +22,7 @@ use ignore::{WalkBuilder, DirEntry};
 use std::collections::HashSet;
 use crate::parser::{ParserPool, SupportedLanguage, create_skeleton_from_source};
 use crate::graph::GraphStatistics;
+use crate::import_resolver::ResolverGroup;
 use tree_sitter::{Node, Parser as TreeSitterParser, TreeCursor};
 
 
@@ -332,12 +333,82 @@ impl From<GraphStatistics> for PyGraphStatistics {
 #[pymethods]
 impl PyRepoGraph {
     #[new]
-    #[pyo3(signature = (project_root, language = "python", ignored_dirs = None, source_roots = None))]
-    fn new(project_root: &str, language: &str, ignored_dirs: Option<Vec<String>>, source_roots: Option<Vec<String>>) -> PyResult<Self> {
+    #[pyo3(signature = (project_root, language = None, languages = None, ignored_dirs = None, source_roots = None))]
+    fn new(
+        py: Python,
+        project_root: &str,
+        language: Option<&str>,
+        languages: Option<Vec<String>>,
+        ignored_dirs: Option<Vec<String>>,
+        source_roots: Option<Vec<String>>,
+    ) -> PyResult<Self> {
         let root_path = Path::new(project_root);
         let dirs = ignored_dirs.unwrap_or_default();
+
+        // Resolve which `ResolverGroup`s to build from the argument combination.
+        //
+        // Precedence:
+        //   1. If `languages` is provided → use it exactly.
+        //   2. Else if legacy `language` is provided → wrap as [that one group].
+        //   3. Else → default to [Python] for backward compatibility. Phase 3b
+        //      of the multi-language rollout will replace this with
+        //      auto-detection; for now, the legacy default is preserved so
+        //      existing callers see no behavior change.
+        //
+        // When `language` is used (with or without `languages`), emit a
+        // DeprecationWarning so Python callers discover the migration path
+        // through their normal warning machinery rather than via logs.
+        let groups: Vec<ResolverGroup> = match (languages, language) {
+            (Some(list), legacy_opt) => {
+                if legacy_opt.is_some() {
+                    PyErr::warn(
+                        py,
+                        py.get_type::<PyDeprecationWarning>(),
+                        "Both `language` and `languages` were passed to RepoGraph. \
+                         `language` is deprecated and will be ignored in favor of `languages`; \
+                         remove the `language` argument.",
+                        1,
+                    )?;
+                }
+                let mut groups = Vec::with_capacity(list.len());
+                for s in &list {
+                    match ResolverGroup::from_legacy_str(s) {
+                        Some(g) => groups.push(g),
+                        None => return Err(PyValueError::new_err(format!(
+                            "Unknown language '{}'. Supported: python, javascript, typescript, js, ts, jsx, tsx",
+                            s
+                        ))),
+                    }
+                }
+                groups
+            }
+            (None, Some(legacy)) => {
+                PyErr::warn(
+                    py,
+                    py.get_type::<PyDeprecationWarning>(),
+                    "The `language: str` parameter is deprecated and will be removed in a future version. \
+                     Use `languages=[...]` instead — it supports polyglot repositories and is the \
+                     new preferred API.",
+                    1,
+                )?;
+                match ResolverGroup::from_legacy_str(legacy) {
+                    Some(g) => vec![g],
+                    None => return Err(PyValueError::new_err(format!(
+                        "Unknown language '{}'. Supported: python, javascript, typescript, js, ts, jsx, tsx",
+                        legacy
+                    ))),
+                }
+            }
+            (None, None) => {
+                // Legacy default — behavior preserved verbatim from the
+                // single-language API. Phase 3b replaces this with
+                // auto-detection; until then, unspecified means Python.
+                vec![ResolverGroup::Python]
+            }
+        };
+
         Ok(Self {
-            graph: graph::RepoGraph::new(root_path, language, &dirs, source_roots.as_deref()),
+            graph: graph::RepoGraph::new_multi(root_path, &groups, &dirs, source_roots.as_deref()),
         })
     }
 

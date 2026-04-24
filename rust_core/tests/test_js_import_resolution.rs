@@ -1,4 +1,5 @@
 use semantic_engine::graph::RepoGraph;
+use semantic_engine::import_resolver::ResolverGroup;
 use std::path::PathBuf;
 use petgraph::visit::EdgeRef;
 
@@ -7,7 +8,7 @@ fn test_js_import_resolution() {
     let test_repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/js_test_repo");
     
-    let mut graph = RepoGraph::new(&test_repo, "javascript", &[], None);
+    let mut graph = RepoGraph::new_multi(&test_repo, &[ResolverGroup::JsTs], &[], None);
     let paths: Vec<PathBuf> = vec![
         test_repo.join("src/index.js"),
         test_repo.join("src/utils/helpers.js"),
@@ -28,7 +29,7 @@ fn test_ts_path_alias_resolution() {
     let test_repo = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/js_test_repo");
     
-    let mut graph = RepoGraph::new(&test_repo, "typescript", &[], None);
+    let mut graph = RepoGraph::new_multi(&test_repo, &[ResolverGroup::JsTs], &[], None);
     let paths: Vec<PathBuf> = vec![
         test_repo.join("src/index.js"),
         test_repo.join("src/utils/helpers.js"),
