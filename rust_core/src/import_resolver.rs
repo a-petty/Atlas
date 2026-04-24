@@ -10,6 +10,33 @@ use walkdir::WalkDir;
 use crate::diag::diag_log;
 use crate::parser::SupportedLanguage;
 
+/// Directory names always excluded from module indexing, regardless of
+/// user-supplied ignored_dirs. These are caches, virtualenvs, VCS metadata,
+/// and package-manager directories — content that must never be treated as
+/// source. Merged with the user list in `build_ignored_set`, so users do not
+/// need to remember to add them to `.atlasignore`.
+///
+/// Note: the file-scanning path (`lib::scan_repository`) uses the `ignore`
+/// crate's `WalkBuilder`, which picks up these directories via `.gitignore`
+/// files. The resolvers below walk with `std::fs::read_dir`, which does not
+/// consult `.gitignore`, so the defaults must be supplied explicitly here.
+const DEFAULT_IGNORED_DIRS: &[&str] = &[
+    ".git", ".hg", ".svn",
+    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".tox", ".nox",
+    "node_modules",
+    "venv", ".venv",
+];
+
+/// Build the final ignore set: `DEFAULT_IGNORED_DIRS` plus user-supplied names.
+fn build_ignored_set(user_dirs: &[String]) -> HashSet<String> {
+    DEFAULT_IGNORED_DIRS
+        .iter()
+        .map(|s| (*s).to_string())
+        .chain(user_dirs.iter().cloned())
+        .collect()
+}
+
 lazy_static! {
     static ref PYTHON_STDLIB_MODULES: HashSet<&'static str> = [
         "os", "sys", "math", "json", "re", "collections", "datetime", "time", "random",
@@ -444,7 +471,7 @@ impl PythonImportResolver {
     /// `ignored_dirs` contains directory names (not paths) to exclude from module indexing.
     /// `explicit_source_roots` optionally overrides auto-detection of source roots.
     pub fn new(project_root: &Path, ignored_dirs: &[String], explicit_source_roots: Option<&[String]>) -> Self {
-        let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
+        let ignored_set = build_ignored_set(ignored_dirs);
         let canonical_root = project_root.canonicalize()
             .unwrap_or_else(|_| project_root.to_path_buf());
         let third_party_packages = Self::discover_third_party_packages(&canonical_root);
@@ -1845,7 +1872,7 @@ pub struct JsTsImportResolver {
 
 impl JsTsImportResolver {
     pub fn new(project_root: &Path, ignored_dirs: &[String]) -> Self {
-        let ignored_set: HashSet<String> = ignored_dirs.iter().cloned().collect();
+        let ignored_set = build_ignored_set(ignored_dirs);
         let canonical_root = project_root.canonicalize()
             .unwrap_or_else(|_| project_root.to_path_buf());
         let third_party_packages = Self::discover_third_party_packages(&canonical_root);
@@ -3090,5 +3117,109 @@ where = ["src"]
         assert!(imports.contains(&expected),
             "'from app.models.enums import Foo' should resolve via pyrightconfig source root.\nExpected: {:?}\nGot: {:?}",
             expected, imports);
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: DEFAULT_IGNORED_DIRS applies even when user-supplied ignored_dirs
+    // is empty. Users should not need to remember to exclude node_modules/,
+    // venv/, __pycache__/, etc. — the resolver skips them by default because
+    // the file-scanning path picks them up via .gitignore but the resolver
+    // walks with std::fs::read_dir which is not .gitignore-aware.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_default_ignored_dirs_skipped_with_empty_user_list() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+
+        // Real source that should be indexed
+        create_dummy_file(&root_path, "src/app/main.py", "");
+        create_dummy_file(&root_path, "src/app/__init__.py", "");
+
+        // Junk that should NEVER be indexed as modules, regardless of user config
+        create_dummy_file(&root_path, "node_modules/pkg/index.py", "");
+        create_dummy_file(&root_path, "venv/lib/python3.11/site-packages/foo.py", "");
+        create_dummy_file(&root_path, ".venv/lib/python3.11/site-packages/bar.py", "");
+        create_dummy_file(&root_path, "__pycache__/main.cpython-311.py", "");
+        create_dummy_file(&root_path, ".pytest_cache/v/cache/nodeids.py", "");
+        create_dummy_file(&root_path, ".mypy_cache/3.11/baz.py", "");
+
+        // Empty user ignored_dirs — the defaults should handle everything above
+        let resolver = PythonImportResolver::new(&root_path, &[], None);
+
+        let module_keys: Vec<&String> = resolver.module_index.keys().collect();
+
+        // Real source is indexed
+        assert!(
+            resolver.module_index.contains_key("app.main")
+                || resolver.module_index.contains_key("src.app.main"),
+            "src/app/main.py should be indexed. Keys: {:?}",
+            module_keys
+        );
+
+        // Every default-ignored path must be absent
+        let junk_fragments = [
+            "node_modules", "pkg.index",
+            "venv", "site-packages", "foo",
+            "__pycache__", "main.cpython",
+            "pytest_cache", "nodeids",
+            "mypy_cache", "baz",
+            "bar",
+        ];
+        for fragment in junk_fragments {
+            let leaked: Vec<&&String> = module_keys
+                .iter()
+                .filter(|k| k.contains(fragment))
+                .collect();
+            assert!(
+                leaked.is_empty(),
+                "Default-ignored dirs leaked into module index via fragment '{}'. Found: {:?}",
+                fragment, leaked
+            );
+        }
+
+        // None of the default-ignored names should appear as a known root module
+        let known_roots = resolver.get_known_root_modules();
+        for banned in [
+            "node_modules", "venv", ".venv",
+            "__pycache__", ".pytest_cache", ".mypy_cache",
+        ] {
+            assert!(
+                !known_roots.contains(&banned.to_string()),
+                "'{}' should not be a known root module. Got: {:?}",
+                banned, known_roots
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Test: User-supplied ignored_dirs still work and merge with defaults.
+    // If a user adds 'vendored/' to .atlasignore, both that and the defaults
+    // apply — we don't want the defaults list to silently replace user config.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn test_user_ignored_dirs_merge_with_defaults() {
+        let root = tempdir().unwrap();
+        let root_path = root.path().canonicalize().unwrap();
+
+        create_dummy_file(&root_path, "src/app/__init__.py", "");
+        create_dummy_file(&root_path, "src/app/main.py", "");
+        create_dummy_file(&root_path, "node_modules/pkg/__init__.py", ""); // default-ignored
+        create_dummy_file(&root_path, "vendored/lib/__init__.py", "");     // user-ignored
+
+        let resolver = PythonImportResolver::new(
+            &root_path,
+            &["vendored".to_string()],
+            None,
+        );
+
+        let keys: Vec<&String> = resolver.module_index.keys().collect();
+        for banned in ["node_modules", "vendored", "pkg", "lib"] {
+            let leaked: Vec<&&String> = keys.iter().filter(|k| k.contains(banned)).collect();
+            assert!(
+                leaked.is_empty(),
+                "Neither defaults nor user ignores honored for '{}'. Keys: {:?}",
+                banned, keys
+            );
+        }
     }
 }
