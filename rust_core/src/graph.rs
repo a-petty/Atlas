@@ -8,6 +8,7 @@ use petgraph::visit::EdgeRef;
 use rayon::prelude::*;
 use thiserror::Error;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use lru::LruCache;
 use std::num::NonZeroUsize;
 use parking_lot::RwLock;
@@ -1342,6 +1343,7 @@ impl RepoGraph {
     /// Only creates SymbolUsage edges where an Import edge already exists, ensuring that
     /// symbol matches are backed by actual import relationships.
     pub fn build_semantic_edges(&mut self) {
+        use crate::diag::diag_log;
         info!("Building semantic edges...");
 
         // Pre-compute import targets: for each node, which other nodes does it import?
@@ -1359,53 +1361,95 @@ impl RepoGraph {
             })
             .collect();
 
+        let nodes_with_imports = import_targets.values().filter(|t| !t.is_empty()).count();
+        let total_import_edges: usize = import_targets.values().map(|t| t.len()).sum();
+        diag_log(&format!("[DIAG] build_semantic_edges: {} nodes total, {} have Import edges, {} total Import edges",
+            import_targets.len(), nodes_with_imports, total_import_edges));
+        diag_log(&format!("[DIAG] build_semantic_edges: symbol_index has {} definitions, {} usage entries",
+            self.symbol_index.definitions.len(), self.symbol_index.usages.len()));
+
         // Pre-compute noisy symbols: skip symbols defined in too many files
         let noisy_symbols: HashSet<&String> = self.symbol_index.definitions.iter()
             .filter(|(_, paths)| paths.len() > MAX_SYMBOL_DEFINITION_FILES)
             .map(|(name, _)| name)
             .collect();
         if !noisy_symbols.is_empty() {
+            diag_log(&format!("[DIAG] build_semantic_edges: filtering {} noisy symbols", noisy_symbols.len()));
             info!("Filtering {} noisy symbols (defined in >{} files)", noisy_symbols.len(), MAX_SYMBOL_DEFINITION_FILES);
         }
+
+        // Diagnostic counters (use atomics for thread-safe counting in par_iter)
+        let diag_no_path = AtomicUsize::new(0);
+        let diag_no_imports = AtomicUsize::new(0);
+        let diag_empty_imports = AtomicUsize::new(0);
+        let diag_noisy_skip = AtomicUsize::new(0);
+        let diag_no_def = AtomicUsize::new(0);
+        let diag_self_skip = AtomicUsize::new(0);
+        let diag_no_node = AtomicUsize::new(0);
+        let diag_not_imported = AtomicUsize::new(0);
+        let diag_lang_mismatch = AtomicUsize::new(0);
+        let diag_matched = AtomicUsize::new(0);
 
         let edges_to_create: Vec<(NodeIndex, NodeIndex)> = self.symbol_index.usages
             .par_iter()
             .flat_map(|(user_path, used_symbols)| {
                 let user_node_idx = match self.path_to_idx.get(user_path) {
                     Some(&idx) => idx,
-                    None => return Vec::new(),
+                    None => { diag_no_path.fetch_add(1, Ordering::Relaxed); return Vec::new(); }
                 };
                 let user_lang = self.graph[user_node_idx].language;
 
                 // Only create SymbolUsage edges to files this node imports
                 let user_imports = match import_targets.get(&user_node_idx) {
                     Some(targets) => targets,
-                    None => return Vec::new(),
+                    None => { diag_no_imports.fetch_add(1, Ordering::Relaxed); return Vec::new(); }
                 };
                 if user_imports.is_empty() {
+                    diag_empty_imports.fetch_add(1, Ordering::Relaxed);
                     return Vec::new();
                 }
 
                 let mut edges = Vec::new();
                 for symbol in used_symbols {
-                    if noisy_symbols.contains(symbol) { continue; }
+                    if noisy_symbols.contains(symbol) { diag_noisy_skip.fetch_add(1, Ordering::Relaxed); continue; }
                     if let Some(def_paths) = self.symbol_index.definitions.get(symbol) {
                         for def_path in def_paths {
-                            if user_path == def_path { continue; }
+                            if user_path == def_path { diag_self_skip.fetch_add(1, Ordering::Relaxed); continue; }
                             if let Some(&def_node_idx) = self.path_to_idx.get(def_path) {
                                 // Only create edge if the user file imports the defining file
-                                if !user_imports.contains(&def_node_idx) { continue; }
+                                if !user_imports.contains(&def_node_idx) { diag_not_imported.fetch_add(1, Ordering::Relaxed); continue; }
                                 let def_lang = self.graph[def_node_idx].language;
                                 if languages_compatible(user_lang, def_lang) {
+                                    diag_matched.fetch_add(1, Ordering::Relaxed);
                                     edges.push((user_node_idx, def_node_idx));
+                                } else {
+                                    diag_lang_mismatch.fetch_add(1, Ordering::Relaxed);
                                 }
+                            } else {
+                                diag_no_node.fetch_add(1, Ordering::Relaxed);
                             }
                         }
+                    } else {
+                        diag_no_def.fetch_add(1, Ordering::Relaxed);
                     }
                 }
                 edges
             })
             .collect();
+
+        diag_log(&format!("[DIAG] build_semantic_edges results: {} edges to create", edges_to_create.len()));
+        diag_log(&format!("[DIAG]   matched={}, not_imported={}, no_def={}, noisy_skip={}, self_skip={}, no_node={}, lang_mismatch={}",
+            diag_matched.load(Ordering::Relaxed),
+            diag_not_imported.load(Ordering::Relaxed),
+            diag_no_def.load(Ordering::Relaxed),
+            diag_noisy_skip.load(Ordering::Relaxed),
+            diag_self_skip.load(Ordering::Relaxed),
+            diag_no_node.load(Ordering::Relaxed),
+            diag_lang_mismatch.load(Ordering::Relaxed)));
+        diag_log(&format!("[DIAG]   files: no_path={}, no_imports={}, empty_imports={}",
+            diag_no_path.load(Ordering::Relaxed),
+            diag_no_imports.load(Ordering::Relaxed),
+            diag_empty_imports.load(Ordering::Relaxed)));
 
         // Serial mutation of the graph
         for (src, dst) in edges_to_create {
