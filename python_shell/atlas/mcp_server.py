@@ -112,11 +112,18 @@ def _load_ignore_dirs(project_root: Path) -> list:
     return dirs
 
 
-def _load_source_roots(project_root: Path):
-    """Load explicit source roots from .atlas.toml if present."""
+def _load_atlas_config(project_root: Path):
+    """Load `.atlas.toml` overrides for graph construction.
+
+    Returns `(source_roots, languages)`, each `None` when not configured.
+    `languages`, when set, pins the resolver groups and bypasses
+    auto-detection — useful for repos where detection picks up a language
+    the user wants to ignore (e.g. vendored polyglot examples) or wants to
+    extend (e.g. force a JS/TS resolver during a partial migration).
+    """
     toml_file = project_root / ".atlas.toml"
     if not toml_file.exists():
-        return None
+        return None, None
     try:
         import tomllib
     except ImportError:
@@ -124,17 +131,35 @@ def _load_source_roots(project_root: Path):
             import tomli as tomllib  # type: ignore[no-redef]
         except ImportError:
             log.warning(".atlas.toml found but neither tomllib nor tomli available. Ignoring.")
-            return None
+            return None, None
     try:
         with open(toml_file, "rb") as f:
             config = tomllib.load(f)
-        roots = config.get("project", {}).get("source_roots")
-        if roots and isinstance(roots, list):
-            log.info("Loaded source roots from .atlas.toml: %s", roots)
-            return roots
     except Exception as e:
         log.warning("Failed to parse .atlas.toml: %s", e)
-    return None
+        return None, None
+
+    project = config.get("project", {})
+
+    roots = project.get("source_roots")
+    if roots is not None and not (isinstance(roots, list) and all(isinstance(r, str) for r in roots)):
+        log.warning(".atlas.toml: `project.source_roots` must be a list of strings; ignoring")
+        roots = None
+    elif roots:
+        log.info("Loaded source roots from .atlas.toml: %s", roots)
+    else:
+        roots = None
+
+    languages = project.get("languages")
+    if languages is not None and not (isinstance(languages, list) and all(isinstance(l, str) for l in languages)):
+        log.warning(".atlas.toml: `project.languages` must be a list of strings; ignoring")
+        languages = None
+    elif languages:
+        log.info("Loaded languages from .atlas.toml: %s — bypassing auto-detection", languages)
+    else:
+        languages = None
+
+    return roots, languages
 
 
 # ---------------------------------------------------------------------------
@@ -148,8 +173,14 @@ def _initialize_graph(project_root: Path) -> None:
     log.info("Initializing graph for %s", _project_root)
 
     ignored = _load_ignore_dirs(_project_root)
-    source_roots = _load_source_roots(_project_root)
-    _graph = RepoGraph(str(_project_root), ignored_dirs=ignored, source_roots=source_roots)
+    source_roots, languages = _load_atlas_config(_project_root)
+    # When `languages` is unset, RepoGraph auto-detects from the project
+    # tree (Phase 3b). Passing `languages=None` keeps that behavior;
+    # passing a list pins the resolver groups explicitly.
+    kwargs = {"ignored_dirs": ignored, "source_roots": source_roots}
+    if languages is not None:
+        kwargs["languages"] = languages
+    _graph = RepoGraph(str(_project_root), **kwargs)
 
     files = scan_repository(str(_project_root), ignored_dirs=ignored)
     log.info("Scanned %d files", len(files))

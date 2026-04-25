@@ -266,14 +266,16 @@ The CLI requires [Ollama](https://ollama.ai/) (default) or MLX for LLM inference
 
 ### `.atlas.toml` (optional)
 
-Place at the project root to specify explicit source roots for import resolution:
+Place at the project root to override Atlas's auto-detected defaults:
 
 ```toml
 [project]
 source_roots = ["src", "lib", "packages"]
+languages = ["python", "typescript"]   # optional; auto-detected if omitted
 ```
 
-Without this, Atlas auto-detects source roots by looking for directories containing `__init__.py` files or namespace packages.
+- `source_roots` — explicit Python import roots. Without this, Atlas auto-detects source roots by looking for directories containing `__init__.py`, `pyrightconfig.json`, or namespace packages.
+- `languages` — pin which resolver groups to register (`python`, `javascript`, `typescript`, `js`, `ts`, `jsx`, `tsx`). Without this, Atlas walks the project tree and registers a resolver for each supported language with at least one source file. Use this to suppress detection in repos where it picks up languages you want to ignore (e.g. vendored polyglot examples).
 
 ### `.atlasignore` (optional)
 
