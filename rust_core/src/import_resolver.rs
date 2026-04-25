@@ -1826,7 +1826,29 @@ impl ImportResolver for PythonImportResolver {
                         }
                     }
                     "from_import" => {
-                        // Pattern 1: entire `from ... import ...` statement
+                        // Pattern 1: entire `from ... import ...` statement.
+                        //
+                        // Skip stdlib/third-party imports entirely so they
+                        // don't inflate `attempted_imports` / `failed_imports`.
+                        // The bare `import` arm above applies the same filter
+                        // before bookkeeping; previously the from-import path
+                        // applied it only inside `resolve_from_import`, after
+                        // attempted++ had already fired — so every
+                        // `from typing import X` counted as a failed resolution.
+                        // Relative imports (`from . import X`) extract a module
+                        // name starting with `.`, whose first split component
+                        // is "" — empty string is in neither set, so they
+                        // correctly fall through and get resolved normally.
+                        let module_name_opt =
+                            Self::extract_from_import_module_name(capture.node, source);
+                        if let Some(ref name) = module_name_opt {
+                            let root = name.split('.').next().unwrap_or("");
+                            if PYTHON_STDLIB_MODULES.contains(root)
+                                || self.third_party_packages.contains(root)
+                            {
+                                continue;
+                            }
+                        }
                         self.attempted_imports.fetch_add(1, Ordering::Relaxed);
                         let before = imports.len();
                         self.resolve_from_import(
@@ -1838,9 +1860,7 @@ impl ImportResolver for PythonImportResolver {
                         );
                         if imports.len() == before {
                             self.failed_imports.fetch_add(1, Ordering::Relaxed);
-                            if let Some(name) =
-                                Self::extract_from_import_module_name(capture.node, source)
-                            {
+                            if let Some(name) = module_name_opt {
                                 self.record_failed_import(&name);
                             }
                         }
@@ -2606,6 +2626,109 @@ mod tests {
         let mut repo = setup();
         let imports = run_find_imports(&mut repo, "import numpy as np", "app.py");
         assert!(imports.is_empty());
+    }
+
+    /// `from typing import Foo` must not increment `attempted_imports` or
+    /// `failed_imports` — the bare `import os` path filtered stdlib before
+    /// touching counters, but the from-import path was incrementing both.
+    /// On real-world repos this drove most of the inflated failure rate
+    /// (`typing`, `datetime`, `enum` accounted for hundreds of false fails
+    /// on FoY).
+    #[test]
+    fn test_from_stdlib_does_not_count_as_attempted_or_failed() {
+        let mut repo = setup();
+        let imports = run_find_imports(
+            &mut repo,
+            "from typing import Optional, List",
+            "app.py",
+        );
+        assert!(imports.is_empty(), "stdlib from-imports must resolve to nothing");
+        assert_eq!(
+            repo.resolver.get_attempted_imports(),
+            0,
+            "stdlib from-import must not increment attempted_imports"
+        );
+        assert_eq!(
+            repo.resolver.get_failed_imports(),
+            0,
+            "stdlib from-import must not increment failed_imports"
+        );
+    }
+
+    #[test]
+    fn test_from_third_party_does_not_count_as_attempted_or_failed() {
+        let mut repo = setup();
+        let imports =
+            run_find_imports(&mut repo, "from numpy import array", "app.py");
+        assert!(imports.is_empty());
+        assert_eq!(repo.resolver.get_attempted_imports(), 0);
+        assert_eq!(repo.resolver.get_failed_imports(), 0);
+    }
+
+    /// `from typing` must not appear in the failed-name registry — the
+    /// noisiest false positive on FoY-shaped repos.
+    #[test]
+    fn test_from_stdlib_not_in_failed_name_registry() {
+        let mut repo = setup();
+        let _ = run_find_imports(
+            &mut repo,
+            "from typing import Foo\nfrom datetime import date\nfrom enum import Enum",
+            "app.py",
+        );
+        let names = repo.resolver.get_failed_import_names(50);
+        for (name, _) in &names {
+            let root = name.split('.').next().unwrap_or("");
+            assert!(
+                !["typing", "datetime", "enum"].contains(&root),
+                "stdlib name '{}' must not appear in failed_import_names",
+                name
+            );
+        }
+    }
+
+    /// A genuinely missing import must still count as failed — proving the
+    /// fix didn't accidentally suppress real failures.
+    #[test]
+    fn test_from_unknown_module_still_counts_as_failed() {
+        let mut repo = setup();
+        let imports =
+            run_find_imports(&mut repo, "from project.does_not_exist import X", "app.py");
+        assert!(imports.is_empty());
+        assert_eq!(repo.resolver.get_attempted_imports(), 1);
+        assert_eq!(repo.resolver.get_failed_imports(), 1);
+        let names = repo.resolver.get_failed_import_names(10);
+        assert!(
+            names.iter().any(|(n, _)| n == "project.does_not_exist"),
+            "real failure must be tracked in failed_import_names, got {:?}",
+            names
+        );
+    }
+
+    /// Relative imports (`from . import X`) have no root module on the
+    /// stdlib check — they must still resolve normally.
+    #[test]
+    fn test_from_relative_import_unaffected_by_stdlib_filter() {
+        let mut repo = setup();
+        // `from .api import v1` from src/__init__.py — relative single-dot
+        // resolves to a sibling within src/.
+        create_dummy_file(&repo.root_path, "src/__init__.py", "");
+        repo.resolver.index_modules();
+        let imports = run_find_imports(
+            &mut repo,
+            "from .api import v1",
+            "src/__init__.py",
+        );
+        assert!(!imports.is_empty(), "relative from-import must still resolve");
+        assert_eq!(
+            repo.resolver.get_attempted_imports(),
+            1,
+            "relative from-import must still increment attempted_imports"
+        );
+        assert_eq!(
+            repo.resolver.get_failed_imports(),
+            0,
+            "successful relative from-import must not increment failed_imports"
+        );
     }
 
     #[test]
