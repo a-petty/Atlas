@@ -197,6 +197,19 @@ pub struct GraphStatistics {
     pub known_root_modules: Vec<String>,
     pub attempted_imports: usize,
     pub failed_imports: usize,
+    /// Resolver groups actually constructed for this graph. Derived from
+    /// `import_resolvers.keys()` and ordered as they were registered.
+    pub registered_resolvers: Vec<ResolverGroup>,
+    /// Per-language file counts observed during auto-detection. Empty when
+    /// the graph was constructed with explicit `languages=[...]` (no
+    /// detection was performed) or when no detection metadata was supplied.
+    pub file_counts_by_language: HashMap<SupportedLanguage, usize>,
+    /// Languages detected on disk that have no resolver registered. The
+    /// load-bearing field for the "Atlas worse than grep" honesty story:
+    /// a Go-only repo surfaces `{Go: N}` here so consumers can tell the
+    /// difference between "0 imports because no Go files" and "0 imports
+    /// because Atlas can't analyze Go".
+    pub unsupported_language_counts: HashMap<SupportedLanguage, usize>,
 }
 
 /// A temporary, lightweight container for the results of parsing a single file.
@@ -248,6 +261,14 @@ pub struct RepoGraph {
     pub skeleton_cache: RwLock<LruCache<PathBuf, Arc<String>>>,
     /// Optional CPG overlay for sub-file granularity
     pub cpg: Option<CpgLayer>,
+    /// File counts per language observed by auto-detection at construction
+    /// time. Empty when `languages=[...]` was passed explicitly (callers opted
+    /// out of detection and own their own coverage picture).
+    pub file_counts_by_language: HashMap<SupportedLanguage, usize>,
+    /// Languages with files on disk but no registered resolver. Surfaced
+    /// through `GraphStatistics` so the `atlas_status` MCP tool can render
+    /// a "No resolver available" line for them.
+    pub unsupported_language_counts: HashMap<SupportedLanguage, usize>,
 }
 
 impl RepoGraph {
@@ -315,7 +336,22 @@ impl RepoGraph {
             project_root: canonical_root,
             skeleton_cache: RwLock::new(LruCache::new(cache_size)),
             cpg: None,
+            file_counts_by_language: HashMap::new(),
+            unsupported_language_counts: HashMap::new(),
         }
+    }
+
+    /// Inject auto-detection results into the graph after construction. Used
+    /// by the PyO3 constructor's auto-detect arm so that `get_statistics()`
+    /// can report which languages were observed and which lack a resolver.
+    /// Has no effect on graph behavior — purely for stats surfacing.
+    pub fn set_detection_metadata(
+        &mut self,
+        file_counts_by_language: HashMap<SupportedLanguage, usize>,
+        unsupported_language_counts: HashMap<SupportedLanguage, usize>,
+    ) {
+        self.file_counts_by_language = file_counts_by_language;
+        self.unsupported_language_counts = unsupported_language_counts;
     }
 
     /// Resolver for a file's language, or None if no resolver is registered
@@ -1733,6 +1769,9 @@ impl RepoGraph {
                 .values()
                 .map(|r| r.get_failed_imports())
                 .sum(),
+            registered_resolvers: self.import_resolvers.keys().copied().collect(),
+            file_counts_by_language: self.file_counts_by_language.clone(),
+            unsupported_language_counts: self.unsupported_language_counts.clone(),
         }
     }
 

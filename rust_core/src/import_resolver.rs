@@ -64,6 +64,16 @@ impl ResolverGroup {
             _ => None,
         }
     }
+
+    /// Stable string name for cross-boundary serialization (Python lists,
+    /// MCP rendering). Consumers rely on these strings — changing them is
+    /// a breaking API change.
+    pub fn name(&self) -> &'static str {
+        match self {
+            ResolverGroup::Python => "python",
+            ResolverGroup::JsTs => "javascript_typescript",
+        }
+    }
 }
 
 /// Directory names always excluded from module indexing, regardless of
@@ -91,6 +101,97 @@ fn build_ignored_set(user_dirs: &[String]) -> HashSet<String> {
         .map(|s| (*s).to_string())
         .chain(user_dirs.iter().cloned())
         .collect()
+}
+
+/// Result of scanning a project root to decide which resolver groups to register.
+///
+/// `groups` is the ordered list to construct (descending file count, alphabetical
+/// tie-break). `file_counts_by_language` is every supported language we saw, with
+/// or without a resolver. `unsupported_language_counts` is the subset that has
+/// no resolver — surfaced through `GraphStatistics` so users looking at e.g. a
+/// Go-only repo can see *why* import analysis is empty rather than being told
+/// "0 imports" and assuming the tool is broken.
+#[derive(Debug, Clone, Default)]
+pub struct DetectionResult {
+    pub groups: Vec<ResolverGroup>,
+    pub file_counts_by_language: HashMap<SupportedLanguage, usize>,
+    pub unsupported_language_counts: HashMap<SupportedLanguage, usize>,
+}
+
+/// Detect which `ResolverGroup`s have files present under `project_root`.
+///
+/// Walks with the `ignore` crate so .gitignore is respected, and additionally
+/// filters out `DEFAULT_IGNORED_DIRS` plus the user-supplied names — the
+/// resolvers themselves apply this same set, so detection results stay
+/// consistent with what the resolvers will actually see.
+///
+/// Threshold policy: **present-is-enough** (≥1 file). False negatives —
+/// missing edges for a language that has source files — are dramatically
+/// worse than false positives — eagerly constructing a resolver that finds
+/// no work to do (≈500ms on cold start). Users wanting tighter control can
+/// override via explicit `languages=[...]`.
+///
+/// Ordering: groups are returned by descending file count, with a deterministic
+/// alphabetical tie-break (via `Debug` formatting of the `ResolverGroup`). This
+/// keeps the order stable across runs for snapshot tests and stats output.
+pub fn detect_resolver_groups(
+    project_root: &Path,
+    ignored_dirs: &[String],
+) -> DetectionResult {
+    use ignore::WalkBuilder;
+    let ignored_set = build_ignored_set(ignored_dirs);
+
+    let mut counts: HashMap<SupportedLanguage, usize> = HashMap::new();
+    let walker = WalkBuilder::new(project_root)
+        .hidden(false)
+        .git_ignore(true)
+        .git_global(true)
+        .parents(true)
+        .filter_entry(move |e| {
+            e.file_name()
+                .to_str()
+                .map(|n| !ignored_set.contains(n))
+                .unwrap_or(true)
+        })
+        .build();
+
+    for entry in walker.filter_map(Result::ok) {
+        if !entry.file_type().map_or(false, |ft| ft.is_file()) {
+            continue;
+        }
+        let lang = SupportedLanguage::from_path(entry.path());
+        if lang == SupportedLanguage::Unknown {
+            continue;
+        }
+        *counts.entry(lang).or_insert(0) += 1;
+    }
+
+    // Partition observed languages by whether they have a resolver. Aggregate
+    // per-language counts up to `ResolverGroup` so JS/TS variants combine.
+    let mut file_counts_by_language: HashMap<SupportedLanguage, usize> = HashMap::new();
+    let mut unsupported: HashMap<SupportedLanguage, usize> = HashMap::new();
+    let mut group_counts: HashMap<ResolverGroup, usize> = HashMap::new();
+    for (lang, n) in counts {
+        file_counts_by_language.insert(lang, n);
+        match ResolverGroup::from_language(lang) {
+            Some(g) => *group_counts.entry(g).or_insert(0) += n,
+            None => {
+                unsupported.insert(lang, n);
+            }
+        }
+    }
+
+    let mut groups: Vec<(ResolverGroup, usize)> = group_counts.into_iter().collect();
+    groups.sort_by(|a, b| {
+        b.1.cmp(&a.1)
+            .then_with(|| format!("{:?}", a.0).cmp(&format!("{:?}", b.0)))
+    });
+
+    DetectionResult {
+        groups: groups.into_iter().map(|(g, _)| g).collect(),
+        file_counts_by_language,
+        unsupported_language_counts: unsupported,
+    }
 }
 
 lazy_static! {
@@ -3546,5 +3647,169 @@ where = ["src"]
         }
         let names = Stub.get_failed_import_names(100);
         assert!(names.is_empty(), "Default trait impl must return empty, got {:?}", names);
+    }
+
+    // ---- detect_resolver_groups tests ------------------------------------
+    //
+    // These cover Phase 3b auto-detection. Policy is locked: present-is-enough
+    // (≥1 file is sufficient to register a resolver), descending count with
+    // alphabetical tie-break, and structured stats for unsupported languages
+    // (Go, Rust) rather than log lines.
+
+    fn make_repo<F: FnOnce(&Path)>(f: F) -> tempfile::TempDir {
+        let dir = tempdir().unwrap();
+        let path = dir.path().canonicalize().unwrap();
+        f(&path);
+        dir
+    }
+
+    #[test]
+    fn test_detection_picks_present_python_only() {
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "a.py", "");
+            create_dummy_file(p, "pkg/b.py", "");
+            create_dummy_file(p, "README.md", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &[]);
+        assert_eq!(result.groups, vec![ResolverGroup::Python]);
+        assert!(result.unsupported_language_counts.is_empty());
+        assert_eq!(
+            result.file_counts_by_language.get(&SupportedLanguage::Python),
+            Some(&2)
+        );
+    }
+
+    #[test]
+    fn test_detection_picks_present_ts_only() {
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "src/a.ts", "");
+            create_dummy_file(p, "src/b.tsx", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &[]);
+        assert_eq!(result.groups, vec![ResolverGroup::JsTs]);
+        assert!(result.unsupported_language_counts.is_empty());
+        // .ts and .tsx are different SupportedLanguage variants but the same
+        // ResolverGroup; per-language counts must remain split.
+        assert_eq!(
+            result.file_counts_by_language.get(&SupportedLanguage::TypeScript),
+            Some(&1)
+        );
+        assert_eq!(
+            result.file_counts_by_language.get(&SupportedLanguage::TypeScriptTsx),
+            Some(&1)
+        );
+    }
+
+    #[test]
+    fn test_detection_picks_both_when_mixed() {
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "a.py", "");
+            create_dummy_file(p, "frontend/x.ts", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &[]);
+        let mut got = result.groups.clone();
+        got.sort();
+        assert_eq!(got, vec![ResolverGroup::Python, ResolverGroup::JsTs]);
+        assert!(result.unsupported_language_counts.is_empty());
+    }
+
+    #[test]
+    fn test_detection_returns_empty_for_unsupported_only() {
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "main.go", "");
+            create_dummy_file(p, "pkg/util.go", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &[]);
+        assert!(result.groups.is_empty(), "no resolvers for Go-only repo");
+        assert_eq!(
+            result.unsupported_language_counts.get(&SupportedLanguage::Go),
+            Some(&2)
+        );
+        assert_eq!(
+            result.file_counts_by_language.get(&SupportedLanguage::Go),
+            Some(&2)
+        );
+    }
+
+    #[test]
+    fn test_detection_respects_default_ignored_dirs() {
+        // Source-tree .py file vs a .py file inside node_modules. The default
+        // ignore list must keep node_modules out even without user config.
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "real.py", "");
+            create_dummy_file(p, "node_modules/some-pkg/embedded.py", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &[]);
+        assert_eq!(result.groups, vec![ResolverGroup::Python]);
+        assert_eq!(
+            result.file_counts_by_language.get(&SupportedLanguage::Python),
+            Some(&1),
+            "node_modules .py file must not be counted"
+        );
+    }
+
+    #[test]
+    fn test_detection_respects_user_ignored_dirs() {
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "keep.py", "");
+            create_dummy_file(p, "vendor/skip.py", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &["vendor".to_string()]);
+        assert_eq!(
+            result.file_counts_by_language.get(&SupportedLanguage::Python),
+            Some(&1)
+        );
+    }
+
+    #[test]
+    fn test_detection_orders_by_count_desc() {
+        // Python (3) > JsTs (1) → Python first. Alphabetical tie-break only
+        // matters when counts are equal; here counts differ so order is
+        // deterministic by count alone.
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "a.py", "");
+            create_dummy_file(p, "b.py", "");
+            create_dummy_file(p, "c.py", "");
+            create_dummy_file(p, "x.ts", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &[]);
+        assert_eq!(
+            result.groups,
+            vec![ResolverGroup::Python, ResolverGroup::JsTs]
+        );
+    }
+
+    #[test]
+    fn test_detection_unsupported_counts_populated_for_go_rust() {
+        // Mixed: Python is registered, Go and Rust are surfaced as gaps.
+        let dir = make_repo(|p| {
+            create_dummy_file(p, "main.py", "");
+            create_dummy_file(p, "tool.go", "");
+            create_dummy_file(p, "lib.rs", "");
+        });
+        let root = dir.path().canonicalize().unwrap();
+        let result = detect_resolver_groups(&root, &[]);
+        assert_eq!(result.groups, vec![ResolverGroup::Python]);
+        assert_eq!(
+            result.unsupported_language_counts.get(&SupportedLanguage::Go),
+            Some(&1)
+        );
+        assert_eq!(
+            result.unsupported_language_counts.get(&SupportedLanguage::Rust),
+            Some(&1)
+        );
+        assert!(
+            !result
+                .unsupported_language_counts
+                .contains_key(&SupportedLanguage::Python),
+            "Python has a resolver — it must not appear in unsupported_language_counts"
+        );
     }
 }

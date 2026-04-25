@@ -19,10 +19,10 @@ use pyo3::types::PyDict;
 use std::time::Duration;
 use std::path::{Path, PathBuf};
 use ignore::{WalkBuilder, DirEntry};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use crate::parser::{ParserPool, SupportedLanguage, create_skeleton_from_source};
 use crate::graph::GraphStatistics;
-use crate::import_resolver::ResolverGroup;
+use crate::import_resolver::{detect_resolver_groups, DetectionResult, ResolverGroup};
 use tree_sitter::{Node, Parser as TreeSitterParser, TreeCursor};
 
 
@@ -306,6 +306,21 @@ pub struct PyGraphStatistics {
     pub attempted_imports: usize,
     #[pyo3(get)]
     pub failed_imports: usize,
+    /// Names (lowercase, stable) of the resolver groups registered on this
+    /// graph. Order matches construction order — for auto-detected graphs
+    /// this is descending file count.
+    #[pyo3(get)]
+    pub registered_resolvers: Vec<String>,
+    /// `{language_name: file_count}` for every supported language seen on
+    /// disk during auto-detection. Empty `{}` when the graph was built
+    /// with explicit `languages=[...]` (no detection was performed).
+    #[pyo3(get)]
+    pub file_counts_by_language: HashMap<String, usize>,
+    /// `{language_name: file_count}` for languages with files on disk but
+    /// no registered resolver. The MCP `atlas_status` tool renders this as
+    /// the load-bearing "No resolver available" line.
+    #[pyo3(get)]
+    pub unsupported_language_counts: HashMap<String, usize>,
 }
 
 impl From<GraphStatistics> for PyGraphStatistics {
@@ -325,6 +340,18 @@ impl From<GraphStatistics> for PyGraphStatistics {
             known_root_modules: stats.known_root_modules,
             attempted_imports: stats.attempted_imports,
             failed_imports: stats.failed_imports,
+            registered_resolvers: stats.registered_resolvers
+                .iter()
+                .map(|g| g.name().to_string())
+                .collect(),
+            file_counts_by_language: stats.file_counts_by_language
+                .into_iter()
+                .map(|(lang, n)| (lang.name().to_string(), n))
+                .collect(),
+            unsupported_language_counts: stats.unsupported_language_counts
+                .into_iter()
+                .map(|(lang, n)| (lang.name().to_string(), n))
+                .collect(),
         }
     }
 }
@@ -348,16 +375,21 @@ impl PyRepoGraph {
         // Resolve which `ResolverGroup`s to build from the argument combination.
         //
         // Precedence:
-        //   1. If `languages` is provided → use it exactly.
+        //   1. If `languages` is provided → use it exactly (including the
+        //      `Some([])` "no resolvers" case).
         //   2. Else if legacy `language` is provided → wrap as [that one group].
-        //   3. Else → default to [Python] for backward compatibility. Phase 3b
-        //      of the multi-language rollout will replace this with
-        //      auto-detection; for now, the legacy default is preserved so
-        //      existing callers see no behavior change.
+        //   3. Else → auto-detect by scanning the project root for source
+        //      files. If detection finds zero supported languages, register
+        //      no resolvers; the graph still works for embeddings + PageRank
+        //      and the coverage gap is surfaced through GraphStatistics.
         //
         // When `language` is used (with or without `languages`), emit a
         // DeprecationWarning so Python callers discover the migration path
         // through their normal warning machinery rather than via logs.
+        //
+        // `detection` is set only on the auto-detect path; otherwise empty
+        // (callers that pass explicit languages own their own coverage view).
+        let mut detection: Option<DetectionResult> = None;
         let groups: Vec<ResolverGroup> = match (languages, language) {
             (Some(list), legacy_opt) => {
                 if legacy_opt.is_some() {
@@ -400,16 +432,23 @@ impl PyRepoGraph {
                 }
             }
             (None, None) => {
-                // Legacy default — behavior preserved verbatim from the
-                // single-language API. Phase 3b replaces this with
-                // auto-detection; until then, unspecified means Python.
-                vec![ResolverGroup::Python]
+                // Auto-detect by walking the project root. Detection respects
+                // .gitignore + DEFAULT_IGNORED_DIRS, so resolvers see the same
+                // file set the detection used. If detection finds nothing, we
+                // register no resolvers — that's the "Go-only repo" case, and
+                // the gap is visible through `unsupported_language_counts`.
+                let result = detect_resolver_groups(root_path, &dirs);
+                let groups = result.groups.clone();
+                detection = Some(result);
+                groups
             }
         };
 
-        Ok(Self {
-            graph: graph::RepoGraph::new_multi(root_path, &groups, &dirs, source_roots.as_deref()),
-        })
+        let mut graph = graph::RepoGraph::new_multi(root_path, &groups, &dirs, source_roots.as_deref());
+        if let Some(d) = detection {
+            graph.set_detection_metadata(d.file_counts_by_language, d.unsupported_language_counts);
+        }
+        Ok(Self { graph })
     }
 
     /// Build the entire graph from a list of file paths.

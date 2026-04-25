@@ -252,6 +252,67 @@ def _validate_cpg_file(file_path: str) -> Optional[str]:
     return None
 
 
+# Pretty names for the MCP rendering. Keys are the stable lowercase names
+# emitted by Rust's `SupportedLanguage::name()` / `ResolverGroup::name()`.
+# A missing key falls back to the raw name (so a future variant degrades to
+# something readable without a code change).
+_LANGUAGE_DISPLAY_NAMES = {
+    "python": "Python",
+    "rust": "Rust",
+    "javascript": "JavaScript",
+    "javascript_jsx": "JSX",
+    "typescript": "TypeScript",
+    "typescript_tsx": "TSX",
+    "go": "Go",
+    "unknown": "Unknown",
+}
+
+_RESOLVER_DISPLAY_NAMES = {
+    "python": "Python",
+    "javascript_typescript": "JS/TS",
+}
+
+
+def _format_coverage_block(stats) -> list:
+    """Render the Coverage section for `atlas_status`.
+
+    The 'No resolver available' line is the load-bearing piece — it tells
+    callers (humans and LLMs) that import analysis is unavailable for files
+    in some language present in the repo, rather than leaving them to infer
+    "0 imports must mean nothing depends on this" from a silent gap.
+    """
+    lines = ["  Coverage:"]
+
+    resolvers = list(stats.registered_resolvers)
+    if resolvers:
+        rendered = ", ".join(_RESOLVER_DISPLAY_NAMES.get(r, r) for r in resolvers)
+    else:
+        rendered = "(none — graph has no import resolvers)"
+    lines.append(f"    Registered resolvers: {rendered}")
+
+    counts = dict(stats.file_counts_by_language)
+    if counts:
+        # Descending count, alphabetical name tiebreak — matches the Rust-side
+        # detection ordering for resolver groups.
+        sorted_counts = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+        rendered = ", ".join(
+            f"{_LANGUAGE_DISPLAY_NAMES.get(lang, lang)} ({n})"
+            for lang, n in sorted_counts
+        )
+        lines.append(f"    Files by language: {rendered}")
+
+    unsupported = dict(stats.unsupported_language_counts)
+    if unsupported:
+        sorted_unsupported = sorted(unsupported.items(), key=lambda kv: (-kv[1], kv[0]))
+        rendered = ", ".join(
+            f"{_LANGUAGE_DISPLAY_NAMES.get(lang, lang)} ({n} file{'s' if n != 1 else ''})"
+            for lang, n in sorted_unsupported
+        )
+        lines.append(f"    No resolver available: {rendered}")
+
+    return lines
+
+
 def _is_trivial_init(path: Path) -> bool:
     """Check if a file is a trivial __init__.py with minimal content."""
     if path.name != "__init__.py":
@@ -296,6 +357,7 @@ async def atlas_status() -> str:
                     f"  CPG enabled: {_cpg_enabled}",
                     f"  Embeddings loaded: {_embedding_manager is not None}",
                 ]
+                lines.extend(_format_coverage_block(stats))
                 if stats.unresolved_import_count > 0:
                     unresolved = _graph.get_unresolved_imports(5)
                     lines.append("  Top unresolved targets:")

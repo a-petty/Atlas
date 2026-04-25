@@ -144,6 +144,22 @@ impl SupportedLanguage {
             SupportedLanguage::Go,
         ]
     }
+
+    /// Stable string name for cross-boundary serialization (Python dict keys,
+    /// MCP rendering). Distinct from `Debug` formatting because consumers
+    /// rely on these strings — changing them is a breaking API change.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Python => "python",
+            Self::Rust => "rust",
+            Self::JavaScript => "javascript",
+            Self::JavaScriptJsx => "javascript_jsx",
+            Self::TypeScript => "typescript",
+            Self::TypeScriptTsx => "typescript_tsx",
+            Self::Go => "go",
+            Self::Unknown => "unknown",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
