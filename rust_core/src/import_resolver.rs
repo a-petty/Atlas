@@ -195,16 +195,42 @@ pub fn detect_resolver_groups(
 }
 
 lazy_static! {
+    /// CPython stdlib top-level module names (from `sys.stdlib_module_names`,
+    /// CPython 3.11). Underscore-prefixed internal modules are omitted because
+    /// real source code imports them by their public re-exports
+    /// (`os` not `_os`). The list is purposefully exhaustive — earlier
+    /// versions had ~60 entries and missed common modules like `asyncio`,
+    /// `uuid`, `traceback`, `importlib`, `concurrent`, which then showed up
+    /// as inflated `failed_imports` counts on real-world repos.
     static ref PYTHON_STDLIB_MODULES: HashSet<&'static str> = [
-        "os", "sys", "math", "json", "re", "collections", "datetime", "time", "random",
-        "logging", "argparse", "io", "abc", "typing", "functools", "itertools",
-        "heapq", "queue", "threading", "multiprocessing", "subprocess", "socket",
-        "select", "ssl", "http", "urllib", "email", "csv", "xml", "html",
-        "dataclasses", "enum", "decimal", "fractions", "pathlib", "shutil", "tempfile",
-        "zipfile", "tarfile", "gzip", "bz2", "lzma", "hashlib", "hmac", "secrets",
-        "array", "mmap", "struct", "warnings", "contextlib", "locale", "gettext",
-        "unittest", "doctest", "pdb", "cProfile", "profile", "timeit", "trace",
-        "linecache", "faulthandler", "inspect", "dis", "gc", "sysconfig", "builtins",
+        "abc", "aifc", "antigravity", "argparse", "array", "ast", "asynchat", "asyncio",
+        "asyncore", "atexit", "audioop", "base64", "bdb", "binascii", "bisect", "builtins",
+        "bz2", "cProfile", "calendar", "cgi", "cgitb", "chunk", "cmath", "cmd",
+        "code", "codecs", "codeop", "collections", "colorsys", "compileall", "concurrent", "configparser",
+        "contextlib", "contextvars", "copy", "copyreg", "crypt", "csv", "ctypes", "curses",
+        "dataclasses", "datetime", "dbm", "decimal", "difflib", "dis", "distutils", "doctest",
+        "email", "encodings", "ensurepip", "enum", "errno", "faulthandler", "fcntl", "filecmp",
+        "fileinput", "fnmatch", "fractions", "ftplib", "functools", "gc", "genericpath", "getopt",
+        "getpass", "gettext", "glob", "graphlib", "grp", "gzip", "hashlib", "heapq",
+        "hmac", "html", "http", "idlelib", "imaplib", "imghdr", "imp", "importlib",
+        "inspect", "io", "ipaddress", "itertools", "json", "keyword", "lib2to3", "linecache",
+        "locale", "logging", "lzma", "mailbox", "mailcap", "marshal", "math", "mimetypes",
+        "mmap", "modulefinder", "msilib", "msvcrt", "multiprocessing", "netrc", "nis", "nntplib",
+        "nt", "ntpath", "nturl2path", "numbers", "opcode", "operator", "optparse", "os",
+        "ossaudiodev", "pathlib", "pdb", "pickle", "pickletools", "pipes", "pkgutil", "platform",
+        "plistlib", "poplib", "posix", "posixpath", "pprint", "profile", "pstats", "pty",
+        "pwd", "py_compile", "pyclbr", "pydoc", "pydoc_data", "pyexpat", "queue", "quopri",
+        "random", "re", "readline", "reprlib", "resource", "rlcompleter", "runpy", "sched",
+        "secrets", "select", "selectors", "shelve", "shlex", "shutil", "signal", "site",
+        "smtpd", "smtplib", "sndhdr", "socket", "socketserver", "spwd", "sqlite3", "sre_compile",
+        "sre_constants", "sre_parse", "ssl", "stat", "statistics", "string", "stringprep", "struct",
+        "subprocess", "sunau", "symtable", "sys", "sysconfig", "syslog", "tabnanny", "tarfile",
+        "telnetlib", "tempfile", "termios", "textwrap", "this", "threading", "time", "timeit",
+        "tkinter", "token", "tokenize", "tomllib", "trace", "traceback", "tracemalloc", "tty",
+        "turtle", "turtledemo", "types", "typing", "unicodedata", "unittest", "urllib", "uu",
+        "uuid", "venv", "warnings", "wave", "weakref", "webbrowser", "winreg", "winsound",
+        "wsgiref", "xdrlib", "xml", "xmlrpc", "zipapp", "zipfile", "zipimport", "zlib",
+        "zoneinfo",
     ].iter().cloned().collect();
 
     static ref COMMON_THIRD_PARTY_MODULES: HashSet<&'static str> = [
@@ -1481,6 +1507,13 @@ impl PythonImportResolver {
     /// Resolves a `from ... import ...` statement by walking its AST node.
     /// `depth` controls recursion: 0 = normal (will follow __init__.py re-exports),
     /// 1+ = called from follow_init_reexports (won't recurse further).
+    ///
+    /// Returns `true` if the statement resolved to at least one file path,
+    /// even if that path was already present in `imports` (HashSet dedup).
+    /// Callers must use this return value rather than checking `imports.len()`
+    /// before/after — duplicates of an already-resolved target are still
+    /// successful resolutions, but they'd be invisible to a length comparison
+    /// and trigger spurious "failed import" bookkeeping.
     fn resolve_from_import(
         &self,
         node: tree_sitter::Node,
@@ -1488,8 +1521,9 @@ impl PythonImportResolver {
         source: &[u8],
         imports: &mut HashSet<PathBuf>,
         depth: usize,
-    ) {
+    ) -> bool {
         let module_name_node = node.child_by_field_name("module_name");
+        let mut resolved = false;
 
         match module_name_node {
             Some(mn) if mn.kind() == "dotted_name" => {
@@ -1504,6 +1538,7 @@ impl PythonImportResolver {
                             self.follow_init_reexports(&path, imports);
                         }
                         imports.insert(path);
+                        resolved = true;
                     }
                 }
             }
@@ -1540,6 +1575,7 @@ impl PythonImportResolver {
                             self.follow_init_reexports(&path, imports);
                         }
                         imports.insert(path);
+                        resolved = true;
                     }
                 } else {
                     // `from . import X, Y` or `from . import *`
@@ -1557,11 +1593,11 @@ impl PythonImportResolver {
                                 self.follow_init_reexports(&path, imports);
                             }
                             imports.insert(path);
+                            resolved = true;
                         }
                     } else {
                         // `from . import X, Y` — each imported name could be a submodule
                         // or a symbol from __init__.py. Try module first, then fall back.
-                        let mut any_resolved = false;
                         let mut cursor2 = node.walk();
                         for child in node.children(&mut cursor2) {
                             let name_text = match child.kind() {
@@ -1579,13 +1615,13 @@ impl PythonImportResolver {
                                         self.follow_init_reexports(&path, imports);
                                     }
                                     imports.insert(path);
-                                    any_resolved = true;
+                                    resolved = true;
                                 }
                             }
                         }
                         // If none resolved as modules, try the package __init__.py
                         // (the names are symbols exported from __init__.py)
-                        if !any_resolved {
+                        if !resolved {
                             if let Some(path) =
                                 self.resolve_relative(current_file, dots, None)
                             {
@@ -1593,6 +1629,7 @@ impl PythonImportResolver {
                                     self.follow_init_reexports(&path, imports);
                                 }
                                 imports.insert(path);
+                                resolved = true;
                             }
                         }
                     }
@@ -1602,6 +1639,7 @@ impl PythonImportResolver {
                 // No module_name field or unrecognized kind — skip
             }
         }
+        resolved
     }
 
     /// Parse an `__init__.py` file and follow its from-imports to discover
@@ -1850,15 +1888,20 @@ impl ImportResolver for PythonImportResolver {
                             }
                         }
                         self.attempted_imports.fetch_add(1, Ordering::Relaxed);
-                        let before = imports.len();
-                        self.resolve_from_import(
+                        // Use the resolution return value, not `imports.len()`
+                        // before/after — `imports` is a HashSet, so a file
+                        // that imports the same target twice (very common with
+                        // function-level imports for circular-import dodging)
+                        // would see the second insert as a no-op and falsely
+                        // count the second from-import as a failure.
+                        let resolved = self.resolve_from_import(
                             capture.node,
                             current_file,
                             source,
                             &mut imports,
                             0,
                         );
-                        if imports.len() == before {
+                        if !resolved {
                             self.failed_imports.fetch_add(1, Ordering::Relaxed);
                             if let Some(name) = module_name_opt {
                                 self.record_failed_import(&name);
@@ -2665,6 +2708,36 @@ mod tests {
         assert_eq!(repo.resolver.get_failed_imports(), 0);
     }
 
+    /// Regression: stdlib modules that the older 60-entry list missed
+    /// (`asyncio`, `uuid`, `traceback`, `importlib`, `base64`, `concurrent`)
+    /// must be filtered. The expanded list is sourced from CPython 3.11's
+    /// `sys.stdlib_module_names`; this keeps it from regressing.
+    #[test]
+    fn test_expanded_stdlib_filter_covers_common_misses() {
+        for module in [
+            "asyncio", "uuid", "traceback", "importlib", "base64",
+            "concurrent", "glob", "ast", "signal", "statistics",
+            "unicodedata", "contextvars", "copy", "platform", "sqlite3",
+        ] {
+            let mut repo = setup();
+            let src = format!("from {} import something", module);
+            let imports = run_find_imports(&mut repo, &src, "app.py");
+            assert!(imports.is_empty(), "{} from-import must resolve to nothing", module);
+            assert_eq!(
+                repo.resolver.get_attempted_imports(),
+                0,
+                "{} should be filtered before counting",
+                module
+            );
+            assert_eq!(
+                repo.resolver.get_failed_imports(),
+                0,
+                "{} should not increment failed counter",
+                module
+            );
+        }
+    }
+
     /// `from typing` must not appear in the failed-name registry — the
     /// noisiest false positive on FoY-shaped repos.
     #[test]
@@ -2700,6 +2773,45 @@ mod tests {
         assert!(
             names.iter().any(|(n, _)| n == "project.does_not_exist"),
             "real failure must be tracked in failed_import_names, got {:?}",
+            names
+        );
+    }
+
+    /// Regression: a file that imports the same target twice (common with
+    /// function-level reimports for circular-import dodging) used to mark
+    /// the second from-import as failed. `find_imports` was checking
+    /// `imports.len()` before/after, but `imports` is a HashSet, so the
+    /// second insert was a no-op even when resolution succeeded — leading
+    /// to spurious `failed_imports++` and `record_failed_import`.
+    #[test]
+    fn test_duplicate_from_import_not_counted_as_failed() {
+        let mut repo = setup();
+        // Two function-level imports of the same target in the same file.
+        let src = "
+def f():
+    from src.utils import helper
+    return helper()
+
+def g():
+    from src.utils import helper
+    return helper()
+";
+        let imports = run_find_imports(&mut repo, src, "app.py");
+        assert_eq!(imports.len(), 1, "HashSet dedups to one path");
+        assert_eq!(
+            repo.resolver.get_attempted_imports(),
+            2,
+            "both from-imports must count as attempts"
+        );
+        assert_eq!(
+            repo.resolver.get_failed_imports(),
+            0,
+            "both resolved successfully — neither should count as failed even though HashSet dedups"
+        );
+        let names = repo.resolver.get_failed_import_names(10);
+        assert!(
+            names.is_empty(),
+            "no failed names should be recorded, got {:?}",
             names
         );
     }
