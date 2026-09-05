@@ -1,0 +1,356 @@
+{
+  "benchmark_name": "token_efficiency",
+  "repo_path": "/Users/apetty/Dev/Atlas",
+  "file_count": 127,
+  "timestamp": "2026-02-26T04:22:44.328897+00:00",
+  "measurements": [
+    {
+      "budget": 8000,
+      "atlas": {
+        "strategy": "atlas",
+        "budget": 8000,
+        "total_tokens_used": 6948,
+        "files_included": 4,
+        "files_per_tier": {
+          "map": 0,
+          "explicit": 0,
+          "anchor": 1,
+          "neighborhood": 0,
+          "skeleton": 3
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_token_efficiency.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/agent.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py"
+        ],
+        "wall_clock_ms": 22487.9
+      },
+      "flat_embedding": {
+        "strategy": "flat_embedding",
+        "budget": 8000,
+        "total_tokens_used": 7765,
+        "files_included": 9,
+        "files_per_tier": {
+          "full_content": 9
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_construction.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_incremental_parsing.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/utils/helpers.js",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py"
+        ],
+        "wall_clock_ms": 55.7
+      },
+      "random": {
+        "strategy": "random",
+        "budget": 8000,
+        "total_tokens_used": 7976,
+        "files_included": 9,
+        "files_per_tier": {
+          "full_content": 9
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_pagerank.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_incremental_latency.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_cpg.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_construction.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/utils/helpers.js",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py"
+        ],
+        "wall_clock_ms": 54.1
+      }
+    },
+    {
+      "budget": 16000,
+      "atlas": {
+        "strategy": "atlas",
+        "budget": 16000,
+        "total_tokens_used": 15040,
+        "files_included": 5,
+        "files_per_tier": {
+          "map": 0,
+          "explicit": 0,
+          "anchor": 2,
+          "neighborhood": 0,
+          "skeleton": 3
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/dataflow.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js"
+        ],
+        "wall_clock_ms": 37.2
+      },
+      "flat_embedding": {
+        "strategy": "flat_embedding",
+        "budget": 16000,
+        "total_tokens_used": 15823,
+        "files_included": 9,
+        "files_per_tier": {
+          "full_content": 9
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_construction.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_context.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/utils/helpers.js",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py"
+        ],
+        "wall_clock_ms": 53.1
+      },
+      "random": {
+        "strategy": "random",
+        "budget": 16000,
+        "total_tokens_used": 15992,
+        "files_included": 15,
+        "files_per_tier": {
+          "full_content": 15
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_callgraph.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_skeleton_compression.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/embeddings.py",
+          "/Users/apetty/Dev/Atlas/rust_core/examples/generate_map.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/examples/test_graph_build.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/health.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_parser.py",
+          "/Users/apetty/Dev/Atlas/python_shell/generate_map_script.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_token_efficiency.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_tools.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py"
+        ],
+        "wall_clock_ms": 52.9
+      }
+    },
+    {
+      "budget": 32000,
+      "atlas": {
+        "strategy": "atlas",
+        "budget": 32000,
+        "total_tokens_used": 26131,
+        "files_included": 9,
+        "files_per_tier": {
+          "map": 0,
+          "explicit": 0,
+          "anchor": 5,
+          "neighborhood": 0,
+          "skeleton": 4
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_token_efficiency.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_context.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/callgraph.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/dataflow.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_construction.rs"
+        ],
+        "wall_clock_ms": 49.5
+      },
+      "flat_embedding": {
+        "strategy": "flat_embedding",
+        "budget": 32000,
+        "total_tokens_used": 31967,
+        "files_included": 15,
+        "files_per_tier": {
+          "full_content": 15
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_construction.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_context.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/dataflow.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_token_efficiency.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/callgraph.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/cli.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_js_import_resolution.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/utils/helpers.js",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py"
+        ],
+        "wall_clock_ms": 59.6
+      },
+      "random": {
+        "strategy": "random",
+        "budget": 32000,
+        "total_tokens_used": 31906,
+        "files_included": 23,
+        "files_per_tier": {
+          "full_content": 23
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/python_shell/temp_test.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/run_all.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_llm.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_watcher.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/tools.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_graph_updates.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/dataflow.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/watcher.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_phase2_criteria.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/benches/incremental_benchmark.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_dataflow.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_token_efficiency.py",
+          "/Users/apetty/Dev/Atlas/rust_core/examples/test_graph_build.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/llm.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/health.py",
+          "/Users/apetty/Dev/Atlas/python_shell/generate_map_script.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/cli.py",
+          "/Users/apetty/Dev/Atlas/python_shell/test_watcher.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/utils/helpers.js",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py"
+        ],
+        "wall_clock_ms": 52.8
+      }
+    },
+    {
+      "budget": 64000,
+      "atlas": {
+        "strategy": "atlas",
+        "budget": 64000,
+        "total_tokens_used": 35388,
+        "files_included": 10,
+        "files_per_tier": {
+          "map": 0,
+          "explicit": 0,
+          "anchor": 5,
+          "neighborhood": 0,
+          "skeleton": 5
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_token_efficiency.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_context.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/callgraph.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/dataflow.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_construction.rs"
+        ],
+        "wall_clock_ms": 59.4
+      },
+      "flat_embedding": {
+        "strategy": "flat_embedding",
+        "budget": 64000,
+        "total_tokens_used": 63803,
+        "files_included": 28,
+        "files_per_tier": {
+          "full_content": 28
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/context.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_construction.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_context.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/dataflow.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_token_efficiency.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/callgraph.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_callgraph.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/cfg.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/cli.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_cpg.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_repo_map.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_incremental_parsing.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/embeddings.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_js_import_resolution.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_pagerank.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/common.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/test_utils.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_symbol_harvesting.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/tools.py",
+          "/Users/apetty/Dev/Atlas/rust_core/benches/incremental_benchmark.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/utils/helpers.js",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py"
+        ],
+        "wall_clock_ms": 56.4
+      },
+      "random": {
+        "strategy": "random",
+        "budget": 64000,
+        "total_tokens_used": 63821,
+        "files_included": 31,
+        "files_per_tier": {
+          "full_content": 31
+        },
+        "file_list": [
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_import_canonicalization.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/mcp_server.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/parser.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/examples/test_graph_build.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_chat.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_embeddings.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/agent.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_error_handling.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/__init__.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_tools.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/embeddings.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_graph_updates.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/components/Button.tsx",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_cfg.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/import_resolver.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_watcher.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/incremental_parser.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_pagerank_ordering.py",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_parser.py",
+          "/Users/apetty/Dev/Atlas/benchmarks/bench_incremental_latency.py",
+          "/Users/apetty/Dev/Atlas/rust_core/src/watcher.rs",
+          "/Users/apetty/Dev/Atlas/rust_core/src/symbol_table.rs",
+          "/Users/apetty/Dev/Atlas/benchmarks/run_all.py",
+          "/Users/apetty/Dev/Atlas/python_shell/temp_test.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/test_js_import_resolution.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/__init__.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/utils/helpers.js",
+          "/Users/apetty/Dev/Atlas/rust_core/examples/generate_map.rs",
+          "/Users/apetty/Dev/Atlas/python_shell/tests/test_graph_updates.py",
+          "/Users/apetty/Dev/Atlas/python_shell/atlas/health.py",
+          "/Users/apetty/Dev/Atlas/rust_core/tests/fixtures/js_test_repo/src/index.js"
+        ],
+        "wall_clock_ms": 57.3
+      }
+    }
+  ],
+  "metadata": {
+    "query": "How does the context assembly system work?",
+    "budgets": [
+      8000,
+      16000,
+      32000,
+      64000
+    ]
+  }
+}

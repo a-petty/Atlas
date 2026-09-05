@@ -1,0 +1,60 @@
+{
+  "benchmark_name": "incremental_latency",
+  "repo_path": "/Users/apetty/Dev/Atlas",
+  "file_count": 125,
+  "timestamp": "2026-02-26T04:22:39.793418+00:00",
+  "measurements": [
+    {
+      "mean": 2.4446857602742966,
+      "median": 2.4489374991389923,
+      "p50": 2.4489374991389923,
+      "p95": 2.5758876494364813,
+      "p99": 2.683491249699727,
+      "min": 2.263249996758532,
+      "max": 2.7718749988707714,
+      "tier": "Local",
+      "iterations": 50,
+      "file": "/Users/apetty/Dev/Atlas/python_shell/tests/test_llm.py"
+    },
+    {
+      "mean": 4.969433280202793,
+      "median": 4.9625624997133855,
+      "p50": 4.9625624997133855,
+      "p95": 5.211939404034638,
+      "p99": 5.3132867495151,
+      "min": 4.708874999778345,
+      "max": 5.338582996046171,
+      "tier": "FileScope",
+      "iterations": 50,
+      "file": "/Users/apetty/Dev/Atlas/python_shell/tests/test_llm.py"
+    },
+    {
+      "mean": 4.97954175923951,
+      "median": 4.98543749563396,
+      "p50": 4.98543749563396,
+      "p95": 5.1001838502998,
+      "p99": 5.179763492487837,
+      "min": 4.781958996318281,
+      "max": 5.188583003473468,
+      "tier": "GraphScope",
+      "iterations": 50,
+      "file": "/Users/apetty/Dev/Atlas/python_shell/tests/test_llm.py"
+    },
+    {
+      "mean": 428.4780916001182,
+      "median": 431.7773340007989,
+      "p50": 431.7773340007989,
+      "p95": 434.801841598528,
+      "p99": 435.293768318661,
+      "min": 421.4054580006632,
+      "max": 435.4167499986943,
+      "tier": "FullRebuild",
+      "iterations": 5,
+      "file": "(entire graph)"
+    }
+  ],
+  "metadata": {
+    "target_file": "/Users/apetty/Dev/Atlas/python_shell/tests/test_llm.py",
+    "iterations": 50
+  }
+}

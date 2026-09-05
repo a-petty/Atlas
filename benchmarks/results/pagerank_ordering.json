@@ -1,0 +1,85 @@
+{
+  "benchmark_name": "pagerank_ordering",
+  "repo_path": "/Users/apetty/Dev/Atlas",
+  "file_count": 59,
+  "timestamp": "2026-02-26T04:22:43.621790+00:00",
+  "measurements": [
+    {
+      "k": 5,
+      "effective_k": 5,
+      "pagerank": {
+        "coverage": 1.0,
+        "precision": 1.0
+      },
+      "alphabetical": {
+        "coverage": 0.0,
+        "precision": 0.0
+      },
+      "random": {
+        "coverage_mean": 0.06,
+        "precision_mean": 0.06,
+        "trials": 10
+      }
+    },
+    {
+      "k": 10,
+      "effective_k": 10,
+      "pagerank": {
+        "coverage": 1.0,
+        "precision": 1.0
+      },
+      "alphabetical": {
+        "coverage": 0.6,
+        "precision": 0.6
+      },
+      "random": {
+        "coverage_mean": 0.15,
+        "precision_mean": 0.15,
+        "trials": 10
+      }
+    },
+    {
+      "k": 20,
+      "effective_k": 20,
+      "pagerank": {
+        "coverage": 0.65,
+        "precision": 0.65
+      },
+      "alphabetical": {
+        "coverage": 1.0,
+        "precision": 1.0
+      },
+      "random": {
+        "coverage_mean": 0.395,
+        "precision_mean": 0.395,
+        "trials": 10
+      }
+    },
+    {
+      "k": 50,
+      "effective_k": 50,
+      "pagerank": {
+        "coverage": 0.82,
+        "precision": 0.82
+      },
+      "alphabetical": {
+        "coverage": 1.0,
+        "precision": 1.0
+      },
+      "random": {
+        "coverage_mean": 0.858,
+        "precision_mean": 0.858,
+        "trials": 10
+      }
+    }
+  ],
+  "metadata": {
+    "top_k_values": [
+      5,
+      10,
+      20,
+      50
+    ],
+    "random_trials": 10
+  }
+}

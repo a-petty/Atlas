@@ -1,0 +1,103 @@
+{
+  "benchmark_name": "contextbench",
+  "repo_path": "(multi-repo)",
+  "file_count": 1,
+  "timestamp": "2026-02-26T04:59:48.846152+00:00",
+  "measurements": [
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__2ab7d0fc",
+      "repo": "django/django",
+      "language": "python",
+      "gold_files": [
+        "django/db/models/sql/query.py"
+      ],
+      "retrieved_files": [
+        "django/contrib/contenttypes/fields.py",
+        "django/contrib/postgres/aggregates/mixins.py",
+        "django/contrib/postgres/indexes.py",
+        "django/contrib/postgres/lookups.py",
+        "django/contrib/postgres/search.py",
+        "django/contrib/postgres/serializers.py",
+        "django/contrib/postgres/signals.py",
+        "django/db/backends/mysql/introspection.py",
+        "django/db/migrations/exceptions.py",
+        "django/db/models/fields/related_descriptors.py",
+        "django/db/models/fields/related_lookups.py",
+        "django/db/models/functions/comparison.py",
+        "tests/admin_widgets/models.py",
+        "tests/contenttypes_tests/models.py",
+        "tests/custom_managers/models.py",
+        "tests/filtered_relation/tests.py",
+        "tests/foreign_object/models/article.py",
+        "tests/forms_tests/models.py",
+        "tests/forms_tests/tests/__init__.py",
+        "tests/forms_tests/urls.py",
+        "tests/get_earliest_or_latest/models.py",
+        "tests/get_earliest_or_latest/tests.py",
+        "tests/get_object_or_404/models.py",
+        "tests/m2m_regress/models.py",
+        "tests/managers_regress/models.py",
+        "tests/middleware_exceptions/middleware.py",
+        "tests/middleware_exceptions/tests.py",
+        "tests/model_forms/models.py",
+        "tests/model_forms/tests.py",
+        "tests/one_to_one/models.py",
+        "tests/prefetch_related/models.py",
+        "tests/proxy_models/models.py",
+        "tests/schema/fields.py",
+        "tests/select_related/tests.py",
+        "tests/template_tests/tests.py",
+        "tests/test_runner/tests.py",
+        "tests/validation/models.py"
+      ],
+      "file_recall": 0.0,
+      "file_precision": 0.0,
+      "file_f1": 0.0,
+      "gold_block_count": 5,
+      "blocks_fully_covered": 0,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 5,
+      "block_recall_full": 0.0,
+      "block_recall_any": 0.0,
+      "graph_build_ms": 16818.332374998135,
+      "context_assembly_ms": 193099.09100000368,
+      "error": null
+    }
+  ],
+  "metadata": {
+    "subset": "default",
+    "language_filter": "python",
+    "sample_size": 1,
+    "token_budget": 32000,
+    "seed": 42,
+    "overall": {
+      "count": 1,
+      "file_recall_mean": 0.0,
+      "file_precision_mean": 0.0,
+      "file_f1_mean": 0.0,
+      "block_recall_full_mean": 0.0,
+      "block_recall_any_mean": 0.0,
+      "avg_graph_build_ms": 16818.3,
+      "avg_context_assembly_ms": 193099.1,
+      "avg_gold_files": 1.0,
+      "avg_retrieved_files": 37.0
+    },
+    "by_language": {
+      "python": {
+        "count": 1,
+        "file_recall_mean": 0.0,
+        "file_precision_mean": 0.0,
+        "file_f1_mean": 0.0,
+        "block_recall_full_mean": 0.0,
+        "block_recall_any_mean": 0.0,
+        "avg_graph_build_ms": 16818.3,
+        "avg_context_assembly_ms": 193099.1,
+        "avg_gold_files": 1.0,
+        "avg_retrieved_files": 37.0
+      }
+    },
+    "total_tasks": 1,
+    "successful_tasks": 1,
+    "failed_tasks": 0
+  }
+}
