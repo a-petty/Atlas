@@ -414,3 +414,51 @@ fn test_debouncing() {
     assert!(modify_count < 10, "Should debounce rapid changes");
     println!("✅ Test passed\n");
 }
+fn overflow_event_path(event: FileChangeEvent) -> std::path::PathBuf {
+    match event {
+        FileChangeEvent::Created(p) | FileChangeEvent::Modified(p) | FileChangeEvent::Deleted(p) => p,
+        FileChangeEvent::Renamed {to, ..} => to,
+    }
+}
+
+#[test]
+fn output_overflow_must_reconcile_after_consumer_resumes() {
+    let root = tempfile::tempdir().unwrap();
+    let mut watcher = FileWatcher::new(root.path().to_owned(), FileFilter::default()).unwrap();
+    const FILES: usize = 6000;
+    for i in 0..FILES {
+        fs::write(root.path().join(format!("f_{i:05}.py")), b"x = 1\n").unwrap();
+    }
+    std::thread::sleep(Duration::from_secs(3));
+    let first = watcher.poll_events();
+    let first_events = first.len();
+    let mut observed: std::collections::HashSet<_> = first.into_iter().map(overflow_event_path).collect();
+    let mut later_events = 0;
+    let resume = std::time::Instant::now();
+    while resume.elapsed() < Duration::from_secs(3) {
+        let events = watcher.poll_events();
+        later_events += events.len();
+        observed.extend(events.into_iter().map(overflow_event_path));
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    let stats = watcher.get_stats();
+    let stop_start = std::time::Instant::now();
+    watcher.stop().unwrap();
+    println!("OVERFLOW files={FILES} first_events={first_events} later_events={later_events} unique_observed={} missing={} stats={stats:?} stop_ms={}", observed.len(), FILES-observed.len(), stop_start.elapsed().as_millis());
+    assert_eq!(observed.len(), FILES, "Reconciliation must eventually surface every persistent file after output queue overflow");
+}
+
+#[test]
+fn full_output_queue_stop_completes() {
+    let root = tempfile::tempdir().unwrap();
+    let mut watcher = FileWatcher::new(root.path().to_owned(), FileFilter::default()).unwrap();
+    for i in 0..6000 {
+        fs::write(root.path().join(format!("f_{i:05}.py")), b"x = 1\n").unwrap();
+    }
+    std::thread::sleep(Duration::from_secs(2));
+    let start = std::time::Instant::now();
+    watcher.stop().unwrap();
+    println!("STOP full output queue completed in {} ms; buffered_events={}", start.elapsed().as_millis(), watcher.poll_events().len());
+    assert!(start.elapsed() < Duration::from_secs(2));
+    assert!(!watcher.is_running());
+}

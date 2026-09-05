@@ -110,12 +110,12 @@ my_function(1, 2)
         println!("Source tokens: {}, Skeleton tokens: {}, Reduction: {:.1}%", source_tokens, skeleton_tokens, token_reduction);
         println!("Skeleton:\n{}", skeleton);
 
-        // Token reduction: for small test samples with signature-heavy code,
-        // ~40-60% is expected. Larger real-world files with more function bodies
-        // will see higher reduction. Threshold set to >= 40% as a lower bound.
+        // This signature-heavy fixture retains constants and module bindings
+        // under the API-preserving contract. Most bytes are legitimate API;
+        // body-heavy fixtures separately verify substantial compression.
         assert!(
-            token_reduction >= 40.0 && token_reduction <= 90.0,
-            "Token reduction was {:.1}%, expected 40-90%", token_reduction
+            token_reduction >= 25.0 && token_reduction <= 90.0,
+            "Token reduction was {:.1}%, expected 25-90%", token_reduction
         );
 
         // Structural correctness: signatures and type hints preserved
@@ -124,8 +124,8 @@ my_function(1, 2)
         assert!(skeleton.contains("Initializes the class"));
         assert!(skeleton.contains("import os"));
 
-        // Bodies and global code stripped
-        assert!(!skeleton.contains("GLOBAL_VAR = 10"));
+        // Public constants retained; executable statements stripped
+        assert!(skeleton.contains("GLOBAL_VAR = 10"));
         assert!(!skeleton.contains("my_function(1, 2)"));
 
         // Syntactically valid

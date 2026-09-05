@@ -1,8 +1,5 @@
 use petgraph::graph::NodeIndex;
-use petgraph::visit::EdgeRef;
-use std::collections::HashSet;
 use std::path::Path;
-use std::time::Instant;
 
 use crate::cpg::{CpgEdge, CpgLayer, CpgNodeKind, StatementKind};
 use crate::symbol_table::SymbolIndex;
@@ -35,53 +32,6 @@ pub enum CallResolution {
     Unresolved(String),
 }
 
-/// Common Python builtins that should not be resolved.
-fn python_builtins() -> HashSet<&'static str> {
-    [
-        "print", "len", "range", "int", "str", "list", "dict", "set", "tuple",
-        "type", "isinstance", "issubclass", "open", "super", "enumerate", "zip",
-        "map", "filter", "sorted", "min", "max", "sum", "abs", "hasattr",
-        "getattr", "setattr", "delattr", "callable", "repr", "hash", "id",
-        "input", "iter", "next", "reversed", "round", "bool", "bytes",
-        "bytearray", "memoryview", "float", "complex", "frozenset", "object",
-        "property", "staticmethod", "classmethod", "vars", "dir", "hex", "oct",
-        "bin", "ord", "chr", "format", "any", "all", "breakpoint", "compile",
-        "eval", "exec", "globals", "locals", "pow", "divmod", "slice",
-        "ValueError", "TypeError", "KeyError", "IndexError", "AttributeError",
-        "RuntimeError", "Exception", "StopIteration", "NotImplementedError",
-        "OSError", "IOError", "FileNotFoundError", "ImportError",
-    ].into_iter().collect()
-}
-
-/// Common JS/TS builtins that should not be resolved.
-fn js_builtins() -> HashSet<&'static str> {
-    [
-        "console", "setTimeout", "setInterval", "clearTimeout", "clearInterval",
-        "fetch", "Promise", "JSON", "Math", "Object", "Array", "String",
-        "Number", "Boolean", "Symbol", "Map", "Set", "WeakMap", "WeakSet",
-        "Error", "TypeError", "RangeError", "SyntaxError", "ReferenceError",
-        "parseInt", "parseFloat", "isNaN", "isFinite", "require",
-        "encodeURI", "decodeURI", "encodeURIComponent", "decodeURIComponent",
-        "alert", "document", "window", "globalThis", "undefined", "NaN",
-        "Infinity", "Date", "RegExp", "Proxy", "Reflect", "Buffer",
-        "process", "module", "exports", "__dirname", "__filename",
-        "queueMicrotask", "structuredClone", "atob", "btoa",
-    ].into_iter().collect()
-}
-
-/// Get the appropriate builtins set for a file path.
-fn builtins_for_path(path: &std::path::Path) -> HashSet<&'static str> {
-    use crate::parser::SupportedLanguage;
-    let lang = SupportedLanguage::from_path(path);
-    match lang {
-        SupportedLanguage::JavaScript
-        | SupportedLanguage::JavaScriptJsx
-        | SupportedLanguage::TypeScript
-        | SupportedLanguage::TypeScriptTsx => js_builtins(),
-        _ => python_builtins(),
-    }
-}
-
 /// Stateless builder for call graph construction.
 pub struct CallGraphBuilder;
 
@@ -92,11 +42,7 @@ impl CallGraphBuilder {
 
     /// Extract all call sites from statements within a function.
     /// Called during `build_file` after CFG and dataflow analysis.
-    pub fn extract_call_sites(
-        cpg: &CpgLayer,
-        func_idx: NodeIndex,
-        source: &str,
-    ) -> Vec<CallSite> {
+    pub fn extract_call_sites(cpg: &CpgLayer, func_idx: NodeIndex, source: &str) -> Vec<CallSite> {
         let file_path = match cpg.graph.node_weight(func_idx) {
             Some(n) => n.file_path.clone(),
             None => return Vec::new(),
@@ -113,11 +59,9 @@ impl CallGraphBuilder {
         for &idx in cpg.get_stmts_for_function(func_idx) {
             if let Some(node) = cpg.graph.node_weight(idx) {
                 if node.kind == CpgNodeKind::Statement {
-                    if let Some(ts_node) = find_node_at_bytes(
-                        tree.root_node(),
-                        node.start_byte,
-                        node.end_byte,
-                    ) {
+                    if let Some(ts_node) =
+                        find_node_at_bytes(tree.root_node(), node.start_byte, node.end_byte)
+                    {
                         extract_calls_from_node(ts_node, source, idx, func_idx, &mut sites);
                     }
                 }
@@ -131,705 +75,111 @@ impl CallGraphBuilder {
     // Pass 2: Resolve all call sites across the entire CPG
     // -----------------------------------------------------------------------
 
-    /// Resolve all call sites after all files have been built.
-    /// Creates Calls/CalledBy edges and DataFlowArgument/DataFlowReturn edges.
-    pub fn resolve_all(cpg: &mut CpgLayer, symbol_index: &SymbolIndex) {
-        let resolve_start = Instant::now();
-        let py_builtins = python_builtins();
-        let js_builtins_set = js_builtins();
-
-        // Collect all call sites with their caller file paths
-        let collect_start = Instant::now();
-        let all_sites: Vec<(CallSite, std::path::PathBuf)> = cpg
-            .call_sites
-            .values()
-            .flat_map(|sites| sites.iter())
-            .filter_map(|site| {
-                cpg.graph
-                    .node_weight(site.caller_func_idx)
-                    .map(|n| (site.clone(), n.file_path.clone()))
+    /// Resolve CPG edges through the same AST-only binding engine used by
+    /// repository callers/callees queries. A complete pass over the lazily loaded
+    /// CPG files makes full, incremental, and query-order paths equivalent.
+    pub fn resolve_all(cpg: &mut CpgLayer, _symbol_index: &SymbolIndex) {
+        let mut index = crate::call_index::CallIndex::new();
+        for (path, tree) in &cpg.trees {
+            if let Some(source) = cpg.sources.get(path) {
+                index.update_file(
+                    path,
+                    tree,
+                    source,
+                    crate::parser::SupportedLanguage::from_path(path),
+                    cpg.import_bindings.get(path).cloned().unwrap_or_default(),
+                );
+            }
+        }
+        index.resolve_all();
+        let mut nodes: std::collections::HashMap<_, _> = cpg
+            .graph
+            .node_indices()
+            .filter_map(|idx| {
+                let node = &cpg.graph[idx];
+                matches!(node.kind, CpgNodeKind::Function | CpgNodeKind::Method)
+                    .then(|| ((node.file_path.clone(), node.start_byte), idx))
             })
             .collect();
-        crate::diag::diag_log(&format!("[DIAG] resolve_all: collected {} call sites from {} functions in {:.2}s",
-            all_sites.len(), cpg.call_sites.len(), collect_start.elapsed().as_secs_f64()));
-
-        // Resolve each call site
-        let mut edges_to_add: Vec<EdgeToAdd> = Vec::new();
-        let mut resolved_count = 0usize;
-
-        let resolve_loop_start = Instant::now();
-        for (i, (site, caller_file)) in all_sites.iter().enumerate() {
-            let site_start = Instant::now();
-            let builtins = {
-                use crate::parser::SupportedLanguage;
-                let lang = SupportedLanguage::from_path(caller_file);
-                match lang {
-                    SupportedLanguage::JavaScript
-                    | SupportedLanguage::JavaScriptJsx
-                    | SupportedLanguage::TypeScript
-                    | SupportedLanguage::TypeScriptTsx => &js_builtins_set,
-                    _ => &py_builtins,
-                }
-            };
-            if let CallResolution::Resolved(callee_idx) =
-                Self::resolve_callee(cpg, site, caller_file, symbol_index, builtins)
-            {
-                collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
-                resolved_count += 1;
-            }
-            let site_elapsed = site_start.elapsed();
-            if site_elapsed.as_millis() > 100 {
-                crate::diag::diag_log(&format!("[DIAG] resolve_all: slow call site #{} ({:.2}s): {} -> {} in {}",
-                    i, site_elapsed.as_secs_f64(),
-                    site.callee_name,
-                    cpg.graph.node_weight(site.caller_func_idx)
-                        .map(|n| n.name.as_str()).unwrap_or("?"),
-                    caller_file.display()));
-            }
-            if (i + 1) % 1000 == 0 {
-                crate::diag::diag_log(&format!("[DIAG] resolve_all: progress {}/{} sites ({} resolved, {:.2}s elapsed)",
-                    i + 1, all_sites.len(), resolved_count, resolve_loop_start.elapsed().as_secs_f64()));
-            }
-        }
-        crate::diag::diag_log(&format!("[DIAG] resolve_all: resolution loop completed in {:.2}s ({}/{} resolved)",
-            resolve_loop_start.elapsed().as_secs_f64(), resolved_count, all_sites.len()));
-
-        // Apply all edges (with dedup — same pattern as resolve_file / resolve_new_callers)
-        let apply_start = Instant::now();
-        for edge in edges_to_add {
-            let already_exists = cpg.graph
-                .edges_connecting(edge.source, edge.target)
-                .any(|e| *e.weight() == edge.weight);
-            if !already_exists {
-                cpg.graph.add_edge(edge.source, edge.target, edge.weight);
-            }
-        }
-        crate::diag::diag_log(&format!("[DIAG] resolve_all: edge application completed in {:.2}s", apply_start.elapsed().as_secs_f64()));
-        crate::diag::diag_log(&format!("[DIAG] resolve_all: total time {:.2}s", resolve_start.elapsed().as_secs_f64()));
-    }
-
-    // -----------------------------------------------------------------------
-    // Incremental: Resolve call sites for a single file
-    // -----------------------------------------------------------------------
-
-    /// After updating a file, re-resolve its call sites and any cross-file references.
-    pub fn resolve_file(cpg: &mut CpgLayer, file_path: &Path, symbol_index: &SymbolIndex) {
-        let builtins = builtins_for_path(file_path);
-
-        // Remove existing inter-procedural edges for functions in this file
-        Self::remove_interprocedural_edges_for_file(cpg, file_path);
-
-        // Collect function names defined in this file (for cross-file re-resolution)
-        let file_func_names: HashSet<String> = cpg
-            .file_to_nodes
-            .get(file_path)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter_map(|idx| {
-                        cpg.graph.node_weight(*idx).and_then(|n| {
-                            if matches!(n.kind, CpgNodeKind::Function | CpgNodeKind::Method) {
-                                Some(n.name.clone())
-                            } else {
-                                None
-                            }
-                        })
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        // Collect call sites from this file
-        let local_sites: Vec<(CallSite, std::path::PathBuf)> = cpg
-            .file_to_nodes
-            .get(file_path)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter_map(|idx| cpg.call_sites.get(idx))
-                    .flat_map(|sites| sites.iter())
-                    .map(|site| (site.clone(), file_path.to_path_buf()))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        // Also collect call sites from OTHER files that reference any of our function names
-        let mut cross_file_sites: Vec<(CallSite, std::path::PathBuf)> = Vec::new();
-        for (func_idx, sites) in &cpg.call_sites {
-            if let Some(node) = cpg.graph.node_weight(*func_idx) {
-                if node.file_path != file_path {
-                    for site in sites {
-                        if file_func_names.contains(&site.callee_name) {
-                            // Also remove inter-proc edges from THIS caller to allow re-resolution
-                            cross_file_sites.push((site.clone(), node.file_path.clone()));
-                        }
-                    }
+        // JS arrow declarations use the enclosing variable statement in the
+        // detailed CPG and the function expression in the lightweight index.
+        // Associate by qualified declaration and containment, not node index.
+        for (path, indices) in &cpg.file_to_nodes {
+            for declaration in index.functions(path) {
+                let candidates = indices.iter().filter(|&&idx| {
+                    let node = &cpg.graph[idx];
+                    let qualified = node
+                        .parent_class
+                        .as_ref()
+                        .map(|class| format!("{}.{}", class, node.name))
+                        .unwrap_or_else(|| node.name.clone());
+                    matches!(node.kind, CpgNodeKind::Function | CpgNodeKind::Method)
+                        && qualified == declaration.qualified_name
+                        && node.start_byte <= declaration.start_byte
+                        && node.end_byte >= declaration.end_byte
+                });
+                if let Some(&idx) = candidates
+                    .min_by_key(|&&idx| cpg.graph[idx].end_byte - cpg.graph[idx].start_byte)
+                {
+                    nodes.insert((path.clone(), declaration.start_byte), idx);
                 }
             }
         }
-
-        // Remove inter-proc edges from cross-file callers that reference our names
-        let cross_file_func_indices: HashSet<NodeIndex> = cross_file_sites
-            .iter()
-            .map(|(site, _)| site.caller_func_idx)
-            .collect();
-        for func_idx in &cross_file_func_indices {
-            Self::remove_interprocedural_edges_for_func(cpg, *func_idx);
-        }
-
-        // Resolve all collected sites
-        let mut edges_to_add: Vec<EdgeToAdd> = Vec::new();
-
-        // Resolve local sites normally
-        for (site, caller_file) in local_sites.iter() {
-            if let CallResolution::Resolved(callee_idx) =
-                Self::resolve_callee(cpg, site, caller_file, symbol_index, &builtins)
-            {
-                collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
-            }
-        }
-
-        // Resolve cross-file sites with instance-method fallback
-        for (site, caller_file) in cross_file_sites.iter() {
-            match Self::resolve_callee(cpg, site, caller_file, symbol_index, &builtins) {
-                CallResolution::Resolved(callee_idx) => {
-                    collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
-                }
-                CallResolution::Unresolved(_) if site.receiver.is_some() => {
-                    // Fallback: callee_name already matched file_func_names,
-                    // so look up the function directly in the target file.
-                    if let Some(func_indices) = cpg.file_to_nodes.get(file_path) {
-                        // Receiver-qualified call → target is a method, not a function
-                        let matches: Vec<NodeIndex> = func_indices
-                            .iter()
-                            .filter(|idx| {
-                                cpg.graph
-                                    .node_weight(**idx)
-                                    .map(|n| {
-                                        n.kind == CpgNodeKind::Method
-                                            && n.name == site.callee_name
-                                    })
-                                    .unwrap_or(false)
-                            })
-                            .copied()
-                            .collect();
-                        if matches.len() == 1 {
-                            collect_edges_for_resolved_call(
-                                cpg,
-                                site,
-                                matches[0],
-                                &mut edges_to_add,
-                            );
-                        } else if matches.len() > 1 {
-                            // @overload variants — pick implementation (largest span)
-                            if let Some(best) = pick_largest_span(cpg, &matches) {
-                                collect_edges_for_resolved_call(
-                                    cpg,
-                                    site,
-                                    best,
-                                    &mut edges_to_add,
-                                );
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        for edge in edges_to_add {
-            let already_exists = cpg.graph
-                .edges_connecting(edge.source, edge.target)
-                .any(|e| *e.weight() == edge.weight);
-            if !already_exists {
-                cpg.graph.add_edge(edge.source, edge.target, edge.weight);
-            }
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Resolution logic
-    // -----------------------------------------------------------------------
-
-    /// Attempt to resolve a single call site to a callee function node.
-    fn resolve_callee(
-        cpg: &CpgLayer,
-        site: &CallSite,
-        caller_file: &Path,
-        symbol_index: &SymbolIndex,
-        builtins: &HashSet<&str>,
-    ) -> CallResolution {
-        let name = &site.callee_name;
-
-        // 1. Filter builtins
-        if builtins.contains(name.as_str()) {
-            return CallResolution::Unresolved("builtin".to_string());
-        }
-
-        // 2. self.method() calls — look for sibling methods in same class
-        if site.receiver.as_deref() == Some("self") || site.receiver.as_deref() == Some("cls") {
-            return Self::resolve_self_method(cpg, site);
-        }
-
-        // 3. Simple name, same file first
-        if site.receiver.is_none() {
-            if let Some(indices) = cpg.file_to_nodes.get(caller_file) {
-                let matches: Vec<NodeIndex> = indices
-                    .iter()
-                    .filter(|idx| {
-                        cpg.graph
-                            .node_weight(**idx)
-                            .map(|n| {
-                                matches!(n.kind, CpgNodeKind::Function | CpgNodeKind::Method)
-                                    && n.name == *name
-                            })
-                            .unwrap_or(false)
-                    })
-                    .copied()
-                    .collect();
-
-                if matches.len() == 1 {
-                    return CallResolution::Resolved(matches[0]);
-                }
-                // Disambiguate: unqualified call → prefer module-level function
-                if matches.len() > 1 {
-                    let functions_only: Vec<NodeIndex> = matches.iter()
-                        .filter(|idx| {
-                            cpg.graph.node_weight(**idx)
-                                .map(|n| n.parent_class.is_none())
-                                .unwrap_or(false)
-                        })
-                        .copied()
-                        .collect();
-                    if functions_only.len() == 1 {
-                        return CallResolution::Resolved(functions_only[0]);
-                    }
-                }
-            }
-
-            // 4. Simple name, cross-file via symbol_index
-            if let Some(def_paths) = symbol_index.definitions.get(name) {
-                let mut all_matches: Vec<NodeIndex> = Vec::new();
-                for def_path in def_paths {
-                    if let Some(indices) = cpg.file_to_nodes.get(def_path.as_path()) {
-                        for &idx in indices {
-                            if let Some(node) = cpg.graph.node_weight(idx) {
-                                if matches!(node.kind, CpgNodeKind::Function | CpgNodeKind::Method)
-                                    && node.name == *name
-                                {
-                                    all_matches.push(idx);
-                                }
-                            }
-                        }
-                    }
-                }
-                if all_matches.len() == 1 {
-                    return CallResolution::Resolved(all_matches[0]);
-                }
-                if all_matches.len() > 1 {
-                    // Disambiguate: unqualified call → prefer module-level function
-                    let functions_only: Vec<NodeIndex> = all_matches.iter()
-                        .filter(|idx| {
-                            cpg.graph.node_weight(**idx)
-                                .map(|n| n.parent_class.is_none())
-                                .unwrap_or(false)
-                        })
-                        .copied()
-                        .collect();
-                    if functions_only.len() == 1 {
-                        return CallResolution::Resolved(functions_only[0]);
-                    }
-                    return CallResolution::Unresolved("ambiguous".to_string());
-                }
-            }
-
-            // Also check name_to_funcs for functions not in symbol_index
-            if let Some(func_indices) = cpg.name_to_funcs.get(name) {
-                if func_indices.len() == 1 {
-                    return CallResolution::Resolved(func_indices[0]);
-                }
-                if func_indices.len() > 1 {
-                    // Disambiguate: unqualified call → prefer module-level function
-                    let functions_only: Vec<NodeIndex> = func_indices.iter()
-                        .filter(|idx| {
-                            cpg.graph.node_weight(**idx)
-                                .map(|n| n.parent_class.is_none())
-                                .unwrap_or(false)
-                        })
-                        .copied()
-                        .collect();
-                    if functions_only.len() == 1 {
-                        return CallResolution::Resolved(functions_only[0]);
-                    }
-                    return CallResolution::Unresolved("ambiguous".to_string());
-                }
-            }
-        }
-
-        // 5. Module-qualified calls: receiver matches an imported module name
-        // 6. Class-qualified calls: receiver matches an imported class name
-        if let Some(receiver) = &site.receiver {
-            if let Some(bindings) = cpg.import_bindings.get(caller_file) {
-                for binding in bindings {
-                    if binding.local_name != *receiver {
+        let mut edges_to_add = Vec::new();
+        for sites in cpg.call_sites.values() {
+            for site in sites {
+                let Some(caller) = cpg.graph.node_weight(site.caller_func_idx) else {
+                    continue;
+                };
+                if let Some(target) = index.resolved_target(&caller.file_path, site.call_start_byte)
+                {
+                    let owner = index.call_owner(&caller.file_path, site.call_start_byte);
+                    if owner.and_then(|id| nodes.get(&(id.file_path.clone(), id.start_byte)))
+                        != Some(&site.caller_func_idx)
+                    {
                         continue;
                     }
-
-                    if binding.imported_symbol.is_none() {
-                        // Module import: `import utils` → utils.process()
-                        if let Some(indices) = cpg.file_to_nodes.get(&binding.resolved_path) {
-                            let matches: Vec<NodeIndex> = indices
-                                .iter()
-                                .filter(|idx| {
-                                    cpg.graph
-                                        .node_weight(**idx)
-                                        .map(|n| {
-                                            matches!(
-                                                n.kind,
-                                                CpgNodeKind::Function | CpgNodeKind::Method
-                                            ) && n.name == *name
-                                        })
-                                        .unwrap_or(false)
-                                })
-                                .copied()
-                                .collect();
-                            if matches.len() == 1 {
-                                return CallResolution::Resolved(matches[0]);
-                            }
-                            // Disambiguate: module-qualified call → prefer module-level function
-                            if matches.len() > 1 {
-                                let functions_only: Vec<NodeIndex> = matches.iter()
-                                    .filter(|idx| {
-                                        cpg.graph.node_weight(**idx)
-                                            .map(|n| n.parent_class.is_none())
-                                            .unwrap_or(false)
-                                    })
-                                    .copied()
-                                    .collect();
-                                if functions_only.len() == 1 {
-                                    return CallResolution::Resolved(functions_only[0]);
-                                }
-                            }
-                        }
-                    } else if let Some(ref sym) = binding.imported_symbol {
-                        // Class import: `from http_client import HttpClient` → HttpClient.get()
-                        if let Some(indices) = cpg.file_to_nodes.get(&binding.resolved_path) {
-                            let matches: Vec<NodeIndex> = indices
-                                .iter()
-                                .filter(|idx| {
-                                    cpg.graph
-                                        .node_weight(**idx)
-                                        .map(|n| {
-                                            n.kind == CpgNodeKind::Method
-                                                && n.name == *name
-                                                && n.parent_class.as_deref() == Some(sym.as_str())
-                                        })
-                                        .unwrap_or(false)
-                                })
-                                .copied()
-                                .collect();
-                            if matches.len() == 1 {
-                                return CallResolution::Resolved(matches[0]);
-                            }
-                            if matches.len() > 1 {
-                                // @overload variants — pick implementation (largest span)
-                                if let Some(best) = pick_largest_span(cpg, &matches) {
-                                    return CallResolution::Resolved(best);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Fallback: try SymbolIndex for class-qualified calls
-            // (receiver is a class name defined in another file)
-            if let Some(def_paths) = symbol_index.definitions.get(receiver) {
-                for def_path in def_paths {
-                    if let Some(indices) = cpg.file_to_nodes.get(def_path.as_path()) {
-                        let matches: Vec<NodeIndex> = indices
-                            .iter()
-                            .filter(|idx| {
-                                cpg.graph
-                                    .node_weight(**idx)
-                                    .map(|n| {
-                                        n.kind == CpgNodeKind::Method
-                                            && n.name == *name
-                                            && n.parent_class.as_deref()
-                                                == Some(receiver.as_str())
-                                    })
-                                    .unwrap_or(false)
-                            })
-                            .copied()
-                            .collect();
-                        if matches.len() == 1 {
-                            return CallResolution::Resolved(matches[0]);
-                        }
-                        if matches.len() > 1 {
-                            // @overload variants — pick implementation (largest span)
-                            if let Some(best) = pick_largest_span(cpg, &matches) {
-                                return CallResolution::Resolved(best);
-                            }
-                        }
+                    if let Some(&callee) = nodes.get(&(target.file_path.clone(), target.start_byte))
+                    {
+                        collect_edges_for_resolved_call(cpg, site, callee, &mut edges_to_add);
                     }
                 }
             }
         }
-
-        // 7. Otherwise unresolved
-        CallResolution::Unresolved("unresolved".to_string())
-    }
-
-    /// Resolve a self.method() call by looking for sibling methods in the same class.
-    fn resolve_self_method(cpg: &CpgLayer, site: &CallSite) -> CallResolution {
-        // Find the caller's parent_class
-        let caller_class = match cpg.graph.node_weight(site.caller_func_idx) {
-            Some(n) => match &n.parent_class {
-                Some(cls) => cls.clone(),
-                None => return CallResolution::Unresolved("no_parent_class".to_string()),
-            },
-            None => return CallResolution::Unresolved("no_caller".to_string()),
-        };
-
-        let caller_file = cpg.graph[site.caller_func_idx].file_path.clone();
-
-        // Find the class node and its method children
-        if let Some(indices) = cpg.file_to_nodes.get(&caller_file) {
-            let matches: Vec<NodeIndex> = indices
-                .iter()
-                .filter(|idx| {
-                    cpg.graph
-                        .node_weight(**idx)
-                        .map(|n| {
-                            matches!(n.kind, CpgNodeKind::Function | CpgNodeKind::Method)
-                                && n.name == site.callee_name
-                                && n.parent_class.as_deref() == Some(&caller_class)
-                        })
-                        .unwrap_or(false)
-                })
-                .copied()
-                .collect();
-
-            if matches.len() == 1 {
-                return CallResolution::Resolved(matches[0]);
-            }
-            if matches.len() > 1 {
-                // Multiple matches in same class → @overload variants.
-                // Pick the implementation (largest code span).
-                if let Some(best) = pick_largest_span(cpg, &matches) {
-                    return CallResolution::Resolved(best);
-                }
-            }
-        }
-
-        CallResolution::Unresolved("method_not_found".to_string())
-    }
-
-    // -----------------------------------------------------------------------
-    // Non-destructive caller resolution (for MCP get_callers)
-    // -----------------------------------------------------------------------
-
-    /// Resolve cross-file call sites targeting a file, without removing existing edges.
-    /// Used by the MCP get_callers tool to add new CalledBy edges after building
-    /// more dependent files, without destroying edges from prior tool calls.
-    pub fn resolve_new_callers(cpg: &mut CpgLayer, file_path: &Path, symbol_index: &SymbolIndex) {
-        let builtins = builtins_for_path(file_path);
-
-        // Collect function names defined in this file
-        let file_func_names: HashSet<String> = cpg
-            .file_to_nodes
-            .get(file_path)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter_map(|idx| {
-                        cpg.graph.node_weight(*idx).and_then(|n| {
-                            if matches!(n.kind, CpgNodeKind::Function | CpgNodeKind::Method) {
-                                Some(n.name.clone())
-                            } else {
-                                None
-                            }
-                        })
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        if file_func_names.is_empty() {
-            return;
-        }
-
-        // Collect call sites from OTHER files that reference our function names
-        let func_names_ref = &file_func_names;
-        let cross_file_sites: Vec<(CallSite, std::path::PathBuf)> = cpg
-            .call_sites
-            .iter()
-            .flat_map(|(func_idx, sites)| {
-                let node = cpg.graph.node_weight(*func_idx);
-                sites.iter().filter_map(move |site| {
-                    node.and_then(|n| {
-                        if n.file_path != file_path && func_names_ref.contains(&site.callee_name) {
-                            Some((site.clone(), n.file_path.clone()))
-                        } else {
-                            None
-                        }
-                    })
-                })
-            })
+        // Clear every interprocedural edge as one batch. Partial removal of an
+        // affected caller erased unrelated calls and incoming caller edges.
+        let mut remove: Vec<_> = cpg
+            .graph
+            .edge_indices()
+            .filter(|&id| is_interprocedural_edge(&cpg.graph[id]))
             .collect();
-
-        // Resolve and collect edges — NO removal of existing edges
-        let mut edges_to_add: Vec<EdgeToAdd> = Vec::new();
-
-        for (site, caller_file) in cross_file_sites.iter() {
-            match Self::resolve_callee(cpg, site, caller_file, symbol_index, &builtins) {
-                CallResolution::Resolved(callee_idx) => {
-                    collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
-                }
-                CallResolution::Unresolved(_) if site.receiver.is_some() => {
-                    // Instance-method fallback (same as resolve_file)
-                    if let Some(func_indices) = cpg.file_to_nodes.get(file_path) {
-                        let matches: Vec<NodeIndex> = func_indices
-                            .iter()
-                            .filter(|idx| {
-                                cpg.graph
-                                    .node_weight(**idx)
-                                    .map(|n| {
-                                        n.kind == CpgNodeKind::Method
-                                            && n.name == site.callee_name
-                                    })
-                                    .unwrap_or(false)
-                            })
-                            .copied()
-                            .collect();
-                        if matches.len() == 1 {
-                            collect_edges_for_resolved_call(
-                                cpg, site, matches[0], &mut edges_to_add,
-                            );
-                        } else if matches.len() > 1 {
-                            if let Some(best) = pick_largest_span(cpg, &matches) {
-                                collect_edges_for_resolved_call(
-                                    cpg, site, best, &mut edges_to_add,
-                                );
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
+        remove.sort_by_key(|id| std::cmp::Reverse(id.index()));
+        for id in remove {
+            cpg.graph.remove_edge(id);
         }
-
-        // Also resolve LOCAL call sites (same-file calls) that may not have been resolved yet
-        let local_sites: Vec<(CallSite, std::path::PathBuf)> = cpg
-            .file_to_nodes
-            .get(file_path)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter_map(|idx| cpg.call_sites.get(idx))
-                    .flat_map(|sites| sites.iter())
-                    .map(|site| (site.clone(), file_path.to_path_buf()))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        for (site, caller_file) in local_sites.iter() {
-            if let CallResolution::Resolved(callee_idx) =
-                Self::resolve_callee(cpg, site, caller_file, symbol_index, &builtins)
-            {
-                collect_edges_for_resolved_call(cpg, site, callee_idx, &mut edges_to_add);
-            }
-        }
-
-        // Add edges with dedup — no removal
         for edge in edges_to_add {
-            let already_exists = cpg.graph
+            if !cpg
+                .graph
                 .edges_connecting(edge.source, edge.target)
-                .any(|e| *e.weight() == edge.weight);
-            if !already_exists {
+                .any(|e| *e.weight() == edge.weight)
+            {
                 cpg.graph.add_edge(edge.source, edge.target, edge.weight);
             }
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Edge removal helpers
-    // -----------------------------------------------------------------------
-
-    /// Remove all inter-procedural edges (Calls, CalledBy, DataFlowArgument, DataFlowReturn)
-    /// involving functions from a given file.
-    fn remove_interprocedural_edges_for_file(cpg: &mut CpgLayer, file_path: &Path) {
-        let func_indices: Vec<NodeIndex> = cpg
-            .file_to_nodes
-            .get(file_path)
-            .map(|indices| {
-                indices
-                    .iter()
-                    .filter(|idx| {
-                        cpg.graph
-                            .node_weight(**idx)
-                            .map(|n| matches!(n.kind, CpgNodeKind::Function | CpgNodeKind::Method))
-                            .unwrap_or(false)
-                    })
-                    .copied()
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        for func_idx in func_indices {
-            Self::remove_interprocedural_edges_for_func(cpg, func_idx);
-        }
+    pub fn resolve_file(cpg: &mut CpgLayer, _file_path: &Path, symbol_index: &SymbolIndex) {
+        Self::resolve_all(cpg, symbol_index);
     }
 
-    /// Remove all inter-procedural edges involving a specific function.
-    fn remove_interprocedural_edges_for_func(cpg: &mut CpgLayer, func_idx: NodeIndex) {
-        // Collect all nodes belonging to this function (for DataFlowArgument/Return)
-        let mut func_nodes: Vec<NodeIndex> = vec![func_idx];
-        func_nodes.extend_from_slice(cpg.get_stmts_for_function(func_idx));
-
-        // Collect edge IDs to remove
-        let mut edges_to_remove = Vec::new();
-        for &node_idx in &func_nodes {
-            for edge in cpg.graph.edges_directed(node_idx, petgraph::Direction::Outgoing) {
-                if is_interprocedural_edge(edge.weight()) {
-                    edges_to_remove.push(edge.id());
-                }
-            }
-            for edge in cpg.graph.edges_directed(node_idx, petgraph::Direction::Incoming) {
-                if is_interprocedural_edge(edge.weight()) {
-                    edges_to_remove.push(edge.id());
-                }
-            }
-        }
-
-        // Deduplicate and remove
-        edges_to_remove.sort();
-        edges_to_remove.dedup();
-        // Remove in reverse order to avoid index invalidation
-        edges_to_remove.sort_by(|a, b| b.index().cmp(&a.index()));
-        for edge_id in edges_to_remove {
-            cpg.graph.remove_edge(edge_id);
-        }
+    pub fn resolve_new_callers(cpg: &mut CpgLayer, _file_path: &Path, symbol_index: &SymbolIndex) {
+        Self::resolve_all(cpg, symbol_index);
     }
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-/// When multiple CPG nodes match (e.g. @overload variants), pick the one with the
-/// largest code span — this is the implementation body, not the stub.
-fn pick_largest_span(cpg: &CpgLayer, matches: &[NodeIndex]) -> Option<NodeIndex> {
-    matches
-        .iter()
-        .max_by_key(|idx| {
-            cpg.graph
-                .node_weight(**idx)
-                .map(|n| n.end_byte.saturating_sub(n.start_byte))
-                .unwrap_or(0)
-        })
-        .copied()
-}
 
 fn is_interprocedural_edge(edge: &CpgEdge) -> bool {
     matches!(
@@ -880,11 +230,7 @@ fn collect_edges_for_resolved_call(
         let real_params: Vec<(usize, &str)> = callee_params
             .iter()
             .enumerate()
-            .filter(|(_, p)| {
-                p.name != "self"
-                    && p.name != "cls"
-                    && !p.name.starts_with('*')
-            })
+            .filter(|(_, p)| p.name != "self" && p.name != "cls" && !p.name.starts_with('*'))
             .map(|(i, p)| (i, p.name.as_str()))
             .collect();
 

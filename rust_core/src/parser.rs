@@ -109,7 +109,7 @@ impl SupportedLanguage {
 
     pub fn from_extension(ext: &str) -> Self {
         match ext.to_lowercase().as_str() {
-            "py" => Self::Python,
+            "py" | "pyi" => Self::Python,
             "rs" => Self::Rust,
             "js" | "mjs" | "cjs" => Self::JavaScript,
             "jsx" => Self::JavaScriptJsx,
@@ -196,8 +196,8 @@ fn parse_capture_name(capture_name: &str) -> (SymbolKind, bool) {
     let kind = match kind_str {
         "function" => SymbolKind::Function,
         "method" => SymbolKind::Method,
-        "class" => SymbolKind::Class,
-        "interface" => SymbolKind::Interface,
+        "class" | "struct" => SymbolKind::Class,
+        "interface" | "trait" => SymbolKind::Interface,
         "type" => SymbolKind::Type,
         "enum" => SymbolKind::Enum,
         "variable" => SymbolKind::Variable,
@@ -360,193 +360,29 @@ pub fn extract_signatures(
     signatures
 }
 
+/// A compatibility text view of the structured, source-attributed skeleton.
 pub fn create_skeleton(source: &str, tree: &Tree, language: SupportedLanguage) -> String {
-    if language != SupportedLanguage::Python {
-        return source.to_string();
-    }
-    
-    let mut kept_ranges: Vec<(usize, usize, Option<String>)> = Vec::new();
-    collect_keeper_ranges(tree.root_node(), source, &mut kept_ranges);
-    
-    kept_ranges.sort_by_key(|r| r.0);
-    
-    let mut result = String::new();
-    let mut last_end = 0;
-    
-    for (_i, (start, end, replacement)) in kept_ranges.iter().enumerate() {
-        if *start > last_end {
-            let gap = &source[last_end..*start];
-            let newline_count = gap.chars().filter(|&c| c == '\n').count();
-            
-            if newline_count > 0 {
-                result.push('\n');
-                if newline_count > 1 {
-                    result.push('\n');
-                }
-            }
-        }
-        
-        if let Some(repl) = replacement {
-            result.push_str(repl);
-        } else {
-            result.push_str(&source[*start..*end]);
-        }
-        
-        last_end = *end;
-    }
-    
-    if !result.is_empty() && !result.ends_with('\n') {
-        result.push('\n');
-    }
-    
-    result
+    create_skeleton_details(source, tree, language).text
 }
 
-fn collect_keeper_ranges(
-    node: tree_sitter::Node, 
-    source: &str,
-    ranges: &mut Vec<(usize, usize, Option<String>)>
-) {
-    match node.kind() {
-        "module" => {
-            let mut cursor = node.walk();
-            for child in node.children(&mut cursor) {
-                collect_keeper_ranges(child, source, ranges);
-            }
-        }
-        
-        "import_statement" | "import_from_statement" => {
-            ranges.push((node.start_byte(), node.end_byte(), None));
-        }
-        
-        "function_definition" | "async_function_definition" => {
-            handle_function(node, source, ranges);
-        }
-        
-        "class_definition" => {
-            handle_class(node, source, ranges);
-        }
-        
-        "decorated_definition" => {
-            let mut cursor = node.walk();
-            for child in node.children(&mut cursor) {
-                if child.kind() == "function_definition" 
-                   || child.kind() == "class_definition"
-                   || child.kind() == "async_function_definition" {
-                    collect_keeper_ranges(child, source, ranges);
-                }
-            }
-        }
-        
-        _ => {}
-    }
-}
+pub use crate::skeleton::{create_skeleton_details, RetainedSpan, SkeletonChunk, SkeletonResult};
 
-// CRITICAL FIX: Place ellipsis immediately after last kept content
-fn handle_function(
-    node: tree_sitter::Node, 
-    source: &str,
-    ranges: &mut Vec<(usize, usize, Option<String>)>
-) {
-    if let Some(body) = node.child_by_field_name("body") {
-        let sig_start = node.start_byte();
-        let sig_end = body.start_byte();
-        
-        // Keep signature (up to and including ':')
-        ranges.push((sig_start, sig_end, None));
-        
-        // Get proper indentation
-        let indent = get_indent_from_body(body, source);
-        
-        // Check for docstring
-        if let Some(first_stmt) = body.named_child(0) {
-            if is_docstring(first_stmt) {
-                // Keep docstring
-                ranges.push((first_stmt.start_byte(), first_stmt.end_byte(), None));
-                
-                // CRITICAL: Add ellipsis RIGHT AFTER docstring to prevent body code from being kept
-                ranges.push((first_stmt.end_byte(), first_stmt.end_byte(), Some(format!("\n{}...", indent))));
-                return; // Early return - we're done with this function
-            }
-        }
-        
-        // No docstring - add ellipsis right after signature
-        ranges.push((sig_end, sig_end, Some(format!("\n{}...", indent))));
+/// Source-attributed skeleton for consumers that pack complete declarations.
+#[pyfunction]
+pub fn create_skeleton_details_json(source: &str, lang_ext: &str) -> PyResult<String> {
+    let lang = SupportedLanguage::from_extension(lang_ext);
+    let result = if let Some(ts_lang) = lang.get_parser() {
+        let mut parser = Parser::new();
+        parser.set_language(ts_lang).map_err(|e|
+            pyo3::exceptions::PyValueError::new_err(format!("Failed to set language: {e}")))?;
+        let tree = parser.parse(source, None).ok_or_else(||
+            pyo3::exceptions::PyValueError::new_err("Failed to parse source"))?;
+        create_skeleton_details(source, &tree, lang)
     } else {
-        // No body
-        ranges.push((node.start_byte(), node.end_byte(), None));
-    }
-}
-
-fn handle_class(
-    node: tree_sitter::Node, 
-    source: &str,
-    ranges: &mut Vec<(usize, usize, Option<String>)>
-) {
-    if let Some(body) = node.child_by_field_name("body") {
-        let header_start = node.start_byte();
-        let header_end = body.start_byte();
-        
-        // Keep class header
-        ranges.push((header_start, header_end, None));
-        
-        // Check for class docstring
-        if let Some(first_stmt) = body.named_child(0) {
-            if is_docstring(first_stmt) {
-                ranges.push((first_stmt.start_byte(), first_stmt.end_byte(), None));
-            }
-        }
-        
-        // Process methods in class body
-        let mut cursor = body.walk();
-        for (_idx, child) in body.children(&mut cursor).enumerate() {
-            if !child.is_named() {
-                continue;
-            }
-            
-            // Skip docstring (it was first child)
-            if is_docstring(child) {
-                continue;
-            }
-            
-            match child.kind() {
-                "function_definition" | "async_function_definition" => {
-                    handle_function(child, source, ranges);
-                }
-                "decorated_definition" => {
-                    collect_keeper_ranges(child, source, ranges);
-                }
-                _ => {}
-            }
-        }
-    } else {
-        ranges.push((node.start_byte(), node.end_byte(), None));
-    }
-}
-
-fn is_docstring(node: tree_sitter::Node) -> bool {
-    if node.kind() != "expression_statement" {
-        return false;
-    }
-    
-    if let Some(child) = node.named_child(0) {
-        child.kind() == "string" || child.kind() == "concatenated_string"
-    } else {
-        false
-    }
-}
-
-fn get_indent_from_body(body: tree_sitter::Node, source: &str) -> String {
-    if let Some(first) = body.named_child(0) {
-        let line_start = source[..first.start_byte()]
-            .rfind('\n')
-            .map(|i| i + 1)
-            .unwrap_or(0);
-        let indent_str = &source[line_start..first.start_byte()];
-        indent_str.to_string()
-    } else {
-        "    ".to_string()
-    }
+        crate::skeleton::uncompressed(source)
+    };
+    serde_json::to_string(&result).map_err(|e|
+        pyo3::exceptions::PyValueError::new_err(format!("Failed to serialize skeleton: {e}")))
 }
 
 #[derive(Debug)]
@@ -554,6 +390,9 @@ pub struct SymbolHarvester {
     python_query: Query,
     javascript_query: Query,
     typescript_query: Query,
+    tsx_query: Query,
+    rust_query: Query,
+    go_query: Query,
 }
 
 impl SymbolHarvester {
@@ -574,11 +413,23 @@ impl SymbolHarvester {
                 include_str!("../queries/typescript/symbols.scm"),
             )
             .expect("Failed to load TypeScript symbols query"),
+            tsx_query: Query::new(
+                tree_sitter_typescript::language_tsx(),
+                include_str!("../queries/typescript/symbols.scm"),
+            ).expect("Failed to load TSX symbols query"),
+            rust_query: Query::new(
+                tree_sitter_rust::language(),
+                include_str!("../queries/rust/symbols.scm"),
+            ).expect("Failed to load Rust symbols query"),
+            go_query: Query::new(
+                tree_sitter_go::language(),
+                include_str!("../queries/go/symbols.scm"),
+            ).expect("Failed to load Go symbols query"),
         }
     }
 
     pub fn harvest(&self, tree: &Tree, source: &str, lang: SupportedLanguage) -> Vec<Symbol> {
-        let query = self.select_query(lang);
+        let Some(query) = self.select_query(lang) else { return Vec::new(); };
         let mut symbols = Vec::new();
         let mut cursor = QueryCursor::new();
         
@@ -606,12 +457,15 @@ impl SymbolHarvester {
         symbols
     }
 
-    fn select_query(&self, lang: SupportedLanguage) -> &Query {
+    fn select_query(&self, lang: SupportedLanguage) -> Option<&Query> {
         match lang {
-            SupportedLanguage::Python => &self.python_query,
-            SupportedLanguage::JavaScript | SupportedLanguage::JavaScriptJsx => &self.javascript_query,
-            SupportedLanguage::TypeScript | SupportedLanguage::TypeScriptTsx => &self.typescript_query,
-            _ => &self.python_query, // Fallback, consider logging a warning
+            SupportedLanguage::Python => Some(&self.python_query),
+            SupportedLanguage::JavaScript | SupportedLanguage::JavaScriptJsx => Some(&self.javascript_query),
+            SupportedLanguage::TypeScript => Some(&self.typescript_query),
+            SupportedLanguage::TypeScriptTsx => Some(&self.tsx_query),
+            SupportedLanguage::Rust => Some(&self.rust_query),
+            SupportedLanguage::Go => Some(&self.go_query),
+            SupportedLanguage::Unknown => None,
         }
     }
 }

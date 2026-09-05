@@ -90,3 +90,6 @@
 
 ; Generic identifier usage (CATCH-ALL)
 (identifier) @usage.variable
+(function_signature_item name: (identifier) @def.function)
+(type_item name: (type_identifier) @def.type)
+(macro_definition name: (identifier) @def.function)

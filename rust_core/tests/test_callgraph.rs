@@ -1,5 +1,5 @@
-use semantic_engine::callgraph::{CallGraphBuilder, CallSite};
-use semantic_engine::import_resolver::ResolverGroup;
+use semantic_engine::callgraph::CallGraphBuilder;
+use semantic_engine::import_resolver::{ImportBinding, ResolverGroup};
 use semantic_engine::cpg::{CpgEdge, CpgLayer, CpgNodeKind, StatementKind};
 use semantic_engine::graph::RepoGraph;
 use semantic_engine::symbol_table::SymbolIndex;
@@ -238,16 +238,19 @@ fn test_resolve_same_file() {
     assert!(has_called_by_edge(&cpg, g_idx, f_idx), "g should have CalledBy edge to f");
 }
 
-// Test 9: Cross-file resolution via symbol index
+// Test 9: Cross-file resolution requires a real import binding.
 #[test]
 fn test_resolve_cross_file() {
     let mut cpg = CpgLayer::new();
-    let source_a = "def caller():\n    target()\n";
+    let source_a = "from b import target\ndef caller():\n    target()\n";
     let source_b = "def target():\n    pass\n";
     build_cpg_for_source(&mut cpg, "/test/a.py", source_a);
     build_cpg_for_source(&mut cpg, "/test/b.py", source_b);
 
-    // Set up symbol index to know that `target` is defined in b.py
+    cpg.import_bindings.insert(PathBuf::from("/test/a.py"), vec![ImportBinding {
+        local_name: "target".into(), resolved_path: PathBuf::from("/test/b.py"), imported_symbol: Some("target".into()),
+    }]);
+    // Retain symbol metadata; it does not authorize an unimported call.
     let mut symbol_index = SymbolIndex::new();
     symbol_index.definitions.insert(
         "target".to_string(),
@@ -453,7 +456,8 @@ fn test_remove_file_no_dangling_edges() {
     let root = tempdir().unwrap();
     let root_path = root.path().canonicalize().unwrap();
 
-    create_test_file(&root_path, "a.py", "def f():\n    g()\n");
+    // Establish a bound call before testing its removal.
+    create_test_file(&root_path, "a.py", "from b import g\ndef f():\n    g()\n");
     create_test_file(&root_path, "b.py", "def g():\n    pass\n");
 
     let mut graph = RepoGraph::new_multi(&root_path, &[ResolverGroup::Python], &[], None);
@@ -605,6 +609,7 @@ def helper():
     pass
 ";
     let source_b = "\
+from a import helper
 def use1():
     helper()
 
@@ -617,7 +622,10 @@ def use2():
     build_cpg_for_source(&mut cpg, "/test/a.py", source_a);
     build_cpg_for_source(&mut cpg, "/test/b.py", source_b);
 
-    // Symbol index tells us helper is defined in a.py
+    cpg.import_bindings.insert(path_b.clone(), vec![ImportBinding {
+        local_name: "helper".into(), resolved_path: path_a.clone(), imported_symbol: Some("helper".into()),
+    }]);
+    // The import establishes the binding; the name index alone is insufficient.
     let mut symbol_index = SymbolIndex::new();
     symbol_index.definitions.insert(
         "helper".to_string(),
@@ -1271,7 +1279,7 @@ def use_b():
 fn test_resolve_new_callers_idempotent() {
     let mut cpg = CpgLayer::new();
     let source_a = "def helper():\n    pass\n";
-    let source_b = "def use1():\n    helper()\n";
+    let source_b = "from a import helper\ndef use1():\n    helper()\n";
     build_cpg_for_source(&mut cpg, "/test/a.py", source_a);
     build_cpg_for_source(&mut cpg, "/test/b.py", source_b);
 
@@ -1281,6 +1289,9 @@ fn test_resolve_new_callers_idempotent() {
         vec![PathBuf::from("/test/a.py")],
     );
 
+    cpg.import_bindings.insert(PathBuf::from("/test/b.py"), vec![ImportBinding {
+        local_name: "helper".into(), resolved_path: PathBuf::from("/test/a.py"), imported_symbol: Some("helper".into()),
+    }]);
     let path_a = PathBuf::from("/test/a.py");
     CallGraphBuilder::resolve_new_callers(&mut cpg, &path_a, &symbol_index);
 
@@ -1333,4 +1344,97 @@ fn test_resolve_all_no_duplicate_edges_multi_call() {
     assert_eq!(callees.len(), 1, "get_callees returns unique callees");
     let callers = cpg.get_callers(helper_idx);
     assert_eq!(callers.len(), 1, "get_callers returns unique callers");
+}
+
+// An unimported global is not in this module's namespace, even when unique.
+#[test]
+fn test_unimported_unique_global_never_resolves() {
+    let mut cpg = CpgLayer::new();
+    build_cpg_for_source(&mut cpg, "/test/global.py", "def process():\n    pass\n");
+    build_cpg_for_source(&mut cpg, "/test/caller.py", "def run():\n    process()\n");
+    CallGraphBuilder::resolve_all(&mut cpg, &SymbolIndex::new());
+    assert_eq!(count_edge_kind(&cpg, |e| *e == CpgEdge::Calls), 0);
+}
+
+#[test]
+fn test_parameter_and_local_assignment_shadow_global() {
+    for body in [
+        "def run(process):\n    process()\n",
+        "def run():\n    process()\n    process = unknown\n",
+        "def run(process: object):\n    process()\n",
+    ] {
+        let mut cpg = CpgLayer::new();
+        build_cpg_for_source(
+            &mut cpg,
+            "/test/shadow.py",
+            &format!("def process():\n    pass\n\n{body}"),
+        );
+        CallGraphBuilder::resolve_all(&mut cpg, &SymbolIndex::new());
+        assert_eq!(count_edge_kind(&cpg, |e| *e == CpgEdge::Calls), 0, "{body}");
+    }
+}
+
+#[test]
+fn test_unknown_receiver_order_does_not_invent_method() {
+    for order in [["a", "b"], ["b", "a"]] {
+        let mut cpg = CpgLayer::new();
+        build_cpg_for_source(
+            &mut cpg,
+            "/test/caller.py",
+            "def run(obj):\n    obj.process()\n",
+        );
+        for name in order {
+            build_cpg_for_source(
+                &mut cpg,
+                &format!("/test/{name}.py"),
+                &format!("class {name}:\n    def process(self):\n        pass\n"),
+            );
+            CallGraphBuilder::resolve_file(
+                &mut cpg,
+                PathBuf::from(format!("/test/{name}.py")).as_path(),
+                &SymbolIndex::new(),
+            );
+        }
+        assert_eq!(count_edge_kind(&cpg, |e| *e == CpgEdge::Calls), 0);
+    }
+}
+
+#[test]
+fn test_callee_edit_preserves_other_calls_and_incoming_callers() {
+    let root = tempdir().unwrap();
+    let root = root.path().canonicalize().unwrap();
+    create_test_file(&root, "a.py", "def target():\n    return 1\n");
+    create_test_file(&root, "b.py", "def helper():\n    pass\n");
+    create_test_file(&root, "caller.py", "from a import target\nfrom b import helper\ndef run():\n    target()\n    helper()\ndef outer():\n    run()\n");
+    let mut graph = RepoGraph::new_multi(&root, &[ResolverGroup::Python], &[], None);
+    graph.enable_cpg();
+    graph.build_complete(
+        &[root.join("a.py"), root.join("b.py"), root.join("caller.py")],
+        &root,
+    );
+    let mut parser = TreeSitterParser::new();
+    parser
+        .set_language(SupportedLanguage::Python.get_parser().unwrap())
+        .unwrap();
+    let source = "def target():\n    return 2\n";
+    graph.cpg.as_mut().unwrap().update_file(
+        &root.join("a.py"),
+        parser.parse(source, None).unwrap(),
+        source.into(),
+        SupportedLanguage::Python,
+    );
+    CallGraphBuilder::resolve_file(
+        graph.cpg.as_mut().unwrap(),
+        &root.join("a.py"),
+        &graph.symbol_index,
+    );
+    let cpg = graph.cpg.as_ref().unwrap();
+    let run = find_function(cpg, &root.join("caller.py").to_string_lossy(), "run").unwrap();
+    let target = find_function(cpg, &root.join("a.py").to_string_lossy(), "target").unwrap();
+    let helper = find_function(cpg, &root.join("b.py").to_string_lossy(), "helper").unwrap();
+    let outer = find_function(cpg, &root.join("caller.py").to_string_lossy(), "outer").unwrap();
+    assert!(has_calls_edge(cpg, run, target));
+    assert!(has_calls_edge(cpg, run, helper));
+    assert!(has_calls_edge(cpg, outer, run));
+    assert!(has_called_by_edge(cpg, run, outer));
 }

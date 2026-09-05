@@ -30,3 +30,6 @@
 (new_expression
   constructor: (identifier) @reference.class)
 
+
+(generator_function_declaration name: (identifier) @definition.function)
+(field_definition property: (_) @definition.variable)

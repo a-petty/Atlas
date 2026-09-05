@@ -8,6 +8,7 @@ const LOG_PATH: &str = "/tmp/atlas_diag.log";
 
 /// Append a line to the diag log file and flush immediately.
 pub fn diag_log(msg: &str) {
+    if std::env::var_os("ATLAS_DIAGNOSTICS").is_none() { return; }
     eprintln!("{}", msg);
     if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(LOG_PATH) {
         let _ = writeln!(f, "{}", msg);
@@ -17,5 +18,6 @@ pub fn diag_log(msg: &str) {
 
 /// Truncate the log file (call at start of a build).
 pub fn diag_reset() {
+    if std::env::var_os("ATLAS_DIAGNOSTICS").is_none() { return; }
     if let Ok(_) = OpenOptions::new().create(true).write(true).truncate(true).open(LOG_PATH) {}
 }

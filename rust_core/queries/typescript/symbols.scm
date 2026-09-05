@@ -38,3 +38,12 @@
 (new_expression
   constructor: (identifier) @reference.class)
 
+
+; Declaration-only and abstract APIs (including .d.ts files).
+(abstract_class_declaration name: (type_identifier) @definition.class)
+(function_signature name: (identifier) @definition.function)
+(generator_function_declaration name: (identifier) @definition.function)
+(method_signature name: (_) @definition.method)
+(abstract_method_signature name: (_) @definition.method)
+(property_signature name: (_) @definition.variable)
+(public_field_definition name: (_) @definition.variable)

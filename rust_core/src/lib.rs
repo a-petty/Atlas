@@ -10,6 +10,8 @@ pub mod cpg;
 pub mod cfg;
 pub mod dataflow;
 pub mod callgraph;
+pub mod call_index;
+pub mod skeleton;
 pub mod diag;
 
 use pyo3::prelude::*;
@@ -186,8 +188,8 @@ fn check_syntax_with_treesitter(content: &str, lang: SupportedLanguage) -> PyRes
 
 
 #[pyfunction]
-#[pyo3(signature = (path, ignored_dirs = None))]
-fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>) -> PyResult<Vec<String>> {
+#[pyo3(signature = (path, ignored_dirs = None, include_aliases = false))]
+fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>, include_aliases: bool) -> PyResult<Vec<String>> {
     let mut files = Vec::new();
     let ignored_set: HashSet<String> = ignored_dirs.unwrap_or_default().into_iter().collect();
 
@@ -213,6 +215,11 @@ fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>) -> PyResult<Ve
 
     for result in walker {
         if let Ok(entry) = result {
+            // Sessions also track alias topology as a configuration input. A
+            // retargeted symlink must invalidate resolver state and cursors.
+            if include_aliases && entry.file_type().map(|kind| kind.is_symlink()).unwrap_or(false) {
+                files.push(entry.path().to_string_lossy().to_string());
+            }
             if let Ok(canonical_path) = entry.path().canonicalize() {
                 if canonical_path.is_file() {
                     if let Some(path_str) = canonical_path.to_str() {
@@ -238,6 +245,9 @@ fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>) -> PyResult<Ve
 
             for rel in stdout.lines() {
                 let full = PathBuf::from(path).join(rel);
+                if include_aliases && full.is_symlink() {
+                    files.push(full.to_string_lossy().to_string());
+                }
                 if let Ok(canonical) = full.canonicalize() {
                     if let Some(s) = canonical.to_str() {
                         if !existing.contains(s) {
@@ -250,6 +260,34 @@ fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>) -> PyResult<Ve
     }
 
     Ok(files)
+}
+
+fn callable_dict(py: Python, node: &call_index::Callable) -> PyResult<PyObject> {
+    let dict = PyDict::new(py);
+    dict.set_item("name", &node.name)?;
+    dict.set_item("qualified_name", &node.qualified_name)?;
+    dict.set_item("file", node.file_path.to_string_lossy().as_ref())?;
+    dict.set_item("line", node.start_line)?;
+    dict.set_item("end_line", node.end_line)?;
+    dict.set_item("start_byte", node.start_byte)?;
+    dict.set_item("end_byte", node.end_byte)?;
+    dict.set_item("parent_class", &node.parent_class)?;
+    Ok(dict.into_py(py))
+}
+
+fn call_results(graph: &graph::RepoGraph, py: Python, file_path: &str, name: &str, incoming: bool) -> PyResult<Vec<PyObject>> {
+    let path = graph.source_path(Path::new(file_path));
+    let functions = graph.call_index.find_functions(&path, name);
+    let names: std::collections::BTreeSet<_> = functions.iter().map(|f| f.qualified_name.as_str()).collect();
+    if names.len() > 1 {
+        return Err(PyValueError::new_err(format!("Ambiguous callable '{}'; use a qualified name: {}", name, names.into_iter().collect::<Vec<_>>().join(", "))));
+    }
+    let mut result = std::collections::BTreeMap::new();
+    for function in functions {
+        let related = if incoming { graph.call_index.callers(&function.id) } else { graph.call_index.callees(&function.id) };
+        for node in related { result.insert(node.id.clone(), node); }
+    }
+    result.values().map(|node| callable_dict(py, node)).collect()
 }
 
 /// Python-facing wrapper for the main repository graph.
@@ -590,6 +628,19 @@ impl PyRepoGraph {
         Ok(skeleton_arc.as_ref().clone())
     }
 
+    /// Return the buffer accepted by this graph generation, never a newer disk edit.
+    fn get_source(&self, path: &str) -> PyResult<String> {
+        Ok(self.graph.get_source(Path::new(path))?.to_string())
+    }
+
+    /// Atomically build the file graph from caller-captured source buffers.
+    fn build_from_sources(&mut self, sources: HashMap<String, String>) {
+        let sources = sources.into_iter().map(|(path, text)| (PathBuf::from(path), text)).collect();
+        self.graph.build_sources(&sources);
+        self.graph.build_semantic_edges();
+        self.graph.calculate_pagerank(20, 0.85);
+    }
+
     /// Enable the CPG overlay layer for sub-file granularity.
     fn enable_cpg(&mut self) {
         self.graph.enable_cpg();
@@ -898,62 +949,36 @@ impl PyRepoGraph {
         Ok(result)
     }
 
-    /// Get all functions called by a given function.
-    /// Returns a list of dicts: {name, file, line}
-    fn get_callees(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
-        let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
-            PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
-        })?;
-        let path = canonical_path(file_path);
-        let func_indices = find_all_func_indices(cpg, &path, function_name);
-        if func_indices.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let mut seen = HashSet::new();
-        let mut result = Vec::new();
-        for func_idx in func_indices {
-            for (_idx, node) in cpg.get_callees(func_idx) {
-                let key = (node.name.clone(), node.file_path.clone(), node.start_line);
-                if seen.insert(key) {
-                    let dict = PyDict::new(py);
-                    dict.set_item("name", &node.name)?;
-                    dict.set_item("file", node.file_path.to_string_lossy().as_ref())?;
-                    dict.set_item("line", node.start_line)?;
-                    result.push(dict.into_py(py));
-                }
-            }
-        }
-        Ok(result)
+    /// Eager AST declarations; available independently of the lazy CPG overlay.
+    fn get_callables(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+        self.graph.call_index.functions(&self.graph.source_path(Path::new(file_path)))
+            .into_iter().map(|node| callable_dict(py, &node)).collect()
     }
 
-    /// Get all functions that call a given function.
-    /// Returns a list of dicts: {name, file, line}
-    fn get_callers(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
-        let cpg = self.graph.cpg.as_ref().ok_or_else(|| {
-            PyRuntimeError::new_err("CPG not enabled. Call enable_cpg() first.")
-        })?;
-        let path = canonical_path(file_path);
-        let func_indices = find_all_func_indices(cpg, &path, function_name);
-        if func_indices.is_empty() {
-            return Ok(Vec::new());
-        }
+    fn get_file_symbols(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+        let path = self.graph.source_path(Path::new(file_path));
+        let source = self.graph.get_source(&path)?;
+        let tree = self.graph.trees.get(&path).ok_or_else(|| PyValueError::new_err("No accepted AST"))?;
+        self.graph.symbol_harvester.harvest(tree, source, SupportedLanguage::from_path(&path))
+            .into_iter().filter(|s| s.is_definition).map(|symbol| {
+                let dict = PyDict::new(py);
+                dict.set_item("name", symbol.name)?;
+                dict.set_item("kind", format!("{:?}", symbol.kind))?;
+                dict.set_item("file", path.to_string_lossy().as_ref())?;
+                dict.set_item("line", source[..symbol.start_byte].bytes().filter(|b| *b == b'\n').count() + 1)?;
+                dict.set_item("start_byte", symbol.start_byte)?;
+                dict.set_item("end_byte", symbol.end_byte)?;
+                Ok(dict.into_py(py))
+            }).collect()
+    }
 
-        let mut seen = HashSet::new();
-        let mut result = Vec::new();
-        for func_idx in func_indices {
-            for (_idx, node) in cpg.get_callers(func_idx) {
-                let key = (node.name.clone(), node.file_path.clone(), node.start_line);
-                if seen.insert(key) {
-                    let dict = PyDict::new(py);
-                    dict.set_item("name", &node.name)?;
-                    dict.set_item("file", node.file_path.to_string_lossy().as_ref())?;
-                    dict.set_item("line", node.start_line)?;
-                    result.push(dict.into_py(py));
-                }
-            }
-        }
-        Ok(result)
+    /// Return every target for every matching callable. Qualified names disambiguate.
+    fn get_callees(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+        call_results(&self.graph, py, file_path, function_name, false)
+    }
+
+    fn get_callers(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+        call_results(&self.graph, py, file_path, function_name, true)
     }
 
     /// Explicitly trigger call graph resolution (Pass 2).
@@ -1187,6 +1212,7 @@ fn semantic_engine(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(scan_repository, m)?)?;
     m.add_function(wrap_pyfunction!(check_syntax, m)?)?;
     m.add_function(wrap_pyfunction!(create_skeleton_from_source, m)?)?;
+    m.add_function(wrap_pyfunction!(parser::create_skeleton_details_json, m)?)?;
 
     m.add_class::<PyRepoGraph>()?;
     m.add_class::<PyGraphStatistics>()?;

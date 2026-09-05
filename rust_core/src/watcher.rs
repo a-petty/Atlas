@@ -1,16 +1,16 @@
 // rust_core/src/watcher.rs
 
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use crossbeam_channel::{bounded, Receiver, Sender};
 use notify::{RecursiveMode, Watcher};
 use notify_debouncer_full::{
     new_debouncer, DebounceEventResult,
 };
 use parking_lot::RwLock;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 use thiserror::Error;
 use walkdir::WalkDir;
 
@@ -155,7 +155,7 @@ impl FileWatcher {
     /// # Returns
     /// Result containing FileWatcher or WatcherError
     pub fn new(watch_path: PathBuf, filter: FileFilter) -> Result<Self, WatcherError> {
-        let (event_tx, event_rx) = unbounded();
+        let (event_tx, event_rx) = bounded(4096);
         let (stop_tx, stop_rx) = bounded(1);
         let stats = Arc::new(RwLock::new(WatcherStats::default()));
         let is_running = Arc::new(RwLock::new(false));
@@ -185,7 +185,7 @@ impl FileWatcher {
         filter: &FileFilter,
         known_files: &Arc<RwLock<HashSet<PathBuf>>>,
     ) -> Result<(), WatcherError> {
-        println!("[scan_initial_files] Scanning: {:?}", root);
+        log::debug!("[scan_initial_files] Scanning: {:?}", root);
         
         let mut files = known_files.write();
         let mut scanned = 0;
@@ -205,12 +205,12 @@ impl FileWatcher {
                 if let Ok(canonical_path) = path.canonicalize() {
                     files.insert(canonical_path);
                 } else {
-                    eprintln!("[scan_initial_files] Warning: Could not canonicalize path: {:?}", path);
+                    log::warn!("[scan_initial_files] Warning: Could not canonicalize path: {:?}", path);
                 }
             }
         }
         
-        println!("[scan_initial_files] Complete: scanned={}, matched={}", scanned, matched);
+        log::debug!("[scan_initial_files] Complete: scanned={}, matched={}", scanned, matched);
         
         Ok(())
     }
@@ -313,6 +313,19 @@ impl FileWatcher {
         Ok(())
     }
     
+    /// Native events are hints. Periodic metadata reconciliation recovers
+    /// missed events, including filesystems where native delivery is unavailable.
+    fn manifest(root: &Path, filter: &FileFilter) -> HashMap<PathBuf, (u64, Option<SystemTime>)> {
+        WalkDir::new(root).into_iter()
+            .filter_entry(|e| !e.file_type().is_dir() || !filter.ignored_dirs.iter()
+                .any(|d| e.file_name().to_string_lossy() == d.as_str()))
+            .filter_map(Result::ok).filter(|e| e.file_type().is_file())
+            .filter_map(|entry| {
+                let metadata = entry.metadata().ok()?;
+                Some((entry.path().canonicalize().ok()?, (metadata.len(), metadata.modified().ok())))
+            }).collect()
+    }
+
     /// Main watcher thread loop
     fn watcher_thread_main(
         watch_path: PathBuf,
@@ -325,21 +338,21 @@ impl FileWatcher {
         known_files: Arc<RwLock<HashSet<PathBuf>>>,
     ) {
         // Create event channel for debouncer
-        let (debounce_tx, debounce_rx) = unbounded();
+        let (debounce_tx, debounce_rx) = bounded(1024);
         
         // Create debouncer
         let mut debouncer = match new_debouncer(
             Duration::from_millis(100), // 100ms debounce
             None, 
             move |result: DebounceEventResult| {
-                if let Err(e) = debounce_tx.send(result) {
-                    eprintln!("[FileWatcher] Failed to send debounced event: {}", e);
+                if let Err(e) = debounce_tx.try_send(result) {
+                    log::warn!("[FileWatcher] Failed to send debounced event: {}", e);
                 }
             },
         ) {
             Ok(d) => d,
             Err(e) => {
-                eprintln!("[FileWatcher] Failed to create debouncer: {}", e);
+                log::warn!("[FileWatcher] Failed to create debouncer: {}", e);
                 let _ = init_tx.send(Err(WatcherError::InitializationError(e.to_string())));
                 return;
             }
@@ -347,16 +360,19 @@ impl FileWatcher {
         
         // Start watching
         if let Err(e) = debouncer.watcher().watch(&watch_path, RecursiveMode::Recursive) {
-            eprintln!("[FileWatcher] Failed to watch path: {}", e);
+            log::warn!("[FileWatcher] Failed to watch path: {}", e);
             let _ = init_tx.send(Err(WatcherError::WatchError(e.to_string())));
             return;
         }
         
+        let mut manifest = Self::manifest(&watch_path, &filter);
+        let mut last_reconcile = Instant::now();
+        stats.write().files_currently_watched = known_files.read().len();
         *is_running.write() = true;
         
         // Signal that the watcher has started successfully
         if init_tx.send(Ok(())).is_err() {
-            eprintln!("[FileWatcher] Failed to signal start, receiver likely dropped.");
+            log::warn!("[FileWatcher] Failed to signal start, receiver likely dropped.");
              *is_running.write() = false;
             return;
         }
@@ -368,6 +384,52 @@ impl FileWatcher {
                 break;
             }
             
+            if last_reconcile.elapsed() >= Duration::from_millis(200) {
+                let next = Self::manifest(&watch_path, &filter);
+                let mut changes = Vec::new();
+                for (path, signature) in &next {
+                    match manifest.get(path) {
+                        None => changes.push(FileChangeEvent::Created(path.clone())),
+                        Some(old) if old != signature => changes.push(FileChangeEvent::Modified(path.clone())),
+                        _ => {}
+                    }
+                }
+                for path in manifest.keys().filter(|p| !next.contains_key(*p)) {
+                    changes.push(FileChangeEvent::Deleted(path.clone()));
+                }
+                let mut counts = stats.write();
+                for change in changes {
+                    let path = match &change {
+                        FileChangeEvent::Created(p) | FileChangeEvent::Modified(p) | FileChangeEvent::Deleted(p) => p,
+                        FileChangeEvent::Renamed { to, .. } => to,
+                    };
+                    let path = path.clone();
+                    counts.events_received += 1;
+                    if !filter.should_watch(&path) {
+                        counts.events_filtered += 1;
+                    } else {
+                        match event_tx.try_send(change) {
+                            Ok(()) => {},
+                            Err(crossbeam_channel::TrySendError::Disconnected(_)) => {
+                                *is_running.write() = false; return;
+                            }
+                            Err(crossbeam_channel::TrySendError::Full(_)) => {
+                                // Do not acknowledge a change the consumer has
+                                // never received. The next scan retries it from
+                                // this manifest once queue capacity is available.
+                                counts.errors_encountered += 1;
+                                break;
+                            }
+                        }
+                        if next.contains_key(&path) { known_files.write().insert(path.clone()); }
+                        else { known_files.write().remove(&path); }
+                    }
+                    if let Some(signature) = next.get(&path) { manifest.insert(path, *signature); }
+                    else { manifest.remove(&path); }
+                }
+                counts.files_currently_watched = known_files.read().len();
+                last_reconcile = Instant::now();
+            }
             // Check for file events (with timeout)
             match debounce_rx.recv_timeout(Duration::from_millis(100)) {
                 Ok(result) => {
@@ -377,24 +439,24 @@ impl FileWatcher {
                             stats_guard.events_received += events.len();
                             
                             for event in events {
-                                println!("[event_loop] Event: kind={:?}, paths={}", event.kind, event.paths.len());
+                                log::debug!("[event_loop] Event: kind={:?}, paths={}", event.kind, event.paths.len());
                                 
                                 for path in &event.paths {
-                                    println!("[event_loop] Processing: {:?}", path);
+                                    log::debug!("[event_loop] Processing: {:?}", path);
                                     
                                     // Filter unwanted files
                                     if !filter.should_watch(path) {
                                         stats_guard.events_filtered += 1;
-                                        println!("[event_loop] Filtered out: {:?}", path);
+                                        log::debug!("[event_loop] Filtered out: {:?}", path);
                                         continue;
                                     }
                                     
-                                    println!("[event_loop] Calling convert_event_stateful");
+                                    log::debug!("[event_loop] Calling convert_event_stateful");
                                     
                                     if let Some(change_event) = Self::convert_event_stateful(&event.kind, path, &known_files) {
-                                        println!("[event_loop] Sending event: {:?}", change_event);
-                                        if event_tx.send(change_event).is_err() {
-                                            eprintln!("[FileWatcher] Receiver dropped, stopping");
+                                        log::debug!("[event_loop] Sending event: {:?}", change_event);
+                                        if let Err(crossbeam_channel::TrySendError::Disconnected(_)) = event_tx.try_send(change_event) {
+                                            *is_running.write() = false;
                                             return;
                                         }
                                     }
@@ -406,7 +468,7 @@ impl FileWatcher {
                             stats_guard.errors_encountered += errors.len();
                             
                             for error in errors {
-                                eprintln!("[FileWatcher] Error: {:?}", error);
+                                log::warn!("[FileWatcher] Error: {:?}", error);
                             }
                         }
                     }
@@ -415,7 +477,7 @@ impl FileWatcher {
                     // Normal timeout, continue loop
                 }
                 Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
-                    eprintln!("[FileWatcher] Event channel disconnected");
+                    log::warn!("[FileWatcher] Event channel disconnected");
                     break;
                 }
             }
@@ -432,7 +494,7 @@ impl FileWatcher {
     ) -> Option<FileChangeEvent> {
         use notify::event::{CreateKind, ModifyKind, RemoveKind, RenameMode};
         
-        println!("[convert_event_stateful] kind={:?}, path={:?}", kind, path); // Log full path
+        log::debug!("[convert_event_stateful] kind={:?}, path={:?}", kind, path); // Log full path
         
         // Canonicalize the event path immediately for consistent checks
         let canonical_event_path = match path.canonicalize() {
@@ -442,10 +504,10 @@ impl FileWatcher {
                 // Check if it was a known file that now doesn't exist.
                 let mut files = known_files.write();
                 if files.remove(path) { // Attempt to remove with original (potentially non-canonical) path
-                    println!("  → Result: Detected deletion (path no longer exists)");
+                    log::debug!("  → Result: Detected deletion (path no longer exists)");
                     return Some(FileChangeEvent::Deleted(path.to_path_buf()));
                 }
-                println!("  → Result: Ignored (path cannot be canonicalized and not a known deleted file)");
+                log::debug!("  → Result: Ignored (path cannot be canonicalized and not a known deleted file)");
                 return None; // Cannot process, likely a transient state or invalid path
             }
         };
@@ -456,12 +518,12 @@ impl FileWatcher {
         match kind {
             EventKind::Create(CreateKind::File) 
             | EventKind::Create(CreateKind::Any) => {
-                println!("  → was_known={}, total_known={}", was_known, files.len());
+                log::debug!("  → was_known={}, total_known={}", was_known, files.len());
                 if was_known {
-                    println!("  → Result: Modified (atomic write or re-creation)");
+                    log::debug!("  → Result: Modified (atomic write or re-creation)");
                     Some(FileChangeEvent::Modified(canonical_event_path))
                 } else {
-                    println!("  → Result: Created (new file)");
+                    log::debug!("  → Result: Created (new file)");
                     files.insert(canonical_event_path.clone());
                     Some(FileChangeEvent::Created(canonical_event_path))
                 }
@@ -472,18 +534,18 @@ impl FileWatcher {
             | EventKind::Modify(ModifyKind::Any)
             | EventKind::Modify(ModifyKind::Metadata(_)) => {
                 if was_known && !canonical_event_path.exists() { // If it was known and now doesn't exist
-                    println!("  → Result: Detected deletion (modify on non-existent file)");
+                    log::debug!("  → Result: Detected deletion (modify on non-existent file)");
                     files.remove(&canonical_event_path);
                     Some(FileChangeEvent::Deleted(canonical_event_path))
                 } else {
-                    println!("  → Result: Modified");
+                    log::debug!("  → Result: Modified");
                     Some(FileChangeEvent::Modified(canonical_event_path))
                 }
             }
             
             EventKind::Remove(RemoveKind::File) 
             | EventKind::Remove(RemoveKind::Any) => {
-                println!("  → Result: Deleted");
+                log::debug!("  → Result: Deleted");
                 files.remove(&canonical_event_path);
                 Some(FileChangeEvent::Deleted(canonical_event_path))
             }
@@ -494,12 +556,12 @@ impl FileWatcher {
                 // If 'path' is the 'to' path, it's effectively a creation of 'to'.
                 // For simplicity, we'll treat this as a modification for now,
                 // but a more robust solution might require examining event.paths to get both 'from' and 'to'.
-                println!("  → Result: Modified (rename)");
+                log::debug!("  → Result: Modified (rename)");
                 Some(FileChangeEvent::Modified(canonical_event_path))
             }
             
             _ => {
-                println!("  → Result: Ignored");
+                log::debug!("  → Result: Ignored");
                 None
             }
         }

@@ -1,4 +1,5 @@
 use crate::cpg::CpgLayer;
+use crate::call_index::CallIndex;
 use crate::import_resolver::{ImportResolver, JsTsImportResolver, PythonImportResolver, ResolverGroup};
 use crate::parser::{self, Symbol, SymbolHarvester, SupportedLanguage};
 use crate::symbol_table::SymbolIndex;
@@ -8,7 +9,6 @@ use petgraph::visit::EdgeRef;
 use rayon::prelude::*;
 use thiserror::Error;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use lru::LruCache;
 use std::num::NonZeroUsize;
 use parking_lot::RwLock;
@@ -219,6 +219,8 @@ struct FileParseResult {
     symbols: Vec<parser::Symbol>,
     imports: HashSet<PathBuf>,
     content_hash: u64,
+    source: String,
+    tree: tree_sitter::Tree,
 }
 
 #[derive(Debug)]
@@ -259,6 +261,13 @@ pub struct RepoGraph {
     pub project_root: PathBuf,
     /// Lazy skeleton cache
     pub skeleton_cache: RwLock<LruCache<PathBuf, Arc<String>>>,
+    /// Accepted source buffers and ASTs. Queries never mix these with later disk edits.
+    pub sources: HashMap<PathBuf, String>,
+    pub trees: HashMap<PathBuf, tree_sitter::Tree>,
+    pub call_index: CallIndex,
+    import_bindings: HashMap<PathBuf, Vec<crate::import_resolver::ImportBinding>>,
+    configured_ignored_dirs: Vec<String>,
+    configured_source_roots: Option<Vec<String>>,
     /// Optional CPG overlay for sub-file granularity
     pub cpg: Option<CpgLayer>,
     /// File counts per language observed by auto-detection at construction
@@ -335,6 +344,12 @@ impl RepoGraph {
             unresolved_imports: HashMap::new(),
             project_root: canonical_root,
             skeleton_cache: RwLock::new(LruCache::new(cache_size)),
+            sources: HashMap::new(),
+            trees: HashMap::new(),
+            call_index: CallIndex::new(),
+            import_bindings: HashMap::new(),
+            configured_ignored_dirs: ignored_dirs.to_vec(),
+            configured_source_roots: source_roots.map(|roots| roots.to_vec()),
             cpg: None,
             file_counts_by_language: HashMap::new(),
             unsupported_language_counts: HashMap::new(),
@@ -469,8 +484,8 @@ impl RepoGraph {
             None => return false,
         };
 
-        let source = match fs::read_to_string(path) {
-            Ok(s) => s,
+        let source = match self.get_source(path) {
+            Ok(s) => s.to_string(),
             Err(_) => return false,
         };
 
@@ -494,7 +509,7 @@ impl RepoGraph {
 
     /// Get skeleton for a file, loading on-demand if not cached
     pub fn get_skeleton(&self, path: &Path) -> Result<Arc<String>, GraphError> {
-        let canonical_path = self.project_root.join(path);
+        let canonical_path = self.source_path(path);
 
         // Check cache first
         {
@@ -505,8 +520,7 @@ impl RepoGraph {
         }
 
         // Not in cache - load and parse
-        let source = fs::read_to_string(&canonical_path)
-            .map_err(|e| GraphError::IoError(e.to_string()))?;
+        let source = self.get_source(&canonical_path)?.to_string();
         
         let lang = SupportedLanguage::from_path(&canonical_path);
         if lang == SupportedLanguage::Unknown {
@@ -536,22 +550,77 @@ impl RepoGraph {
         Ok(skeleton_arc)
     }
 
-    /// Helper to ensure an edge exists. Import edges (structurally confirmed) take
-    /// priority over SymbolUsage edges (heuristic name matching).
-    fn ensure_edge(&mut self, source: NodeIndex, target: NodeIndex, kind: EdgeKind) -> bool {
-        if let Some(edge_id) = self.graph.find_edge(source, target) {
-            // Edge already exists — upgrade SymbolUsage to Import, but never downgrade
-            let existing_kind = &mut self.graph[edge_id];
-            if *existing_kind == EdgeKind::SymbolUsage && kind == EdgeKind::Import {
-                *existing_kind = EdgeKind::Import;
-                return true; // Upgraded
-            }
-            return false; // No change needed
-        } else {
-            // No edge exists, add it
-            self.graph.add_edge(source, target, kind);
-            return true;
+    pub fn source_path(&self, path: &Path) -> PathBuf {
+        if self.sources.contains_key(path) { return path.to_path_buf(); }
+        let joined = self.project_root.join(path);
+        joined.canonicalize().unwrap_or(joined)
+    }
+
+    pub fn get_source(&self, path: &Path) -> Result<&str, GraphError> {
+        let path = self.source_path(path);
+        self.sources.get(&path).map(String::as_str)
+            .ok_or(GraphError::NodeNotFound(path))
+    }
+
+    fn index_calls_for_file(&mut self, path: &Path) {
+        if let (Some(tree), Some(source)) = (self.trees.get(path), self.sources.get(path)) {
+            let bindings = self.resolver_for_path(path)
+                .map(|r| r.find_import_bindings(tree, path, source.as_bytes())).unwrap_or_default();
+            self.import_bindings.insert(path.to_path_buf(), bindings.clone());
+            self.call_index.update_file(path, tree, source, SupportedLanguage::from_path(path), bindings);
         }
+    }
+
+    fn refresh_resolvers(&mut self) {
+        let groups: Vec<_> = self.import_resolvers.keys().copied().collect();
+        let fresh = Self::new_multi(&self.project_root, &groups, &self.configured_ignored_dirs, self.configured_source_roots.as_deref());
+        self.import_resolvers = fresh.import_resolvers;
+    }
+
+    fn refresh_affected_bindings(&mut self, changed: &Path) {
+        for path in self.call_index.affected_files(&[changed.to_path_buf()]) {
+            if let (Some(tree), Some(source)) = (self.trees.get(&path), self.sources.get(&path)) {
+                let bindings = self.resolver_for_path(&path)
+                    .map(|r| r.find_import_bindings(tree, &path, source.as_bytes())).unwrap_or_default();
+                let imports = self.resolver_for_path(&path)
+                    .map(|r| r.find_imports(tree, &path, source.as_bytes())).unwrap_or_default();
+                self.import_bindings.insert(path.clone(), bindings.clone());
+                self.call_index.set_import_bindings(&path, bindings);
+                if let Some(&source_idx) = self.path_to_idx.get(&path) {
+                    for waiting in self.unresolved_imports.values_mut() { waiting.remove(&source_idx); }
+                    let mut old_edges: Vec<_> = self.graph.edges_directed(source_idx, petgraph::Direction::Outgoing)
+                        .filter(|edge| *edge.weight() == EdgeKind::Import).map(|edge| edge.id()).collect();
+                    old_edges.sort_by_key(|id| std::cmp::Reverse(id.index()));
+                    for id in old_edges { self.graph.remove_edge(id); }
+                    for target in &imports {
+                        if let Some(&target_idx) = self.path_to_idx.get(target) {
+                            if source_idx != target_idx { self.ensure_edge(source_idx, target_idx, EdgeKind::Import); }
+                        } else {
+                            self.unresolved_imports.entry(target.clone()).or_default().insert(source_idx);
+                        }
+                    }
+                    self.graph[source_idx].imports_hash = FileNode::hash_imports(&imports);
+                }
+            }
+        }
+        self.call_index.resolve_changed(&[changed.to_path_buf()]);
+    }
+
+    fn rebuild_call_index(&mut self) {
+        self.call_index = CallIndex::new();
+        self.import_bindings.clear();
+        let paths: Vec<_> = self.trees.keys().cloned().collect();
+        for path in paths { self.index_calls_for_file(&path); }
+        self.call_index.resolve_all();
+    }
+
+    /// Keep exactly one edge of each evidence kind for each ordered file pair.
+    fn ensure_edge(&mut self, source: NodeIndex, target: NodeIndex, kind: EdgeKind) -> bool {
+        if self.graph.edges_connecting(source, target).any(|e| *e.weight() == kind) {
+            return false;
+        }
+        self.graph.add_edge(source, target, kind);
+        true
     }
 
     /// Classifies the magnitude of change for a given file.
@@ -642,6 +711,20 @@ impl RepoGraph {
         let file_path = &file_path.canonicalize().unwrap_or_else(|_| file_path.clone());
         debug!("Updating file: {}", file_path.display());
         let tier = self.classify_change(file_path, source_code)?;
+        self.sources.insert(file_path.clone(), source_code.to_string());
+        self.skeleton_cache.write().pop(file_path);
+        let language = SupportedLanguage::from_path(file_path);
+        let mut source_parser = TreeSitterParser::new();
+        if let Some(ts_lang) = language.get_parser() {
+            source_parser.set_language(ts_lang).map_err(|_| GraphError::ParseError(file_path.clone()))?;
+            if let Some(tree) = source_parser.parse(source_code, None) {
+                self.trees.insert(file_path.clone(), tree);
+            }
+        }
+        self.index_calls_for_file(file_path);
+        // Call resolution retains old incoming edges while computing this set.
+        // Reuse it to invalidate lexical evidence without repeating traversal.
+        let affected_semantic_files = self.call_index.resolve_changed_files(&[file_path.clone()]);
         info!(
             "Change classification for {}: {:?}",
             file_path.display(),
@@ -649,6 +732,9 @@ impl RepoGraph {
         );
 
         if tier == UpdateTier::Local {
+            let (edges_added, edges_removed) = self.reconcile_semantic_edges_for_paths(&affected_semantic_files);
+            let needs_pagerank_recalc = edges_added > 0 || edges_removed > 0;
+            if needs_pagerank_recalc { self.pagerank_dirty = true; }
             // Update content hash even for local changes
             if let Some(&node_idx) = self.path_to_idx.get(file_path) {
                 if let Some(node) = self.graph.node_weight_mut(node_idx) {
@@ -656,7 +742,7 @@ impl RepoGraph {
                 }
             }
             // CPG still needs updating for local changes (byte offsets shift)
-            if self.cpg.is_some() {
+            if self.cpg.as_ref().map(|cpg| cpg.has_file(file_path)).unwrap_or(false) {
                 let cpg_lang = SupportedLanguage::from_extension(
                     file_path.extension().and_then(|s| s.to_str()).unwrap_or(""),
                 );
@@ -679,9 +765,9 @@ impl RepoGraph {
                 }
             }
             let result = UpdateResult {
-                edges_added: 0,
-                edges_removed: 0,
-                needs_pagerank_recalc: false,
+                edges_added,
+                edges_removed,
+                needs_pagerank_recalc,
             };
             info!("Update complete for {}: {:?}", file_path.display(), result);
             return Ok(result);
@@ -955,13 +1041,18 @@ impl RepoGraph {
             }
         }
 
+        // An unchanged symbol use may gain or lose its import. Reconcile semantic
+        // evidence after import changes as well as definition/use changes.
+        let (semantic_added, semantic_removed) = self.reconcile_semantic_edges();
+        edges_added += semantic_added;
+        edges_removed += semantic_removed;
         let needs_recalc = edges_added > 0 || edges_removed > 0;
         if needs_recalc {
             self.pagerank_dirty = true;
         }
 
         // CPG update: reuse the already-parsed tree
-        if self.cpg.is_some() {
+        if self.cpg.as_ref().map(|cpg| cpg.has_file(file_path)).unwrap_or(false) {
             let cpg_lang = SupportedLanguage::from_extension(
                 file_path.extension().and_then(|s| s.to_str()).unwrap_or(""),
             );
@@ -1002,18 +1093,40 @@ impl RepoGraph {
 
     /// Builds the graph from a list of file paths using a parallelized, multi-stage process.
     pub fn build(&mut self, paths: &[PathBuf]) {
+        let mut sources = self.sources.clone();
+        let captured: HashMap<PathBuf, String> = paths.par_iter().filter_map(|path| {
+            fs::read_to_string(path).ok().map(|source| (path.canonicalize().unwrap_or_else(|_| path.clone()), source))
+        }).collect();
+        sources.extend(captured);
+        self.build_sources(&sources);
+    }
+
+    /// Build from a captured generation without reopening any source file.
+    pub fn build_sources(&mut self, sources: &HashMap<PathBuf, String>) {
+        self.graph.clear();
+        self.path_to_idx.clear();
+        self.symbol_index = SymbolIndex::new();
+        self.unresolved_imports.clear();
+        self.sources.clear();
+        self.trees.clear();
+        self.call_index = CallIndex::new();
+        self.skeleton_cache.write().clear();
+        if self.cpg.is_some() { self.cpg = Some(CpgLayer::new()); }
+        let paths: Vec<PathBuf> = sources.keys().cloned().collect();
         info!("Starting parallel build for {} files...", paths.len());
 
         // Canonicalize all paths up front so path_to_idx matches import resolver's module_index
-        let canonical_paths: Vec<PathBuf> = paths
+        let mut canonical_paths: Vec<PathBuf> = paths
             .iter()
             .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
             .collect();
+        canonical_paths.sort();
+        canonical_paths.dedup();
 
         // Stage 1: Parallel File Parsing and Data Collection
         let parse_results: Vec<FileParseResult> = canonical_paths
             .par_iter()
-            .filter_map(|path| {
+            .map_init(SymbolHarvester::new, |symbol_harvester, path| {
                 let lang = SupportedLanguage::from_extension(
                     path.extension().and_then(|s| s.to_str()).unwrap_or(""),
                 );
@@ -1027,14 +1140,13 @@ impl RepoGraph {
                     return None;
                 };
 
-                if let Ok(source_code) = fs::read_to_string(path) {
+                if let Some(source_code) = sources.get(path).cloned() {
                     if let Some(tree) = parser.parse(&source_code, None) {
                         if tree.root_node().has_error() {
                             debug!("Skipping file with syntax errors: {}", path.display());
                             return None;
                         }
 
-                        let symbol_harvester = SymbolHarvester::new(); // Per-thread harvester
                         let symbols = symbol_harvester.harvest(&tree, &source_code, lang);
                         let imports = self
                             .resolver_for(lang)
@@ -1047,11 +1159,14 @@ impl RepoGraph {
                             symbols,
                             imports,
                             content_hash,
+                            source: source_code,
+                            tree,
                         });
                     }
                 }
                 None
             })
+            .filter_map(|result| result)
             .collect();
 
         info!(
@@ -1090,6 +1205,9 @@ impl RepoGraph {
         // Pass 2.2: Symbol and Import Indexing
         let mut import_map: HashMap<NodeIndex, HashSet<PathBuf>> = HashMap::new();
         for result in parse_results {
+            self.sources.insert(result.path.clone(), result.source);
+            self.trees.insert(result.path.clone(), result.tree);
+            self.skeleton_cache.write().pop(&result.path);
             // We need to get the node_idx again as the `parse_results` was consumed in the previous loop
             if let Some(&node_idx) = self.path_to_idx.get(&result.path) {
                 let all_uses: Vec<String> = result.symbols.iter()
@@ -1153,16 +1271,17 @@ impl RepoGraph {
         }
 
         self.pagerank_dirty = true;
+        self.rebuild_call_index();
     }
     
     pub fn add_file(&mut self, path: PathBuf, content: &str) -> Result<(), GraphError> {
         // Canonicalize path to match build() convention
         let path = path.canonicalize().unwrap_or(path);
 
-        // 1. UPSERT PROTECTION
-        // If file exists, remove it first to ensure clean state
+        // Validate an upsert before changing the accepted generation.
         if self.path_to_idx.contains_key(&path) {
-            self.remove_file(&path)?;
+            self.update_file(&path, content)?;
+            return Ok(());
         }
         
         // 2. PARSING (with fallback)
@@ -1188,9 +1307,10 @@ impl RepoGraph {
         };
 
         if parse_result.has_errors {
-            log::warn!("File {} has syntax errors, graph data may be incomplete.", path.display());
+            return Err(GraphError::ParseError(path));
         }
         
+        self.refresh_resolvers();
         let symbols: Vec<Symbol> = self.symbol_harvester.harvest(&tree, content, lang);
         let defs: Vec<String> = symbols.iter().filter(|s| s.is_definition).map(|s| s.name.clone()).collect();
         let uses: Vec<String> = symbols.iter().filter(|s| !s.is_definition).map(|s| s.name.clone()).collect();
@@ -1211,6 +1331,9 @@ impl RepoGraph {
         
         let new_idx = self.graph.add_node(file_node);
         self.path_to_idx.insert(path.clone(), new_idx);
+        self.sources.insert(path.clone(), content.to_string());
+        self.trees.insert(path.clone(), tree.clone());
+        self.skeleton_cache.write().pop(&path);
         
         // 4. SYMBOL INDEX REGISTRATION
         for def in &defs {
@@ -1319,7 +1442,7 @@ impl RepoGraph {
         }
         
         // 9. CPG UPDATE
-        if self.cpg.is_some() {
+        if self.cpg.as_ref().map(|cpg| cpg.has_file(&path)).unwrap_or(false) {
             let cpg_lang = SupportedLanguage::from_path(&path);
             if cpg_lang != SupportedLanguage::Unknown {
                 if let Some(ts_lang) = cpg_lang.get_parser() {
@@ -1337,6 +1460,9 @@ impl RepoGraph {
 
         // 10. FLAG UPDATE
         self.pagerank_dirty = true;
+        self.index_calls_for_file(&path);
+        self.refresh_affected_bindings(&path);
+        self.reconcile_semantic_edges();
 
         Ok(())
     }
@@ -1415,6 +1541,16 @@ impl RepoGraph {
         // 2.4. PATH MAP UPDATES
         // Remove the deleted file
         self.path_to_idx.remove(path);
+        self.sources.remove(path);
+        self.trees.remove(path);
+        self.call_index.remove_file(path);
+        self.import_bindings.remove(path);
+        self.skeleton_cache.write().pop(path);
+        // The removed slot must not remain as an unresolved importer; petgraph
+        // may immediately reuse it for the node swapped in from the end.
+        for waiting in self.unresolved_imports.values_mut() {
+            waiting.remove(&target_idx);
+        }
         
         // If a swap occurred, update the map for the moved node
         if let Some(moved_path) = moved_path {
@@ -1438,6 +1574,9 @@ impl RepoGraph {
             cpg.remove_file(path);
         }
 
+        self.refresh_resolvers();
+        self.refresh_affected_bindings(path);
+        self.reconcile_semantic_edges();
         // 2.8. FLAG UPDATE
         self.pagerank_dirty = true;
 
@@ -1449,131 +1588,79 @@ impl RepoGraph {
         self.symbol_index.remap_node_index(old_idx, new_idx);
     }
 
-    /// After initial population, this method builds the semantic edges based on symbol usage.
-    /// Only creates SymbolUsage edges where an Import edge already exists, ensuring that
-    /// symbol matches are backed by actual import relationships.
-    pub fn build_semantic_edges(&mut self) {
-        use crate::diag::diag_log;
-        info!("Building semantic edges...");
-
-        // Pre-compute import targets: for each node, which other nodes does it import?
-        let import_targets: HashMap<NodeIndex, HashSet<NodeIndex>> = self
-            .graph
-            .node_indices()
-            .map(|idx| {
-                let targets: HashSet<NodeIndex> = self
-                    .graph
-                    .edges_directed(idx, petgraph::Direction::Outgoing)
-                    .filter(|e| *e.weight() == EdgeKind::Import)
-                    .map(|e| e.target())
-                    .collect();
-                (idx, targets)
-            })
-            .collect();
-
-        let nodes_with_imports = import_targets.values().filter(|t| !t.is_empty()).count();
-        let total_import_edges: usize = import_targets.values().map(|t| t.len()).sum();
-        diag_log(&format!("[DIAG] build_semantic_edges: {} nodes total, {} have Import edges, {} total Import edges",
-            import_targets.len(), nodes_with_imports, total_import_edges));
-        diag_log(&format!("[DIAG] build_semantic_edges: symbol_index has {} definitions, {} usage entries",
-            self.symbol_index.definitions.len(), self.symbol_index.usages.len()));
-
-        // Pre-compute noisy symbols: skip symbols defined in too many files
-        let noisy_symbols: HashSet<&String> = self.symbol_index.definitions.iter()
-            .filter(|(_, paths)| paths.len() > MAX_SYMBOL_DEFINITION_FILES)
-            .map(|(name, _)| name)
-            .collect();
-        if !noisy_symbols.is_empty() {
-            diag_log(&format!("[DIAG] build_semantic_edges: filtering {} noisy symbols", noisy_symbols.len()));
-            info!("Filtering {} noisy symbols (defined in >{} files)", noisy_symbols.len(), MAX_SYMBOL_DEFINITION_FILES);
+    /// Reconcile typed evidence against the accepted import and symbol indexes.
+    /// Iterating import pairs keeps common symbols from generating a quadratic
+    /// repository-wide cross product.
+    fn reconcile_semantic_edges(&mut self) -> (usize, usize) {
+        let used_imports: HashMap<_, _> = self.path_to_idx.keys()
+            .map(|path| (path.clone(), self.call_index.used_import_paths(path))).collect();
+        let desired: HashSet<(NodeIndex, NodeIndex)> = self.graph.edge_references()
+            .filter(|edge| *edge.weight() == EdgeKind::Import)
+            .filter_map(|edge| {
+                let (source, target) = (edge.source(), edge.target());
+                used_imports.get(&self.graph[source].path)
+                    .map(|paths| paths.contains(&self.graph[target].path)).unwrap_or(false)
+                    .then_some((source, target))
+            }).collect();
+        let existing: HashSet<(NodeIndex, NodeIndex)> = self.graph.edge_references()
+            .filter(|edge| *edge.weight() == EdgeKind::SymbolUsage)
+            .map(|edge| (edge.source(), edge.target())).collect();
+        let mut remove: Vec<_> = self.graph.edge_references()
+            .filter(|edge| *edge.weight() == EdgeKind::SymbolUsage && !desired.contains(&(edge.source(), edge.target())))
+            .map(|edge| edge.id()).collect();
+        remove.sort_by_key(|id| std::cmp::Reverse(id.index()));
+        let removed = remove.len();
+        for edge in remove { self.graph.remove_edge(edge); }
+        let mut added = 0;
+        for (source, target) in desired.difference(&existing) {
+            if self.ensure_edge(*source, *target, EdgeKind::SymbolUsage) { added += 1; }
         }
-
-        // Diagnostic counters (use atomics for thread-safe counting in par_iter)
-        let diag_no_path = AtomicUsize::new(0);
-        let diag_no_imports = AtomicUsize::new(0);
-        let diag_empty_imports = AtomicUsize::new(0);
-        let diag_noisy_skip = AtomicUsize::new(0);
-        let diag_no_def = AtomicUsize::new(0);
-        let diag_self_skip = AtomicUsize::new(0);
-        let diag_no_node = AtomicUsize::new(0);
-        let diag_not_imported = AtomicUsize::new(0);
-        let diag_lang_mismatch = AtomicUsize::new(0);
-        let diag_matched = AtomicUsize::new(0);
-
-        let edges_to_create: Vec<(NodeIndex, NodeIndex)> = self.symbol_index.usages
-            .par_iter()
-            .flat_map(|(user_path, used_symbols)| {
-                let user_node_idx = match self.path_to_idx.get(user_path) {
-                    Some(&idx) => idx,
-                    None => { diag_no_path.fetch_add(1, Ordering::Relaxed); return Vec::new(); }
-                };
-                let user_lang = self.graph[user_node_idx].language;
-
-                // Only create SymbolUsage edges to files this node imports
-                let user_imports = match import_targets.get(&user_node_idx) {
-                    Some(targets) => targets,
-                    None => { diag_no_imports.fetch_add(1, Ordering::Relaxed); return Vec::new(); }
-                };
-                if user_imports.is_empty() {
-                    diag_empty_imports.fetch_add(1, Ordering::Relaxed);
-                    return Vec::new();
-                }
-
-                let mut edges = Vec::new();
-                for symbol in used_symbols {
-                    if noisy_symbols.contains(symbol) { diag_noisy_skip.fetch_add(1, Ordering::Relaxed); continue; }
-                    if let Some(def_paths) = self.symbol_index.definitions.get(symbol) {
-                        for def_path in def_paths {
-                            if user_path == def_path { diag_self_skip.fetch_add(1, Ordering::Relaxed); continue; }
-                            if let Some(&def_node_idx) = self.path_to_idx.get(def_path) {
-                                // Only create edge if the user file imports the defining file
-                                if !user_imports.contains(&def_node_idx) { diag_not_imported.fetch_add(1, Ordering::Relaxed); continue; }
-                                let def_lang = self.graph[def_node_idx].language;
-                                if languages_compatible(user_lang, def_lang) {
-                                    diag_matched.fetch_add(1, Ordering::Relaxed);
-                                    edges.push((user_node_idx, def_node_idx));
-                                } else {
-                                    diag_lang_mismatch.fetch_add(1, Ordering::Relaxed);
-                                }
-                            } else {
-                                diag_no_node.fetch_add(1, Ordering::Relaxed);
-                            }
-                        }
-                    } else {
-                        diag_no_def.fetch_add(1, Ordering::Relaxed);
-                    }
-                }
-                edges
-            })
-            .collect();
-
-        diag_log(&format!("[DIAG] build_semantic_edges results: {} edges to create", edges_to_create.len()));
-        diag_log(&format!("[DIAG]   matched={}, not_imported={}, no_def={}, noisy_skip={}, self_skip={}, no_node={}, lang_mismatch={}",
-            diag_matched.load(Ordering::Relaxed),
-            diag_not_imported.load(Ordering::Relaxed),
-            diag_no_def.load(Ordering::Relaxed),
-            diag_noisy_skip.load(Ordering::Relaxed),
-            diag_self_skip.load(Ordering::Relaxed),
-            diag_no_node.load(Ordering::Relaxed),
-            diag_lang_mismatch.load(Ordering::Relaxed)));
-        diag_log(&format!("[DIAG]   files: no_path={}, no_imports={}, empty_imports={}",
-            diag_no_path.load(Ordering::Relaxed),
-            diag_no_imports.load(Ordering::Relaxed),
-            diag_empty_imports.load(Ordering::Relaxed)));
-
-        // Serial mutation of the graph
-        for (src, dst) in edges_to_create {
-            self.ensure_edge(src, dst, EdgeKind::SymbolUsage);
-        }
+        (added, removed)
     }
-    
+
+    fn reconcile_semantic_edges_for_paths(&mut self, paths: &[PathBuf]) -> (usize, usize) {
+        let mut desired = HashSet::new();
+        let mut existing = HashSet::new();
+        let mut remove = Vec::new();
+        for path in paths {
+            let Some(&source) = self.path_to_idx.get(path) else { continue; };
+            let used = self.call_index.used_import_paths(path);
+            let targets: HashSet<_> = self.graph.edges_directed(source, petgraph::Direction::Outgoing)
+                .filter(|edge| *edge.weight() == EdgeKind::Import && used.contains(&self.graph[edge.target()].path))
+                .map(|edge| edge.target()).collect();
+            desired.extend(targets.iter().map(|&target| (source, target)));
+            for edge in self.graph.edges_directed(source, petgraph::Direction::Outgoing)
+                .filter(|edge| *edge.weight() == EdgeKind::SymbolUsage) {
+                existing.insert((source, edge.target()));
+                if !targets.contains(&edge.target()) { remove.push(edge.id()); }
+            }
+        }
+        remove.sort_by_key(|id| std::cmp::Reverse(id.index()));
+        remove.dedup();
+        let removed = remove.len();
+        for edge in remove { self.graph.remove_edge(edge); }
+        let mut added = 0;
+        for (source, target) in desired.difference(&existing) {
+            if self.ensure_edge(*source, *target, EdgeKind::SymbolUsage) { added += 1; }
+        }
+        (added, removed)
+    }
+
+    /// Semantic evidence is a lexically resolved reference through an accepted
+    /// import edge. It is never inferred from an unrelated matching symbol name.
+    pub fn build_semantic_edges(&mut self) {
+        let (added, removed) = self.reconcile_semantic_edges();
+        if added > 0 || removed > 0 { self.pagerank_dirty = true; }
+    }
+
     /// Complete build process: parse files, harvest symbols, build import edges, build semantic edges.
     pub fn build_complete(&mut self, paths: &[PathBuf], _project_root: &Path) {
         // Canonicalize paths once for consistency across build and CPG
-        let canonical_paths: Vec<PathBuf> = paths
+        let mut canonical_paths: Vec<PathBuf> = paths
             .iter()
             .map(|p| p.canonicalize().unwrap_or_else(|_| p.clone()))
             .collect();
+        self.sources.clear();
         self.build(&canonical_paths);
         self.build_semantic_edges();
         self.calculate_pagerank(20, 0.85);
@@ -1609,9 +1696,9 @@ impl RepoGraph {
                 Some(l) => l,
                 None => continue,
             };
-            let source = match fs::read_to_string(path) {
-                Ok(s) => s,
-                Err(_) => continue,
+            let source = match self.sources.get(path) {
+                Some(s) => s.clone(),
+                None => continue,
             };
             let mut parser = TreeSitterParser::new();
             if parser.set_language(ts_lang).is_err() {
@@ -1859,6 +1946,8 @@ impl RepoGraph {
         let mut ranks: Vec<f64> = vec![1.0 / node_count as f64; node_count];
 
         for _ in 0..iterations {
+            let dangling_mass: f64 = ranks.iter().zip(&weighted_out_degrees)
+                .filter(|(_, out)| **out == 0.0).map(|(rank, _)| *rank).sum();
             let mut new_ranks = vec![0.0; node_count];
             for node_idx in self.graph.node_indices() {
                 let mut rank_sum = 0.0;
@@ -1873,7 +1962,7 @@ impl RepoGraph {
                     }
                 }
                 new_ranks[node_idx.index()] = (1.0 - damping_factor) / node_count as f64
-                    + damping_factor * rank_sum;
+                    + damping_factor * (rank_sum + dangling_mass / node_count as f64);
             }
             ranks = new_ranks;
         }
@@ -1887,7 +1976,7 @@ impl RepoGraph {
     pub fn get_top_ranked_files(&mut self, limit: usize) -> Vec<(PathBuf, f64)> {
         self.ensure_pagerank_up_to_date();
         let mut ranked_files: Vec<_> = self.graph.node_weights().map(|node| (node.path.clone(), node.rank)).collect();
-        ranked_files.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        ranked_files.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.0.cmp(&b.0)));
         ranked_files.truncate(limit);
         ranked_files
     }

@@ -1912,13 +1912,16 @@ impl ImportResolver for PythonImportResolver {
         let mut bindings = Vec::new();
 
         // Use a tree-sitter query that captures both import forms as whole statements
-        let binding_query = Query::new(
+        lazy_static! {
+            static ref BINDING_QUERY: Query = Query::new(
             tree_sitter_python::language(),
             r#"
             (import_statement) @import_stmt
             (import_from_statement) @from_import
             "#,
         ).expect("Failed to create binding query");
+        }
+        let binding_query: &Query = &BINDING_QUERY;
 
         let mut query_cursor = QueryCursor::new();
         let matches = query_cursor.matches(&binding_query, tree.root_node(), source);
@@ -2505,6 +2508,18 @@ impl JsTsImportResolver {
 }
 
 impl ImportResolver for JsTsImportResolver {
+    fn find_import_bindings<'a>(&self, tree: &'a Tree, current_file: &Path, source: &'a [u8]) -> Vec<ImportBinding> {
+        let Ok(source) = std::str::from_utf8(source) else { return Vec::new() };
+        crate::call_index::js_import_specs(tree, source).into_iter().filter_map(|binding| {
+            let is_bare = !binding.specifier.starts_with('.') && !binding.specifier.starts_with('/');
+            if is_bare && self.is_third_party_package(&binding.specifier) { return None; }
+            self.resolve_import_specifier(&binding.specifier, current_file).map(|resolved_path| ImportBinding {
+                local_name: binding.local_name, resolved_path: resolved_path.canonicalize().unwrap_or(resolved_path),
+                imported_symbol: binding.imported_symbol,
+            })
+        }).collect()
+    }
+
     fn find_imports<'a>(
         &self,
         tree: &'a Tree,

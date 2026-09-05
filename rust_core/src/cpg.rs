@@ -1,6 +1,7 @@
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::EdgeRef;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
+use parking_lot::Mutex;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tree_sitter::Tree;
@@ -98,6 +99,8 @@ pub enum CpgEdge {
 
 /// The CPG overlay layer. Owns its own graph, separate from the file-level RepoGraph.
 pub struct CpgLayer {
+    file_capacity: usize,
+    file_recency: Mutex<VecDeque<PathBuf>>,
     pub graph: DiGraph<CpgNode, CpgEdge>,
     pub file_to_nodes: HashMap<PathBuf, Vec<NodeIndex>>,
     pub trees: HashMap<PathBuf, Tree>,
@@ -126,6 +129,8 @@ impl CpgLayer {
     /// Create an empty CPG layer.
     pub fn new() -> Self {
         Self {
+            file_capacity: 128,
+            file_recency: Mutex::new(VecDeque::new()),
             graph: DiGraph::new(),
             file_to_nodes: HashMap::new(),
             trees: HashMap::new(),
@@ -141,6 +146,30 @@ impl CpgLayer {
         }
     }
 
+    /// Bound detailed CFG/dataflow materialization. CallIndex lives separately,
+    /// so evicting this cache never changes repository caller/callee answers.
+    pub fn set_file_capacity(&mut self, capacity: usize) -> Result<(), &'static str> {
+        if capacity == 0 { return Err("CPG file capacity must be at least 1"); }
+        self.file_capacity = capacity;
+        self.enforce_file_capacity();
+        Ok(())
+    }
+
+    pub fn file_capacity(&self) -> usize { self.file_capacity }
+
+    fn touch_file(&self, path: &Path) {
+        let mut recency = self.file_recency.lock();
+        recency.retain(|p| p != path);
+        recency.push_back(path.to_path_buf());
+    }
+
+    fn enforce_file_capacity(&mut self) {
+        while self.file_to_nodes.len() > self.file_capacity {
+            let oldest = self.file_recency.lock().pop_front();
+            match oldest { Some(path) => self.remove_file(&path), None => break }
+        }
+    }
+
     /// Get all Statement/CfgEntry/CfgExit nodes owned by a function.
     pub fn get_stmts_for_function(&self, func_idx: NodeIndex) -> &[NodeIndex] {
         self.function_to_stmts
@@ -151,7 +180,9 @@ impl CpgLayer {
 
     /// Check if CPG data has been built for a given file.
     pub fn has_file(&self, path: &Path) -> bool {
-        self.file_to_nodes.contains_key(path)
+        let present = self.file_to_nodes.contains_key(path);
+        if present { self.touch_file(path); }
+        present
     }
 
     /// Extract CPG nodes from an AST and store the tree + source.
@@ -162,6 +193,9 @@ impl CpgLayer {
         source: String,
         language: SupportedLanguage,
     ) {
+        // Direct callers may rebuild an already materialized file. Remove its
+        // old nodes first so they cannot leak beyond the file capacity.
+        if self.file_to_nodes.contains_key(path) { self.remove_file(path); }
         let nodes = match language {
             SupportedLanguage::Python => extract_python_nodes(path, &tree, &source),
             SupportedLanguage::JavaScript
@@ -265,10 +299,13 @@ impl CpgLayer {
             // Update name_to_funcs index for this file
             self.add_to_name_index(path);
         }
+        self.touch_file(path);
+        self.enforce_file_capacity();
     }
 
     /// Remove all CPG nodes for a file.
     pub fn remove_file(&mut self, path: &Path) {
+        self.file_recency.lock().retain(|p| p != path);
         // Remove import bindings for this file
         self.import_bindings.remove(path);
         // Remove from name_to_funcs before removing nodes
@@ -316,6 +353,12 @@ impl CpgLayer {
                                 }
                             }
                         }
+                    }
+
+                    // Statement nodes also store their owning function directly.
+                    // Keep that reference coherent when swap-remove moves it.
+                    for node in self.graph.node_weights_mut() {
+                        if node.function_idx == Some(last_idx) { node.function_idx = Some(idx); }
                     }
 
                     // Also remap function_to_entry/function_to_exit for swapped node
@@ -410,6 +453,7 @@ impl CpgLayer {
 
     /// Get all CPG nodes for a file.
     pub fn get_nodes_for_file(&self, path: &Path) -> Vec<&CpgNode> {
+        if self.file_to_nodes.contains_key(path) { self.touch_file(path); }
         self.file_to_nodes
             .get(path)
             .map(|indices| {
@@ -451,11 +495,13 @@ impl CpgLayer {
 
     /// Get the persisted AST for a file.
     pub fn get_tree(&self, path: &Path) -> Option<&Tree> {
+        if self.file_to_nodes.contains_key(path) { self.touch_file(path); }
         self.trees.get(path)
     }
 
     /// Get the persisted source for a file.
     pub fn get_source(&self, path: &Path) -> Option<&str> {
+        if self.file_to_nodes.contains_key(path) { self.touch_file(path); }
         self.sources.get(path).map(|s| s.as_str())
     }
 

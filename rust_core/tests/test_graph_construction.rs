@@ -76,15 +76,9 @@ user = User()
     assert_eq!(graph.graph.node_count(), 2);
     assert!(graph.graph.edge_count() >= 1);
     
-    // When both Import and SymbolUsage edges exist for the same pair,
-    // Import wins because it's structurally confirmed via AST analysis
-    let app_idx = graph.path_to_idx.get(&root_path.join("app.py")).unwrap();
-    let models_idx = graph.path_to_idx.get(&root_path.join("models.py")).unwrap();
-
-    let edge_idx = graph.graph.find_edge(*app_idx, *models_idx).unwrap();
-    let edge_kind = &graph.graph[edge_idx];
-
-    assert_eq!(edge_kind, &EdgeKind::Import, "Import should take priority over SymbolUsage");
+    let evidence = graph.get_dependencies(&root_path.join("app.py"));
+    assert_eq!(evidence.iter().filter(|(p, k)| p == &root_path.join("models.py") && *k == EdgeKind::Import).count(), 1);
+    assert_eq!(evidence.iter().filter(|(p, k)| p == &root_path.join("models.py") && *k == EdgeKind::SymbolUsage).count(), 1);
 }
 
 #[test]
