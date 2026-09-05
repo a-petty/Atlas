@@ -120,23 +120,26 @@ class AgentConfig(BaseModel):
     )
     debounce_seconds: float = 0.5
 
+from atlas.session import RepositorySession, SessionGraph, SessionContext
+
 class AtlasAgent:
     """
     Main agent orchestrator for Project Atlas.
     Bridges the Rust semantic engine with the Python runtime.
     """
 
-    def __init__(self, project_root: Path, provider: str = "stub", model_name: str = "deepseek-coder"):
+    def __init__(self, project_root: Path, provider: str = "stub", model_name: str = "deepseek-coder", session=None):
         ignored = _load_ignore_dirs(project_root)
         self.config = AgentConfig(project_root=project_root, ignored_dirs=ignored)
         self.project_root_canonical = project_root.resolve()
-        self.repo_graph = RepoGraph(str(project_root), ignored_dirs=list(ignored))
+        self.session = session or RepositorySession(project_root)
+        self.repo_graph = SessionGraph(self.session)
         self.watcher: Optional[FileWatcher] = None
         self.tools = ToolExecutor(project_root.resolve(), self.repo_graph)
         self.running = False
 
-        self.embedding_manager = EmbeddingManager(repo_graph=self.repo_graph)
-        self.context_manager = ContextManager(self.repo_graph, self.embedding_manager, model=model_name)
+        self.embedding_manager = None  # The repository worker owns model and vector state.
+        self.context_manager = SessionContext(self.session)
 
         if provider == "ollama":
             self.llm = OllamaClient(model=model_name)
@@ -152,95 +155,31 @@ class AtlasAgent:
         self._last_event_time: Dict[str, float] = {}
 
     def initialize(self):
-        """
-        Perform initial repository scan and graph build with detailed multi-stage progress.
-        """
-        console.print(Panel(
-            f"[bold blue]Atlas Agent[/bold blue]\nTarget: {self.config.project_root}",
-            border_style="blue"
-        ))
-
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            console=console,
-            transient=False,  # Keep progress visible after completion
-        ) as progress:
-            
-            scan_task = progress.add_task("[cyan]Scanning repository...", total=None)
-            files = scan_repository(
-                str(self.config.project_root),
-                ignored_dirs=list(self.config.ignored_dirs)
-            )
-            progress.update(scan_task, total=len(files), completed=len(files))
-            log.info(f"Found [cyan]{len(files)}[/cyan] source files.")
-            
-            # This is a simplified representation. A true implementation would
-            # require the Rust `build_complete` to accept a callback to report progress.
-            build_task = progress.add_task("[yellow]Building semantic graph...", total=len(files))
-            
-            # Simulate progress reporting from Rust
-            self.repo_graph.build_complete(files)
-            progress.update(build_task, completed=len(files))
-            
-            rank_task = progress.add_task("[magenta]Calculating architectural importance...", total=None)
-            self.repo_graph.ensure_pagerank_up_to_date()
-            progress.update(rank_task, completed=True)
-
-            embed_task = progress.add_task("[white]Preparing semantic search...", total=None)
-            # In a real scenario, you might pre-build some embeddings here.
-            progress.update(embed_task, completed=True)
-
-        console.print("[bold green]✓[/bold green] Semantic Engine Initialized.")
-        
-        # Display summary statistics
-        stats = self.repo_graph.get_statistics()
-        stats_tree = Tree("📊 [bold]Repository Statistics[/bold]")
-        stats_tree.add(f"[cyan]Files Indexed:[/cyan] {stats.node_count}")
-        stats_tree.add(f"[yellow]Dependencies:[/yellow] {stats.edge_count}")
-        stats_tree.add(f"[green]Symbols:[/green] {stats.total_definitions}")
-        console.print(stats_tree)
-        
+        """Build one accepted generation; embeddings prepare on the first search."""
+        status = self.session.request("status")
+        console.print(Panel(f"[bold blue]Atlas Agent[/bold blue]\nTarget: {self.config.project_root}", border_style="blue"))
+        console.print(f"Indexed {status['coverage']['indexed']} files in generation {status['generation']}.")
+        if status['coverage']['invalid_count']:
+            console.print(f"[yellow]{status['coverage']['invalid_count']} files have incomplete parse coverage.[/yellow]")
         self._display_top_files()
-        
-        log.info(f"Attaching file watcher to: {', '.join(self.config.extensions)}")
-        self.watcher = FileWatcher(
-            str(self.config.project_root),
-            extensions=self.config.extensions,
-            ignored_dirs=list(self.config.ignored_dirs)
-        )
 
     def run(self):
-        """
-        Main Event Loop for file watching.
-        """
-        if self.watcher is None:
-            raise RuntimeError("Agent not initialized. Call initialize() first.")
-        
+        """Keep the shared session reconciled while the interactive watcher runs."""
         self.running = True
-        console.print(f"\n[bold green]◉ Agent Active.[/bold green] Watching for changes... (Press Ctrl+C to stop)\n")
-        
         try:
             while self.running:
-                events = self.watcher.poll_events()
-                for event in events:
-                    self._handle_file_event(event)
-                time.sleep(0.1)
+                self.session.request("status")
+                time.sleep(.5)
         except KeyboardInterrupt:
-            console.print("\n[yellow]Shutdown signal received.[/yellow]")
+            pass
         finally:
             self.stop()
-    
+
     def stop(self):
-        """Graceful shutdown."""
         self.running = False
-        if self.watcher and hasattr(self.watcher, 'stop'):
-            self.watcher.stop()
+        self.session.close()
         console.print("[dim]Agent stopped.[/dim]")
-    
+
     def _normalize_path(self, file_path: Path) -> str:
         """Convert a file path to canonical, project-root-relative format."""
         canonical = file_path.resolve()
@@ -276,58 +215,15 @@ class AtlasAgent:
             self._handle_file_deleted(path)
     
     def _handle_file_modified(self, file_path: Path):
-        """Handle file modification with self-healing."""
-        content = self._safe_read_file(file_path)
-        if content is None: return
+        status = self.session.request("status")
+        if str(file_path.resolve()) in status["coverage"]["invalid_files"]:
+            log.warning("Syntax error in %s; excluded from current graph until repaired", file_path)
 
-        try:
-            result = self.repo_graph.update_file(str(file_path.resolve()), content)
-            if result.needs_pagerank_recalc:
-                console.print(f"  ↳ [green]Graph Updated[/green] (+{result.edges_added} / -{result.edges_removed} edges)")
-            else:
-                console.print("  ↳ [dim]Content updated (Structure unchanged)[/dim]")
-        except ParseError as e:
-            log.warning(f"  ↳ [yellow]Syntax error in {file_path.name}[/yellow]. Graph state will be stale until fixed.")
-        except NodeNotFoundError:
-            log.warning(f"  ↳ File {file_path.name} not in graph, adding as new (self-healing).")
-            self._handle_file_created(file_path)
-        except GraphError as e:
-            log.error(f"  ✗ Graph error updating {file_path.name}: {e}")
-        except Exception as e:
-            log.error(f"  ✗ Unexpected error processing {file_path.name}: {e}", exc_info=True)
-    
     def _handle_file_created(self, file_path: Path):
-        """Handle file creation."""
-        content = self._safe_read_file(file_path)
-        if content is None: return
+        self._handle_file_modified(file_path)
 
-        try:
-            normalized_path = self._normalize_path(file_path)
-            self.repo_graph.add_file(normalized_path, content)
-            console.print(f"  ↳ [green]Added to graph[/green]: {file_path.name}")
-        except ParseError as e:
-            log.warning(f"  ↳ [yellow]Syntax error in new file {file_path.name}[/yellow]. File will be skipped.")
-        except ValueError as e:
-            log.debug(f"  ↳ Skipped file outside project: {e}")
-        except GraphError as e:
-            log.error(f"  ✗ Graph error adding {file_path.name}: {e}")
-        except Exception as e:
-            log.error(f"  ✗ Unexpected error adding {file_path.name}: {e}", exc_info=True)
-    
     def _handle_file_deleted(self, file_path: Path):
-        """Handle file deletion."""
-        try:
-            normalized_path = self._normalize_path(file_path)
-            self.repo_graph.remove_file(normalized_path)
-            console.print(f"  ↳ [red]Removed from graph[/red]: {file_path.name}")
-        except NodeNotFoundError:
-            log.debug(f"  ↳ File not in graph, skipping removal: {file_path.name}")
-        except ValueError as e:
-            log.debug(f"  ↳ Ignored deletion outside project: {e}")
-        except GraphError as e:
-            log.error(f"  ✗ Graph error removing {file_path.name}: {e}")
-        except Exception as e:
-            log.error(f"  ✗ Unexpected error removing {file_path.name}: {e}", exc_info=True)
+        self.session.request("status")
 
     def _safe_read_file(self, path: Path, retries=3, delay=0.1) -> Optional[str]:
         """Safely read a file, handling race conditions and binary files."""

@@ -56,6 +56,10 @@ async def test_graceful_handling_of_syntax_error():
 
         # 7. Assert that the correct error message was logged
         assert "Syntax error in" in output, "The log should indicate a syntax error."
-        assert "Graph state will be stale" in output, "The log should indicate the graph state is stale."
+        assert "excluded from current graph" in output
+        assert agent.session.request("status")["coverage"]["indexed"] == 0
+        dummy_file.write_text("def repaired():\n    return 1\n")
+        assert agent.session.request("status")["coverage"]["indexed"] == 1
+        agent.stop()
 
     print("\n--- Test Finished Successfully ---")

@@ -9,14 +9,8 @@ from atlas.llm import StubClient
 
 def _make_agent(tmp_path, stub_client=None):
     """Create an AtlasAgent with mocked dependencies for chat testing."""
-    with patch("atlas.agent.RepoGraph") as MockRepoGraph, \
-         patch("atlas.agent.EmbeddingManager"), \
-         patch("atlas.agent.ContextManager") as MockContextManager:
-
-        mock_graph = MockRepoGraph.return_value
-        mock_graph.get_top_ranked_files.return_value = []
-        mock_graph.generate_map.return_value = ""
-
+    with patch("atlas.agent.RepositorySession"), \
+         patch("atlas.agent.SessionContext") as MockContextManager:
         mock_cm = MockContextManager.return_value
         mock_cm.assemble_context.return_value = ""
 

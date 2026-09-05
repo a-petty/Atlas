@@ -1,11 +1,14 @@
 import collections
-from dataclasses import dataclass
+import json
+import hashlib
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import tiktoken
 import logging
 
 from atlas.semantic_engine import RepoGraph, create_skeleton_from_source
+from atlas import semantic_engine
 from .embeddings import EmbeddingManager # Assuming EmbeddingManager is in embeddings.py
 
 logger = logging.getLogger(__name__)
@@ -46,36 +49,59 @@ DEFAULT_CONTEXT_WINDOW = 100_000  # Fallback for unknown models
 
 @dataclass
 class ContextParams:
-    """Adaptive context assembly parameters computed from repo characteristics."""
-    tier1_tokens: int            # Map budget (measured actual, capped)
-    content_tokens: int          # Skeleton content budget (all non-map)
-    anchor_count: int            # Vector search top_n (3–10)
-    map_max_files: int           # Ranked list length (20–75)
-    neighborhood_max_hops: int   # BFS depth (2–3)
-    neighborhood_max_files: int  # BFS results cap (10–40)
+    tier1_tokens: int
+    content_tokens: int
+    anchor_count: int
+    map_max_files: int
+    neighborhood_max_hops: int
+    neighborhood_max_files: int
+    full_source_tokens: int = 0
+    skeleton_tokens: int = 0
+
+
+@dataclass
+class ContextChunk:
+    file: str
+    mode: str
+    text: str
+    source_spans: list[dict]
+    token_count: int
+    selection_reason: str
+
+
+@dataclass
+class ContextResult:
+    """The manifest describes only source actually delivered in ``text``.
+
+    Character offsets locate chunk content in that text. Source offsets are
+    half-open UTF-8 byte ranges; source lines are 1-based and inclusive.
+    ``json.dumps(result.to_dict())`` is also covered by the transport ceiling.
+    """
+    generation: object
+    text: str
+    chunks: list[dict]
+    omissions: list[dict]
+    counts: dict
+
+    def to_dict(self) -> dict:
+        return {"generation": self.generation, "text": self.text,
+                "chunks": self.chunks, "omissions": self.omissions,
+                "counts": self.counts}
+
 
 class ContextManager:
-    """
-    Manages context window for LLM queries using the
-    "Anchor & Expand" strategy from the roadmap.
-    """
-    
-    def __init__(
-        self,
-        repo_graph: RepoGraph,
-        embedding_manager: EmbeddingManager,
-        model: str = "gpt-4",
-        max_tokens: Optional[int] = None
-    ):
+    """Rank once, then pack map, full sources, and complete skeleton chunks."""
+
+    def __init__(self, repo_graph: RepoGraph, embedding_manager: EmbeddingManager,
+                 model: str = "gpt-4", max_tokens: Optional[int] = None):
         self.repo_graph = repo_graph
         self.embedding_manager = embedding_manager
         try:
             self.encoder = tiktoken.encoding_for_model(model)
         except KeyError:
-            # Model not known to tiktoken — fall back to cl100k_base (GPT-4 tokenizer)
             self.encoder = tiktoken.get_encoding("cl100k_base")
         self.max_tokens = self._resolve_max_tokens(model, max_tokens)
-        logger.info(f"ContextManager initialized with model '{model}', max_tokens={self.max_tokens}")
+        self._skeleton_cache = {}
 
     @staticmethod
     def _resolve_max_tokens(model: str, explicit_max_tokens: Optional[int]) -> int:
@@ -97,428 +123,348 @@ class ContextManager:
         return int(window * CONTEXT_UTILIZATION)
 
     def _compute_adaptive_params(self, total_budget: int, map_text: str) -> ContextParams:
-        """Compute adaptive context parameters based on repo size and map measurement."""
         stats = self.repo_graph.get_statistics()
-        node_count = stats.node_count
-        edge_count = stats.edge_count
-        density = edge_count / max(node_count, 1)
+        total_budget = max(0, total_budget)
+        map_tokens = min(self.count_tokens(map_text), int(total_budget * .08))
+        content = total_budget - map_tokens
+        full = int(content * max(.40, min(.75, .75 - stats.node_count / 1500)))
+        return ContextParams(map_tokens, content,
+                             min(max(3, stats.node_count // 10), 10),
+                             min(max(20, stats.node_count // 4), 75),
+                             3 if stats.edge_count / max(stats.node_count, 1) < 3 else 2,
+                             min(max(10, stats.node_count // 5), 40), full, content - full)
 
-        # Tier 1 (map): use actual measured tokens, capped at 8% of total budget
-        map_tokens = self.count_tokens(map_text)
-        tier1_tokens = min(map_tokens, int(total_budget * 0.08))
+    def _source(self, path: Path) -> str:
+        reader = getattr(self.repo_graph, "get_source", None)
+        if callable(reader):
+            source = reader(str(path))
+            if source is None:
+                raise ValueError("file is not in the accepted source generation")
+            return source
+        # Compatibility with old extensions and isolated test doubles only.
+        return path.read_text()
 
-        # All remaining budget goes to skeleton content
-        content_tokens = total_budget - tier1_tokens
+    def _canonical(self, path) -> Path:
+        # Paths returned by the graph are accepted-generation identities. Resolve
+        # only external aliases; touching the live filesystem again for accepted
+        # paths is both expensive and wrong if a symlink changes mid-response.
+        indexed = getattr(self, "_indexed_paths", {})
+        key = str(path)
+        if key in indexed:
+            return indexed[key]
+        path = Path(path)
+        root = getattr(self.repo_graph, "project_root", None)
+        if not path.is_absolute() and root is not None:
+            path = Path(root) / path
+        return indexed.get(str(path)) or path.resolve()
 
-        # Anchor count: scale with repo size, clamped 3–10
-        anchor_count = min(max(3, node_count // 10), 10)
+    def _index_paths(self, ranked=None):
+        if ranked is None:
+            ranked = self.repo_graph.get_top_ranked_files(self.repo_graph.get_statistics().node_count)
+        self._indexed_paths = {str(path): Path(path) for path, _ in ranked}
+        return ranked
 
-        # Map ranked list: scale with repo size, clamped 20–75
-        map_max_files = min(max(20, node_count // 4), 75)
+    def _all_ranked(self):
+        ranked = self._index_paths()
+        return sorted(ranked, key=lambda item: (-item[1], str(item[0])))
 
-        # Neighborhood hops: sparse graphs get deeper traversal
-        neighborhood_max_hops = 3 if density < 3.0 else 2
+    def ranked_candidates(self, query, files_in_scope, expand=True):
+        """Return ordered (path, reason) candidates; no retrieval-only file cap."""
+        ranked = self._all_ranked()
+        all_files = [self._canonical(p) for p, _ in ranked]
+        params = self._compute_adaptive_params(self.max_tokens, "")
+        scored = []
+        if self.embedding_manager is not None and query:
+            scored = self.embedding_manager.find_relevant_files_scored(
+                query, all_files, top_n=len(all_files))
+        pagerank = {self._canonical(p): score for p, score in ranked}
+        max_pr = max(pagerank.values(), default=1.) or 1.
+        scored.sort(key=lambda pair: (-pair[1], str(pair[0])))
+        top = scored[:params.anchor_count * 3]
+        top = sorted(top, key=lambda pair: (
+            -(SIMILARITY_WEIGHT * pair[1] + PAGERANK_WEIGHT *
+              pagerank.get(self._canonical(pair[0]), 0.) / max_pr), str(pair[0])))
+        anchors = [self._canonical(p) for p, _ in top[:params.anchor_count]]
+        explicit = [self._canonical(p) for p in files_in_scope]
+        neighbors = []
+        if expand:
+            neighbors = [p for p, _ in self._get_dependency_neighborhood(
+                explicit + anchors, set(), params.neighborhood_max_hops, None)]
+        candidates = [(p, "explicit") for p in explicit]
+        candidates += [(p, "anchor") for p in anchors]
+        candidates += [(p, "neighborhood") for p in neighbors]
+        candidates += [(self._canonical(p), "extended") for p, _ in scored]
+        candidates += [(p, "architecture") for p in all_files]
+        return candidates
 
-        # Neighborhood file cap: scale with repo size, clamped 10–40
-        neighborhood_max_files = min(max(10, node_count // 5), 40)
+    def assemble_context(self, user_query, files_in_scope, include_map=True) -> str:
+        return self.assemble_context_result(user_query, files_in_scope, include_map).text
 
-        params = ContextParams(
-            tier1_tokens=tier1_tokens,
-            content_tokens=content_tokens,
-            anchor_count=anchor_count,
-            map_max_files=map_max_files,
-            neighborhood_max_hops=neighborhood_max_hops,
-            neighborhood_max_files=neighborhood_max_files,
-        )
+    def assemble_context_result(self, user_query, files_in_scope, include_map=True,
+                                max_tokens=None, max_chars=60_000, generation=None,
+                                expand=True) -> ContextResult:
+        return self.pack_ranked_context_result(
+            user_query, self.ranked_candidates(user_query, files_in_scope, expand),
+            include_map=include_map, max_tokens=max_tokens,
+            max_chars=max_chars, generation=generation)
 
-        logger.info(
-            f"Adaptive params: repo={node_count} files, density={density:.1f}, "
-            f"map={params.tier1_tokens}, content={params.content_tokens}, "
-            f"anchors={params.anchor_count}, hops={params.neighborhood_max_hops}, "
-            f"neighborhood_cap={params.neighborhood_max_files}"
-        )
+    def _skeleton_chunks(self, source, path):
+        key = (path.suffix, hashlib.sha256(source.encode()).hexdigest())
+        if key in self._skeleton_cache:
+            return self._skeleton_cache[key]
+        extractor = getattr(semantic_engine, "create_skeleton_details_json", None)
+        if extractor is None:
+            # Old binary fallback must not manufacture retained-span credit.
+            text = self._extract_signatures(source, path.suffix[1:])
+            chunks = [{"text": text, "spans": []}] if text.strip() else []
+        else:
+            chunks = json.loads(extractor(source, path.suffix[1:]))["chunks"]
+        if len(self._skeleton_cache) >= 512:
+            self._skeleton_cache.pop(next(iter(self._skeleton_cache)))
+        self._skeleton_cache[key] = chunks
+        return chunks
 
-        return params
-    
-    def assemble_context(
-        self,
-        user_query: str,
-        files_in_scope: List[Path],
-        include_map: bool = True
-    ) -> str:
+    def _render_result(self, chunks, map_text, omissions, generation, omission_detail_limit=0):
+        parts = []
+        if generation is not None:
+            parts.append(f"SOURCE GENERATION: {generation}\n")
+        if map_text:
+            parts.append("REPOSITORY_MAP\n" + map_text + "\n")
+        manifest = []
+        offset = sum(map(len, parts))
+        for chunk in chunks:
+            mode = "FULL CONTENT" if chunk.mode == "full" else "SKELETON"
+            header = f"\n# {chunk.file} ({mode})\n"
+            start = offset + len(header)
+            parts.append(header + chunk.text + "\n")
+            offset += len(parts[-1])
+            manifest.append({"file": chunk.file, "mode": chunk.mode,
+                "source_spans": chunk.source_spans,
+                "token_count": chunk.token_count,
+                "selection_reason": chunk.selection_reason,
+                "start_char": start, "end_char": start + len(chunk.text)})
+        omission_counts = dict(collections.Counter(o["reason"] for o in omissions))
+        if omissions:
+            parts.append("\nOMISSIONS: " + ", ".join(
+                f"{reason}={count}" for reason, count in sorted(omission_counts.items())) + "\n")
+        text = "".join(parts)
+        # Bounded detail; counts expose every omitted candidate/chunk.
+        details = omissions[:omission_detail_limit]
+        return ContextResult(generation, text, manifest, details, {
+            "files": len({c.file for c in chunks}), "chunks": len(chunks),
+            "tokens": self.count_tokens(text), "characters": len(text),
+            "omitted": len(omissions), "omission_reasons": omission_counts,
+            "omission_details_omitted": max(0, len(omissions) - len(details))})
+
+    def pack_ranked_context_result(self, user_query, candidates, include_map=True,
+                                   max_tokens=None, max_chars=60_000, generation=None):
+        """Identical rendering/representation policy for Atlas and baselines.
+
+        The budget includes the query and 1,000 tokens of prompt allowance.
+        Both text and default JSON serialization fit the token and character ceilings.
+        If the query/prompt allowance exhausts the budget, return status with no source.
+        Entire declarations are admitted or omitted, never sliced.
         """
-        Build context using skeleton-based budgeting.
+        if max_chars < 512:
+            raise ValueError("max_chars must be at least 512 for result metadata")
+        limit = self.max_tokens if max_tokens is None else max_tokens
+        if limit < 0:
+            raise ValueError("max_tokens must be non-negative")
+        available = max(0, limit - self.count_tokens(user_query) - 1000)
+        self._index_paths()
+        unique, seen = [], set()
+        for path, reason in candidates:
+            path = self._canonical(path)
+            if path not in seen:
+                unique.append((path, reason)); seen.add(path)
+        map_text = ""
+        if include_map:
+            map_limit = int(available * .08)
+            stats = self.repo_graph.get_statistics()
+            raw = self.repo_graph.generate_map(max_files=min(max(20, stats.node_count // 4), 75))
+            for line in raw.splitlines(keepends=True):
+                proposed = map_text + line
+                if self.count_tokens("REPOSITORY_MAP\n" + proposed + "\n") > map_limit:
+                    break
+                map_text = proposed
+        params = self._compute_adaptive_params(available, "REPOSITORY_MAP\n" + map_text if map_text else "")
+        chunks, omissions = [], []
+        full_used = 0
 
-        After a compact repository map, all remaining budget is filled with
-        file skeletons (signatures + docstrings) — anchors first, then their
-        dependency neighborhood, then extended context. The LLM can use Read
-        to get full source for any file it needs to inspect further.
-        """
-        context_parts = []
-        total_budget = self.max_tokens
+        # Rejected candidates must not re-tokenize/re-serialize the entire context.
+        # Cache the accepted prefix; account conservatively for the added whole
+        # chunk. The final exact renderer checks both budgets again.
+        fit_cache = {}
+        def refresh_prefix():
+            prefix_key = (len(chunks), min(len(omissions), 8))
+            if fit_cache.get("key") != prefix_key:
+                baseline = self._render_result(chunks, map_text, omissions, generation)
+                fit_cache.update(key=prefix_key, tokens=baseline.counts["tokens"],
+                                 json_chars=len(json.dumps(baseline.to_dict())),
+                                 json_tokens=self.count_tokens(json.dumps(baseline.to_dict())))
 
-        # Reserve for system prompt and query
-        total_budget -= self.count_tokens(user_query)
-        total_budget -= 1000  # System prompt overhead
+        def fits(proposed):
+            refresh_prefix()
+            chunk = proposed[-1]
+            mode = "FULL CONTENT" if chunk.mode == "full" else "SKELETON"
+            addition = f"\n# {chunk.file} ({mode})\n{chunk.text}\n"
+            # 20-digit offsets upper-bound actual offsets under the transport cap.
+            descriptor = {"file": chunk.file, "mode": chunk.mode,
+                "source_spans": chunk.source_spans, "token_count": chunk.token_count,
+                "selection_reason": chunk.selection_reason,
+                "start_char": 99999999999999999999, "end_char": 99999999999999999999}
+            extra_chars = len(json.dumps(addition)) - 2 + len(json.dumps(descriptor)) + 2
+            extra_tokens = self.count_tokens(json.dumps(addition)) + self.count_tokens(json.dumps(descriptor)) + 2
+            return (fit_cache["tokens"] + self.count_tokens(addition) <= max(0, available - 128)
+                    and fit_cache["json_tokens"] + extra_tokens <= max(0, available - 128)
+                    and fit_cache["json_chars"] + extra_chars <= max_chars - 768)
 
-        processed_files = set()
-
-        # Step 1: Generate map (need it to measure tokens for adaptive params)
-        stats = self.repo_graph.get_statistics()
-        map_max_files = min(max(20, stats.node_count // 4), 75)
-        map_text = self.repo_graph.generate_map(max_files=map_max_files) if include_map else ""
-
-        # Step 2: Compute adaptive parameters
-        params = self._compute_adaptive_params(total_budget, map_text)
-
-        # === TIER 1: Repository Map (measured budget) ===
-        if include_map and map_text:
-            # Supplement with query-relevant file ranking when embeddings available
-            if self.embedding_manager is not None and user_query:
-                try:
-                    stats = self.repo_graph.get_statistics()
-                    all_graph_files = [Path(p) for p, _ in self.repo_graph.get_top_ranked_files(stats.node_count)]
-                    relevant = self.embedding_manager.find_relevant_files(
-                        user_query, all_graph_files, top_n=15
-                    )
-                    if relevant:
-                        relevant_section = "\n\nQUERY-RELEVANT FILES (by semantic similarity):\n"
-                        for i, p in enumerate(relevant, 1):
-                            try:
-                                rel_path = p.relative_to(self.repo_graph.project_root)
-                            except (ValueError, AttributeError):
-                                rel_path = p
-                            relevant_section += f"  {i}. {rel_path}\n"
-                        map_text = map_text + relevant_section
-                except Exception as e:
-                    logger.debug(f"Query-relevant map supplement failed: {e}")
-
-            map_tokens = self.count_tokens(map_text)
-            if map_tokens <= params.tier1_tokens:
-                context_parts.append(("REPOSITORY_MAP", map_text))
-                logger.debug(f"Added repo map ({map_tokens} tokens)")
+        for candidate_index, (path, reason) in enumerate(unique):
+            refresh_prefix()
+            # Every source chunk needs a manifest descriptor, irrespective of how
+            # short its declaration is. If even an empty descriptor cannot fit,
+            # parsing this candidate's entire file cannot improve the result.
+            # Include the mandatory file header, and use the cheaper mode with
+            # no spans/content as a lower bound.
+            minimum_descriptor = {"file": str(path), "mode": "", "source_spans": [],
+                "token_count": 0, "selection_reason": reason,
+                "start_char": 99999999999999999999, "end_char": 99999999999999999999}
+            descriptor_costs = []
+            for mode in ("full", "skeleton"):
+                minimum_descriptor["mode"] = mode
+                encoded_descriptor = json.dumps(minimum_descriptor)
+                label = "FULL CONTENT" if mode == "full" else "SKELETON"
+                empty_addition = json.dumps(f"\n# {path} ({label})\n\n")
+                descriptor_costs.append((self.count_tokens(encoded_descriptor) + self.count_tokens(empty_addition),
+                                         len(encoded_descriptor) + len(empty_addition) - 2))
+            if (fit_cache["json_tokens"] + min(cost[0] for cost in descriptor_costs) + 2 > max(0, available - 128)
+                    or fit_cache["json_chars"] + min(cost[1] for cost in descriptor_costs) + 2 > max_chars - 768):
+                omissions.append({"file": str(path), "reason": "budget", "mode": "file"})
+                continue
+            try:
+                source = self._source(path)
+            except Exception as exc:
+                omissions.append({"file": str(path), "reason": "source_unavailable"})
+                logger.debug("Cannot read accepted source %s: %s", path, exc)
+                continue
+            if not source.strip():
+                continue
+            raw = source.encode()
+            spans = [{"start_byte": 0, "end_byte": len(raw), "start_line": 1,
+                      "end_line": source.count("\n") + (0 if source.endswith("\n") else 1)}]
+            chunk = ContextChunk(str(path), "full", source, spans,
+                                 self.count_tokens(source), reason)
+            cost = self.count_tokens(f"\n# {path} (FULL CONTENT)\n{source}\n")
+            if full_used + cost <= params.full_source_tokens and fits(chunks + [chunk]):
+                chunks.append(chunk); full_used += cost
+                continue
+            # Admit a high-priority fallback before lower-priority full files.
+            # Otherwise architecture files can consume the entire transport
+            # budget while an explicit file that fits as a skeleton is omitted.
+            try:
+                pieces = self._skeleton_chunks(source, path)
+            except Exception as exc:
+                omissions.append({"file": str(path), "reason": "skeleton_unavailable"})
+                logger.debug("Cannot skeletonize %s: %s", path, exc)
+                continue
+            if not pieces:
+                omissions.append({"file": str(path), "reason": "empty_skeleton"})
+            for piece in pieces:
+                text = piece["text"]
+                if not text.strip():
+                    continue
+                chunk = ContextChunk(str(path), "skeleton", text, piece["spans"],
+                                     self.count_tokens(text), reason)
+                if fits(chunks + [chunk]):
+                    chunks.append(chunk)
+                else:
+                    omissions.append({"file": str(path), "reason": "budget",
+                                      "mode": "skeleton"})
+        result = self._render_result(chunks, map_text, omissions, generation)
+        # Only complete chunks/map lines may be removed to fit final metadata.
+        while (result.counts["tokens"] > available or
+               ((chunks or map_text) and self.count_tokens(json.dumps(result.to_dict())) > available) or
+               len(json.dumps(result.to_dict())) > max_chars or len(result.text) > max_chars):
+            if chunks:
+                removed = chunks.pop()
+                omissions.append({"file": removed.file, "reason": "transport_or_token_budget"})
+            elif map_text:
+                map_text = "".join(map_text.splitlines(keepends=True)[:-1])
             else:
-                truncated_map = self._truncate_to_tokens(map_text, params.tier1_tokens)
-                context_parts.append(("REPOSITORY_MAP (truncated)", truncated_map))
-                logger.debug(f"Added truncated repo map ({params.tier1_tokens} tokens)")
-
-        # === CONTENT: All skeletons, single budget ===
-        content_budget = params.content_tokens
-
-        # 1. Explicit files in scope (highest priority)
-        explicit_content, explicit_processed = self._fill_with_content(
-            files_in_scope,
-            content_budget,
-            processed_files,
-            is_skeleton=True
-        )
-        if explicit_content:
-            context_parts.append(("EXPLICIT_FILES (skeletons)", explicit_content))
-            processed_files.update(explicit_processed)
-            content_budget -= self.count_tokens(explicit_content)
-
-        # 2. Vector search anchors (with similarity + PageRank re-ranking)
-        stats = self.repo_graph.get_statistics()
-        all_graph_files = [Path(p) for p, _ in self.repo_graph.get_top_ranked_files(stats.node_count)]
-        scored = self.embedding_manager.find_relevant_files_scored(
-            user_query,
-            all_graph_files,
-            top_n=params.anchor_count * 3,
-        )
-        pagerank_map = dict(self.repo_graph.get_top_ranked_files(stats.node_count))
-        max_pr = max(pagerank_map.values()) if pagerank_map else 1.0
-        reranked = []
-        for path, similarity in scored:
-            pr = pagerank_map.get(str(path), 0.0)
-            normalized_pr = pr / max_pr if max_pr > 0 else 0.0
-            combined = SIMILARITY_WEIGHT * similarity + PAGERANK_WEIGHT * normalized_pr
-            reranked.append((path, combined))
-        reranked.sort(key=lambda x: x[1], reverse=True)
-        anchor_files = [path for path, _ in reranked[:params.anchor_count]]
-
-        anchor_content, anchor_processed = self._fill_with_content(
-            anchor_files,
-            content_budget,
-            processed_files,
-            is_skeleton=True
-        )
-        if anchor_content:
-            context_parts.append(("ANCHOR_FILES (skeletons)", anchor_content))
-            processed_files.update(anchor_processed)
-            content_budget -= self.count_tokens(anchor_content)
-
-        # 3. Neighborhood expansion (dependencies + dependents of anchors)
-        expansion_base = list(files_in_scope) + anchor_files
-        weighted_neighborhood = self._get_dependency_neighborhood(
-            expansion_base,
-            processed_files,
-            max_hops=params.neighborhood_max_hops,
-            max_files=params.neighborhood_max_files,
-        )
-        neighborhood_paths = [path for path, _weight in weighted_neighborhood]
-
-        neighborhood_content, neighborhood_processed = self._fill_with_content(
-            neighborhood_paths,
-            content_budget,
-            processed_files,
-            is_skeleton=True
-        )
-        if neighborhood_content:
-            context_parts.append(("NEIGHBORHOOD_FILES (skeletons)", neighborhood_content))
-            processed_files.update(neighborhood_processed)
-            content_budget -= self.count_tokens(neighborhood_content)
-
-        # 4. Extended neighbors (1-hop from everything above)
-        all_seed_files = list(files_in_scope) + anchor_files + neighborhood_paths
-        extended_neighbors = self._get_dependency_neighborhood(
-            all_seed_files,
-            processed_files,
-            max_hops=1,
-            max_files=100,
-        )
-        extended_candidates = [path for path, _weight in extended_neighbors]
-
-        # If neighbor set is sparse, supplement with embedding similarity
-        if len(extended_candidates) < 20:
-            seen = set(extended_candidates)
-            if self.embedding_manager is not None:
-                try:
-                    embedding_candidates = self.embedding_manager.find_relevant_files(
-                        user_query, all_graph_files, top_n=50
-                    )
-                    for p in embedding_candidates:
-                        if p not in seen and p not in processed_files:
-                            extended_candidates.append(p)
-                            seen.add(p)
-                except Exception as e:
-                    logger.debug(f"Embedding skeleton fallback failed: {e}")
-
-            # Final fallback to PageRank if still sparse
-            if len(extended_candidates) < 20:
-                top_ranked = self.repo_graph.get_top_ranked_files(100)
-                top_ranked_paths = [Path(p) for p, _ in top_ranked]
-                for p in top_ranked_paths:
-                    if p not in seen and p not in processed_files:
-                        extended_candidates.append(p)
-                        seen.add(p)
-
-        # Filter noise files
-        extended_candidates = [p for p in extended_candidates if not self._is_noise_file(p)]
-
-        extended_content, extended_processed = self._fill_with_content(
-            extended_candidates,
-            content_budget,
-            processed_files,
-            is_skeleton=True
-        )
-        if extended_content:
-            context_parts.append(("EXTENDED_CONTEXT (skeletons)", extended_content))
-            processed_files.update(extended_processed)
-
-        final_budget = total_budget - sum(self.count_tokens(c[1]) for c in context_parts)
-        logger.info(f"Context assembled: {len(processed_files)} files, {final_budget} tokens remaining")
-
-        return self._format_context(context_parts)
-
-    @staticmethod
-    def _is_noise_file(path: Path) -> bool:
-        """Filter out files that provide no useful architectural context."""
-        name = path.name
-        # Empty __init__.py files
-        if name == "__init__.py":
-            try:
-                content = path.read_text().strip()
-                meaningful = "\n".join(
-                    line for line in content.splitlines()
-                    if line.strip() and not line.strip().startswith("#")
-                )
-                if len(meaningful) < 50:
-                    return True
-            except Exception:
-                return True
-        # Test files
-        if name.startswith("test_") or name.endswith("_test.py"):
-            return True
-        if name == "conftest.py":
-            return True
-        return False
-
-    def _get_dependency_neighborhood(
-        self,
-        anchor_files: List[Path],
-        already_processed: set,
-        max_hops: int = 2,
-        max_files: int = 30
-    ) -> List[Tuple[Path, float]]:
-        """
-        Build a neighborhood using multi-hop BFS with edge-type-aware traversal.
-
-        Traversal rules:
-        - SymbolUsage edges: follow for up to max_hops (real code dependencies)
-        - Import edges: follow for 1 hop only (prevents transitive re-export explosion)
-
-        Returns files sorted by weight descending, capped at max_files.
-        Weight uses distance decay: hop 1 = 1.0, hop 2 = 0.5, hop 3 = 0.25, etc.
-        """
-        # file_path -> best (lowest hop) distance seen
-        best_hop: Dict[Path, int] = {}
-        # BFS queue: (file_path, current_hop, edge_kind_that_got_us_here)
-        queue = collections.deque()
-
-        for anchor in anchor_files:
-            canonical = anchor.resolve()
-            if canonical not in already_processed:
-                queue.append((canonical, 0, None))
-
-        visited_at_hop: Dict[Path, int] = {}
-        for anchor in anchor_files:
-            visited_at_hop[anchor.resolve()] = 0
-
-        while queue:
-            current_path, current_hop, arriving_edge = queue.popleft()
-
-            if current_hop >= max_hops:
-                continue
-
-            next_hop = current_hop + 1
-            canonical_str = str(current_path)
-
-            # Expand both directions: dependencies and dependents
-            neighbors = []
-            try:
-                neighbors.extend(self.repo_graph.get_dependencies(canonical_str))
-            except Exception:
-                pass
-            try:
-                neighbors.extend(self.repo_graph.get_dependents(canonical_str))
-            except Exception:
-                pass
-
-            for neighbor_str, edge_kind in neighbors:
-                neighbor_path = Path(neighbor_str)
-
-                # Import edges: only follow at hop 0 -> 1 (1 hop max)
-                if edge_kind == "Import" and current_hop >= 1:
-                    continue
-
-                # Skip if we already found this file at an equal or better hop
-                if neighbor_path in visited_at_hop and visited_at_hop[neighbor_path] <= next_hop:
-                    continue
-
-                visited_at_hop[neighbor_path] = next_hop
-
-                # Record best hop for weight calculation
-                if neighbor_path not in best_hop or next_hop < best_hop[neighbor_path]:
-                    best_hop[neighbor_path] = next_hop
-
-                queue.append((neighbor_path, next_hop, edge_kind))
-
-        # Remove anchors and already-processed files
-        anchor_set = {a.resolve() for a in anchor_files}
-        for remove_path in (already_processed | anchor_set):
-            best_hop.pop(remove_path, None)
-
-        # Compute weights with distance decay: hop n -> 1 / 2^(n-1)
-        weighted: List[Tuple[Path, float]] = []
-        for file_path, hop in best_hop.items():
-            weight = 1.0 / (2 ** (hop - 1))
-            weighted.append((file_path, weight))
-
-        # Sort by weight descending, cap at max_files
-        weighted.sort(key=lambda x: x[1], reverse=True)
-        return weighted[:max_files]
-
-    def _fill_with_content(
-        self,
-        file_list: List[Path],
-        max_tokens: int,
-        already_processed: set[Path],
-        is_skeleton: bool = True
-    ) -> Tuple[str, set[Path]]:
-        """
-        Fill token budget with either full content or skeletons.
-        
-        Args:
-            file_list: Files to include
-            max_tokens: Token budget
-            already_processed: Files already in context
-            is_skeleton: If True, use skeletons; if False, use full content
-        """
-        content_parts = []
-        token_count = 0
-        processed_in_this_call = set()
-        
-        for file_path in file_list:
-            if token_count >= max_tokens:
+                # Extremely small token budgets cannot carry even an omissions footer.
+                result.text = ""
+                result.counts.update(tokens=0, characters=0)
+                result.omissions = []
+                result.counts["omission_details_omitted"] = len(omissions)
+                if len(json.dumps(result.to_dict())) > max_chars:
+                    raise ValueError("max_chars too small for generation/result metadata")
                 break
-            if file_path in already_processed:
+            result = self._render_result(chunks, map_text, omissions, generation)
+        # Diagnostic paths consume only the space left after source admission.
+        # Omission counts are always retained, even when no details fit. This
+        # prevents lower-priority diagnostics displacing an explicit API chunk.
+        if chunks or map_text:
+            for detail_limit in range(1, min(8, len(omissions)) + 1):
+                detailed = self._render_result(chunks, map_text, omissions, generation,
+                                               omission_detail_limit=detail_limit)
+                encoded = json.dumps(detailed.to_dict())
+                if (detailed.counts["tokens"] > available or self.count_tokens(encoded) > available
+                        or len(encoded) > max_chars or len(detailed.text) > max_chars):
+                    break
+                result = detailed
+        return result
+
+    def _get_dependency_neighborhood(self, anchor_files, already_processed,
+                                     max_hops=2, max_files=30):
+        anchors = {self._canonical(p) for p in anchor_files}
+        excluded = {self._canonical(p) for p in already_processed} | anchors
+        # Content inclusion and graph visitation are deliberately independent.
+        queue = collections.deque((path, 0) for path in sorted(anchors))
+        visited = {path: 0 for path in anchors}
+        best_hop = {}
+        while queue:
+            path, hop = queue.popleft()
+            if hop >= max_hops:
                 continue
-                
+            neighbors = collections.defaultdict(set)
+            for reader in (self.repo_graph.get_dependencies, self.repo_graph.get_dependents):
+                for neighbor, kind in reader(str(path)):
+                    neighbors[self._canonical(neighbor)].add(kind)
+            for neighbor, kinds in sorted(neighbors.items()):
+                if hop >= 1 and "SymbolUsage" not in kinds:
+                    continue
+                if visited.get(neighbor, max_hops + 1) <= hop + 1:
+                    continue
+                visited[neighbor] = hop + 1
+                best_hop[neighbor] = hop + 1
+                queue.append((neighbor, hop + 1))
+        weighted = [(p, 1. / 2 ** (h - 1)) for p, h in best_hop.items() if p not in excluded]
+        weighted.sort(key=lambda item: (-item[1], str(item[0])))
+        return weighted if max_files is None else weighted[:max_files]
+
+    def _fill_with_content(self, file_list, max_tokens, already_processed, is_skeleton=True):
+        """Legacy helper; coherent source reads and complete files only."""
+        parts, processed = [], set()
+        for path in file_list:
+            path = self._canonical(path)
+            if path in already_processed:
+                continue
             try:
-                source = file_path.read_text()
-                
-                if is_skeleton:
-                    content = self._extract_signatures(source, file_path.suffix[1:])
-                    label = f"# {file_path} (SKELETON)"
-                else:
-                    content = source
-                    label = f"# {file_path} (FULL CONTENT)"
-                
-                if not content.strip():
-                    continue
-                    
-                formatted = f"\n{label}\n{content}\n"
-                tokens = self.count_tokens(formatted)
-                
-                if token_count + tokens <= max_tokens:
-                    content_parts.append(formatted)
-                    token_count += tokens
-                    processed_in_this_call.add(file_path)
-                else:
-                    # Skip files that don't fit and try the next one
-                    continue
-                    
-            except Exception as e:
-                logger.debug(f"Could not process {file_path}: {e}")
-                continue
-        
-        return "".join(content_parts), processed_in_this_call
-    
-    def _extract_signatures(self, content: str, lang_ext: str) -> str:
-        """
-        Extract function/class signatures from source code using the Rust core.
-        """
+                source = self._source(path)
+                content = self._extract_signatures(source, path.suffix[1:]) if is_skeleton else source
+                mode = "SKELETON" if is_skeleton else "FULL CONTENT"
+                text = f"\n# {path} ({mode})\n{content}\n"
+                if content.strip() and self.count_tokens("".join(parts) + text) <= max_tokens:
+                    parts.append(text); processed.add(path)
+            except Exception as exc:
+                logger.debug("Cannot process %s: %s", path, exc)
+        return "".join(parts), processed
+
+    def _extract_signatures(self, content, lang_ext):
+        return create_skeleton_from_source(content, lang_ext)
+
+    def count_tokens(self, text):
         try:
-            return create_skeleton_from_source(content, lang_ext)
-        except Exception as e:
-            logger.error(f"Error creating skeleton: {e}")
-            # Fallback to a very simple signature extraction
-            lines = content.split("\n")
-            signatures = []
-            for line in lines:
-                stripped = line.strip()
-                if stripped.startswith("def ") or stripped.startswith("class ") or stripped.startswith("async def "):
-                    signatures.append(line)
-                elif stripped.startswith("fn "): # Rust
-                    signatures.append(line)
-            return "\n".join(signatures)
-    
-    def _truncate_to_tokens(self, text: str, max_tokens: int) -> str:
-        """Truncate text to fit within token budget."""
-        tokens = self.encoder.encode(text)
-        if len(tokens) <= max_tokens:
-            return text
-        
-        truncated_tokens = tokens[:max_tokens]
-        return self.encoder.decode(truncated_tokens) + "\n\n[... truncated ...]"
-    
-    def _format_context(self, parts: List[Tuple[str, str]]) -> str:
-        """Format context parts into a single string."""
-        formatted = []
-        for label, content in parts:
-            formatted.append(f"{'='*80}\n{label}\n{'='*80}\n{content}\n")
-        return "\n".join(formatted)
-    
-    def count_tokens(self, text: str) -> int:
-        """Count tokens in text."""
-        return len(self.encoder.encode(text))
+            return len(self.encoder.encode(text, disallowed_special=()))
+        except TypeError:
+            return len(self.encoder.encode(text))

@@ -1,0 +1,17 @@
+name: Verify Atlas
+on: [push, pull_request]
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.8.15"
+          enable-cache: true
+      - uses: dtolnay/rust-toolchain@stable
+      - run: uv sync --locked --python 3.11 --extra dev --extra mcp --extra benchmark
+      - run: uv run --no-sync python scripts/verify.py --release

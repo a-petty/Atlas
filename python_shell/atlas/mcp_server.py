@@ -1,115 +1,75 @@
-"""
-Atlas MCP Server — Exposes Atlas's semantic graph intelligence as MCP tools.
-
-Provides 12 tools for graph-aware code intelligence: architecture maps,
-dependency analysis, call graphs, semantic search, and context assembly.
-
-Usage:
-    atlas-mcp --project-root /path/to/repo
-    atlas-mcp --project-root /path/to/repo --verbose
-"""
-
-import sys
-import asyncio
+"""Atlas MCP transport over a restartable, automatically refreshed repository session."""
 import argparse
+import json
 import logging
-import threading
 from pathlib import Path
+import sys
 from typing import Optional
+from mcp.server.fastmcp import FastMCP
+from atlas.session import RepositorySession, IGNORED_DIRS, MAX_RESULT_CHARS
 
-import anyio
-
-# ---------------------------------------------------------------------------
-# Import guards
-# ---------------------------------------------------------------------------
-try:
-    from mcp.server.fastmcp import FastMCP
-except ImportError:
-    print(
-        "ERROR: The 'mcp' package is not installed.\n"
-        "Install it with: pip install -e '.[mcp]'",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-try:
-    from atlas.semantic_engine import (
-        RepoGraph,
-        scan_repository,
-        create_skeleton_from_source,
-    )
-except ImportError as e:
-    print(
-        "ERROR: Atlas semantic engine not found. Build with: maturin develop\n"
-        f"  Details: {e}",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-# ---------------------------------------------------------------------------
-# Logging — all output to stderr (required for stdio transport)
-# ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    stream=sys.stderr,
-)
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 log = logging.getLogger("atlas.mcp")
-
-# ---------------------------------------------------------------------------
-# MCP server instance
-# ---------------------------------------------------------------------------
-mcp = FastMCP(
-    "Atlas",
-    instructions="Semantic graph intelligence for codebases — architecture maps, "
-    "dependency analysis, call graphs, and optimized context assembly.",
-)
-
-# ---------------------------------------------------------------------------
-# Global state
-# ---------------------------------------------------------------------------
-_graph: Optional[RepoGraph] = None
+mcp = FastMCP("Atlas", instructions="Repository analysis from coherent source generations. "
+             "Each query reconciles edits automatically. Lists are paginated; use next_cursor "
+             "only with the same query and generation. Context includes delivered source spans.")
 _project_root: Optional[Path] = None
-_graph_initialized: bool = False
-_cpg_enabled: bool = False
-_cpg_failed: bool = False
-_embedding_manager = None  # Lazy: atlas.embeddings.EmbeddingManager
-_context_manager = None    # Lazy: atlas.context.ContextManager
-_tool_lock: Optional[asyncio.Lock] = None
-
-IGNORED_DIRS = {"node_modules", "target", ".git", "__pycache__", "dist", "build", ".venv", "venv"}
-MAX_RESULT_CHARS = 60_000  # Safety cap for MCP tool results (Claude Code limit ~75K with JSON overhead)
-SUPPORTED_CPG_EXTENSIONS = {".py", ".pyi"}
-CPG_TOOL_TIMEOUT_SECONDS = 120  # Safety timeout for CPG-dependent tools (call graph queries)
-
-# Re-ranking weights for combining embedding similarity with PageRank.
-# Similarity dominates so truly relevant files always win; PageRank
-# breaks ties by boosting architecturally central files.
-SIMILARITY_WEIGHT = 0.80
-PAGERANK_WEIGHT = 0.20
-
-_cpg_lock = threading.Lock()
+_session: Optional[RepositorySession] = None
 
 
-def _get_lock() -> asyncio.Lock:
-    """Get or create the global tool lock (must be called from async context)."""
-    global _tool_lock
-    if _tool_lock is None:
-        _tool_lock = asyncio.Lock()
-    return _tool_lock
+def _get_session():
+    global _session
+    if _project_root is None:
+        raise RuntimeError("Project root not set")
+    if _session is None or _session.root != _project_root.resolve():
+        if _session is not None: _session.close()
+        _session = RepositorySession(_project_root)
+    return _session
 
 
-def _load_ignore_dirs(project_root: Path) -> list:
-    """Load ignored directory names from IGNORED_DIRS and .atlasignore file."""
-    dirs = list(IGNORED_DIRS)
-    ignore_file = project_root / ".atlasignore"
-    if ignore_file.exists():
-        for line in ignore_file.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                dirs.append(line)
-        log.info("Loaded %d ignore patterns from .atlasignore", len(dirs) - len(IGNORED_DIRS))
-    return dirs
+def _render(result, response_format="text"):
+    if response_format not in {"text", "json"}:
+        raise ValueError("response_format must be text or json")
+    if response_format == "json":
+        output = json.dumps(result)
+    elif "text" in result:
+        output = result["text"]
+        coverage = result.get("coverage", {})
+        if coverage.get("invalid_count"):
+            output += "\nCOVERAGE: " + json.dumps(coverage)
+    elif "items" in result:
+        lines = [f"Source generation: {result['generation']}", f"Results in this page: {len(result['items'])} of {result['total']}"]
+        for item in result["items"]:
+            if "text" in item:
+                lines.append(item["text"])
+            elif "file" in item:
+                detail = item.get("qualified_name", item.get("name", item.get("kind", "")))
+                if "line" in item: detail += f" (line {item['line']})"
+                for metric in ("score", "rank"):
+                    if metric in item: detail += f" {metric}={item[metric]:.6f}"
+                lines.append(f"{item['file']}: {detail}".rstrip(": "))
+            else:
+                lines.append(json.dumps(item))
+        if result.get("query_resolution"):
+            lines.append("Query resolution: " + json.dumps(result["query_resolution"]))
+        if result.get("next_cursor"):
+            lines.append("Next cursor: " + result["next_cursor"])
+        lines.append("Coverage: " + json.dumps(result["coverage"]))
+        output = "\n".join(lines)
+    else:
+        output = json.dumps(result, indent=2)
+    if len(output) > MAX_RESULT_CHARS:
+        raise ValueError("Result exceeds transport capacity; request a smaller page")
+    return output
+
+
+async def _request(operation, response_format="text", **params):
+    try:
+        result = await _get_session().arequest(operation, **params)
+        return _render(result, response_format)
+    except Exception as exc:
+        error = f"ERROR: {exc}"
+        return error if len(error) <= MAX_RESULT_CHARS else "ERROR: Diagnostic exceeds transport capacity; inspect the server log for details."
 
 
 def _load_atlas_config(project_root: Path):
@@ -162,131 +122,6 @@ def _load_atlas_config(project_root: Path):
     return roots, languages
 
 
-# ---------------------------------------------------------------------------
-# Initialization helpers
-# ---------------------------------------------------------------------------
-def _initialize_graph(project_root: Path) -> None:
-    """Scan repository, build file-level graph, compute PageRank."""
-    global _graph, _project_root, _graph_initialized
-
-    _project_root = project_root.resolve()
-    log.info("Initializing graph for %s", _project_root)
-
-    ignored = _load_ignore_dirs(_project_root)
-    source_roots, languages = _load_atlas_config(_project_root)
-    # When `languages` is unset, RepoGraph auto-detects from the project
-    # tree (Phase 3b). Passing `languages=None` keeps that behavior;
-    # passing a list pins the resolver groups explicitly.
-    kwargs = {"ignored_dirs": ignored, "source_roots": source_roots}
-    if languages is not None:
-        kwargs["languages"] = languages
-    _graph = RepoGraph(str(_project_root), **kwargs)
-
-    files = scan_repository(str(_project_root), ignored_dirs=ignored)
-    log.info("Scanned %d files", len(files))
-
-    _graph.build_complete(files)
-    _graph.ensure_pagerank_up_to_date()
-
-    stats = _graph.get_statistics()
-    log.info(
-        "Graph ready: %d files, %d edges, %d symbols",
-        stats.node_count,
-        stats.edge_count,
-        stats.total_definitions,
-    )
-    _graph_initialized = True
-
-
-def _ensure_graph() -> None:
-    """Lazily initialize the graph on first tool call."""
-    if _graph_initialized:
-        return
-    if _project_root is None:
-        raise RuntimeError("Project root not set")
-    _initialize_graph(_project_root)
-
-
-def _ensure_cpg() -> None:
-    """Lazily enable CPG overlay on first call that needs it."""
-    global _cpg_enabled, _cpg_failed
-    if _cpg_enabled:
-        return
-    with _cpg_lock:
-        # Double-check after acquiring lock (another thread may have built it)
-        if _cpg_enabled:
-            return
-        if _cpg_failed:
-            raise RuntimeError("CPG previously failed. Call atlas_refresh() to retry.")
-        if _graph is None:
-            return
-        try:
-            import time
-            ignored = _load_ignore_dirs(_project_root) if _project_root else []
-            log.info("Enabling CPG and building sub-file data (first CPG tool call)...")
-            start = time.monotonic()
-            _graph.enable_cpg_and_build(excluded_dirs=ignored)
-            elapsed = time.monotonic() - start
-            _cpg_enabled = True
-            log.info("CPG enabled and built in %.1fs", elapsed)
-        except Exception as e:
-            _cpg_failed = True
-            log.error("CPG build failed: %s", e)
-            raise RuntimeError(f"CPG build failed: {e}. Call atlas_refresh() to retry.")
-
-
-def _ensure_embeddings() -> None:
-    """Lazily initialize EmbeddingManager and ContextManager."""
-    global _embedding_manager, _context_manager
-    if _embedding_manager is not None:
-        return
-    log.info("Initializing embedding manager (first semantic search call)...")
-    from atlas.embeddings import EmbeddingManager
-    from atlas.context import ContextManager
-
-    _embedding_manager = EmbeddingManager(repo_graph=_graph, project_root=_project_root)
-    _context_manager = ContextManager(_graph, _embedding_manager, max_tokens=100_000)
-    log.info("Embedding manager ready")
-
-
-def _normalize_path(file_path: str) -> str:
-    """Accept absolute or project-relative path, return canonical absolute."""
-    p = Path(file_path)
-    if not p.is_absolute():
-        p = _project_root / p
-    canonical = p.resolve()
-    # Verify it's within the project
-    try:
-        canonical.relative_to(_project_root)
-    except ValueError:
-        raise ValueError(f"Path {canonical} is outside project root {_project_root}")
-    return str(canonical)
-
-
-def _to_relative(abs_path: str) -> str:
-    """Convert an absolute path back to project-relative for output."""
-    try:
-        return str(Path(abs_path).relative_to(_project_root))
-    except ValueError:
-        return abs_path
-
-
-def _validate_cpg_file(file_path: str) -> Optional[str]:
-    """Return an error message if the file is not supported for CPG analysis, else None."""
-    ext = Path(file_path).suffix
-    if ext not in SUPPORTED_CPG_EXTENSIONS:
-        return (
-            f"CPG analysis not supported for '{ext}' files. "
-            f"Supported extensions: {', '.join(sorted(SUPPORTED_CPG_EXTENSIONS))}. "
-            f"Use get_file_skeleton for non-Python files."
-        )
-    return None
-
-
-# Pretty names for the MCP rendering. Keys are the stable lowercase names
-# emitted by Rust's `SupportedLanguage::name()` / `ResolverGroup::name()`.
-# A missing key falls back to the raw name (so a future variant degrades to
-# something readable without a code change).
 _LANGUAGE_DISPLAY_NAMES = {
     "python": "Python",
     "rust": "Rust",
@@ -344,504 +179,92 @@ def _format_coverage_block(stats) -> list:
     return lines
 
 
-def _is_trivial_init(path: Path) -> bool:
-    """Check if a file is a trivial __init__.py with minimal content."""
-    if path.name != "__init__.py":
-        return False
-    try:
-        content = path.read_text().strip()
-        meaningful = "\n".join(
-            line for line in content.splitlines()
-            if line.strip() and not line.strip().startswith("#")
-        )
-        return len(meaningful) < 50
-    except Exception:
-        return False
-
-
-# ---------------------------------------------------------------------------
-# Tool definitions
-# ---------------------------------------------------------------------------
 
 @mcp.tool()
-async def atlas_status() -> str:
-    """Get graph statistics and readiness status. Call this first to verify Atlas is ready."""
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                stats = _graph.get_statistics()
-                root_modules = stats.known_root_modules[:20]
-                lines = [
-                    "Atlas Semantic Graph Status",
-                    f"  Project root: {_project_root}",
-                    f"  Files indexed: {stats.node_count}",
-                    f"  Dependency edges: {stats.edge_count}",
-                    f"    Import edges: {stats.import_edges}",
-                    f"    Symbol usage edges: {stats.symbol_edges}",
-                    f"  Symbol definitions: {stats.total_definitions}",
-                    f"  Module index size: {stats.module_index_size}",
-                    f"  Source roots: {stats.source_roots}",
-                    f"  Known root modules: {root_modules}",
-                    f"  Import resolution: {stats.attempted_imports} attempted, {stats.failed_imports} failed",
-                    f"  Unresolved imports: {stats.unresolved_import_count}",
-                    f"  CPG enabled: {_cpg_enabled}",
-                    f"  Embeddings loaded: {_embedding_manager is not None}",
-                ]
-                lines.extend(_format_coverage_block(stats))
-                if stats.unresolved_import_count > 0:
-                    unresolved = _graph.get_unresolved_imports(5)
-                    lines.append("  Top unresolved targets:")
-                    for target, count in unresolved:
-                        lines.append(f"    {target} (wanted by {count} file(s))")
-                return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def atlas_status(response_format: str = "text") -> str:
+    """Read coverage, generation, and preparation progress without forcing embeddings."""
+    session = _get_session()
+    if session.busy:
+        return _render({"phase": "preparing", "complete": False, "progress": session.progress}, response_format)
+    return await _request("status", response_format)
 
 
 @mcp.tool()
-async def get_repository_map(max_files: int = 50) -> str:
-    """Get a PageRank-ordered architecture overview of the repository.
-
-    Returns the most architecturally important files with their dependencies
-    and symbols, ordered by importance score. Use this to understand the
-    overall structure before diving into specific files.
-
-    Args:
-        max_files: Maximum number of files to include (default 50).
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                return _graph.generate_map(max_files)
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def get_repository_map(max_files: int = 50, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read the architecture ordered by PageRank; continue large maps with next_cursor."""
+    return await _request("map", response_format, limit=max_files, cursor=cursor)
 
 
 @mcp.tool()
-async def get_dependencies(file_path: str) -> str:
-    """Get outgoing dependencies for a file (what this file imports/uses).
-
-    Args:
-        file_path: Absolute or project-relative path to the file.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                normalized = _normalize_path(file_path)
-                if not _graph.has_file(normalized):
-                    return f"File not found in graph: {_to_relative(normalized)}. It may not be indexed (wrong extension, syntax errors, or in an ignored directory)."
-                deps = _graph.get_dependencies(normalized)
-                if not deps:
-                    return f"No outgoing dependencies found for {_to_relative(normalized)} (file is in graph but has no imports)"
-                lines = [f"Dependencies of {_to_relative(normalized)}:"]
-                for dep_path, edge_kind in deps:
-                    lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
-                return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def get_dependencies(file_path: str, limit: int = 100, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read outgoing imports and symbol-use evidence, retaining both kinds per file pair."""
+    return await _request("dependencies", response_format, file_path=file_path, limit=limit, cursor=cursor)
 
 
 @mcp.tool()
-async def get_dependents(file_path: str) -> str:
-    """Get incoming dependents for a file (what depends on this file — blast radius).
-
-    Args:
-        file_path: Absolute or project-relative path to the file.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                normalized = _normalize_path(file_path)
-                if not _graph.has_file(normalized):
-                    return f"File not found in graph: {_to_relative(normalized)}. It may not be indexed (wrong extension, syntax errors, or in an ignored directory)."
-                deps = _graph.get_dependents(normalized)
-                if not deps:
-                    return f"No incoming dependents found for {_to_relative(normalized)} (file is in graph but nothing imports it)"
-                lines = [f"Dependents of {_to_relative(normalized)} (files that depend on this):"]
-                for dep_path, edge_kind in deps:
-                    lines.append(f"  {_to_relative(dep_path)} ({edge_kind})")
-                return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def get_dependents(file_path: str, limit: int = 100, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read incoming dependencies from the latest accepted source generation."""
+    return await _request("dependents", response_format, file_path=file_path, limit=limit, cursor=cursor)
 
 
 @mcp.tool()
-async def get_top_ranked_files(limit: int = 20) -> str:
-    """Get the most architecturally important files ranked by PageRank.
-
-    Higher-ranked files are more central to the codebase — they are imported
-    by many other files and define widely-used symbols.
-
-    Args:
-        limit: Number of files to return (default 20).
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                ranked = _graph.get_top_ranked_files(limit)
-                if not ranked:
-                    return "No ranked files available"
-                lines = ["Top files by architectural importance (PageRank):"]
-                for i, (path, rank) in enumerate(ranked, 1):
-                    lines.append(f"  {i:3d}. {_to_relative(path)} (score: {rank:.4f})")
-                return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def get_top_ranked_files(limit: int = 20, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read architectural importance with generation-bound continuation."""
+    return await _request("ranked", response_format, limit=limit, cursor=cursor)
 
 
 @mcp.tool()
-async def find_relevant_files(query: str, top_n: int = 10) -> str:
-    """Find files most relevant to a natural language query using semantic search.
-
-    Uses vector embeddings to find files whose content is semantically similar
-    to the query. Good for finding code related to a concept or feature.
-
-    Args:
-        query: Natural language description of what you're looking for.
-        top_n: Number of results to return (default 10).
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                _ensure_embeddings()
-                stats = _graph.get_statistics()
-                all_files = [Path(p) for p, _ in _graph.get_top_ranked_files(stats.node_count)]
-                # Fetch extra candidates for re-ranking and filtering
-                scored = _embedding_manager.find_relevant_files_scored(query, all_files, top_n=top_n * 3 + 10)
-                # Filter out trivial __init__.py files
-                scored = [(p, sim) for p, sim in scored if not _is_trivial_init(p)]
-                if not scored:
-                    return f"No relevant files found for: {query}"
-
-                # Re-rank: combine embedding similarity (80%) with PageRank (20%)
-                pagerank_map = dict(_graph.get_top_ranked_files(stats.node_count))
-                max_pr = max(pagerank_map.values()) if pagerank_map else 1.0
-                reranked = []
-                for path, similarity in scored:
-                    pr = pagerank_map.get(str(path), 0.0)
-                    normalized_pr = pr / max_pr if max_pr > 0 else 0.0
-                    combined = SIMILARITY_WEIGHT * similarity + PAGERANK_WEIGHT * normalized_pr
-                    reranked.append((path, combined))
-                reranked.sort(key=lambda x: x[1], reverse=True)
-                reranked = reranked[:top_n]
-
-                lines = [f"Files relevant to '{query}':"]
-                for i, (path, _score) in enumerate(reranked, 1):
-                    lines.append(f"  {i}. {_to_relative(str(path))}")
-                return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def find_relevant_files(query: str, top_n: int = 10, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Rank all eligible files semantically. Cold preparation completes before ranking is returned."""
+    return await _request("search", response_format, query=query, limit=top_n, cursor=cursor)
 
 
 @mcp.tool()
-async def assemble_context(query: str) -> str:
-    """Assemble optimized code context for a query using Anchor & Expand.
+async def assemble_context(query: str, files_in_scope: Optional[list[str]] = None, max_tokens: int = 12000, include_map: bool = True, response_format: str = "text") -> str:
+    """Pack map, full sources and complete skeleton declarations within token/transport budgets.
 
-    This is Atlas's core intelligence: it finds relevant files via semantic
-    search (anchor), then expands through the dependency graph to pull in
-    related code. Returns a three-tier context: repository map, full file
-    content for key files, and skeletons for architectural context.
-
-    Args:
-        query: The coding task or question to assemble context for.
+    JSON includes the exact delivered source spans, modes, reasons and omissions.
+    Explicit files take priority. Every part comes from the reported generation.
     """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                _ensure_embeddings()
-                result = _context_manager.assemble_context(query, files_in_scope=[])
-                if len(result) > MAX_RESULT_CHARS:
-                    return result[:MAX_RESULT_CHARS] + "\n\n[... truncated to fit MCP limit ...]"
-                return result
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+    return await _request("context", response_format, query=query, files_in_scope=files_in_scope or [], max_tokens=max_tokens, include_map=include_map)
 
 
 @mcp.tool()
-async def get_file_symbols(file_path: str) -> str:
-    """Get all functions, methods, and classes defined in a file with their signatures.
-
-    Includes parameter names, type annotations, return types, and docstrings.
-    Requires CPG (enabled automatically on first call).
-
-    Args:
-        file_path: Absolute or project-relative path to the file.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                normalized = _normalize_path(file_path)
-                cpg_err = _validate_cpg_file(normalized)
-                if cpg_err:
-                    return cpg_err
-                # Try incremental CPG build for just this file (fast)
-                global _cpg_enabled
-                if not _graph.ensure_cpg_for_file(normalized):
-                    # Fall back to full CPG build if incremental fails
-                    _ensure_cpg()
-                else:
-                    _cpg_enabled = True
-                symbols = _graph.get_functions_in_file(normalized)
-                if not symbols:
-                    return f"No symbols found in {_to_relative(normalized)}"
-                lines = [f"Symbols in {_to_relative(normalized)}:"]
-                for sym in symbols:
-                    kind = sym["kind"]
-                    name = sym["name"]
-                    if kind == "class":
-                        bases = sym.get("bases", [])
-                        sig = f"class {name}({', '.join(bases)})" if bases else f"class {name}"
-                    else:
-                        params = sym.get("parameters", [])
-                        param_strs = []
-                        for p in params:
-                            s = p["name"]
-                            if p.get("type_annotation"):
-                                s += f": {p['type_annotation']}"
-                            if p.get("default_value"):
-                                s += f" = {p['default_value']}"
-                            param_strs.append(s)
-                        sig = f"{kind} {name}({', '.join(param_strs)})"
-                        ret = sym.get("return_type")
-                        if ret:
-                            sig += f" -> {ret}"
-                        parent = sym.get("parent_class")
-                        if parent:
-                            sig += f"  [in class {parent}]"
-                    lines.append(f"  L{sym['start_line']}-{sym['end_line']}: {sig}")
-                    doc = sym.get("docstring")
-                    if doc:
-                        first_line = doc.strip().split("\n")[0]
-                        lines.append(f"    {first_line}")
-                return "\n".join(lines)
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
-
-
-MAX_NEIGHBOR_FILES = 200  # Safety cap for lazy call graph resolution (deps / callees)
-MAX_CALLER_NEIGHBOR_FILES = 50  # Tighter cap for dependents (callers) — dependents sets are often 5-10x larger
-
-
-def _build_cpg_for_neighbors(normalized: str, neighbor_paths: list, *, max_files: int = MAX_NEIGHBOR_FILES) -> None:
-    """Build CPG for a set of neighbor files (deps or dependents), filtering to Python only."""
-    global _cpg_enabled
-    built = 0
-    for dep_path, _ in neighbor_paths:
-        if built >= max_files:
-            break
-        if Path(dep_path).suffix in SUPPORTED_CPG_EXTENSIONS:
-            _graph.build_cpg_for_file(dep_path)
-            built += 1
-    _cpg_enabled = True
-
-
-def _filter_dependents_by_function_name(dependents: list, function_name: str) -> list:
-    """Filter dependent files to only those whose source contains the function name.
-
-    This dramatically reduces the CPG budget for popular files (e.g. 110 dependents
-    down to the ~3-5 that actually call a specific function).
-    """
-    filtered = []
-    for dep_path, label in dependents:
-        try:
-            with open(dep_path, "r", errors="replace") as f:
-                content = f.read()
-            if function_name in content:
-                filtered.append((dep_path, label))
-        except (OSError, IOError):
-            pass
-    return filtered
+async def get_file_symbols(file_path: str, limit: int = 100, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read declared symbols without building CFG or data-flow overlays."""
+    return await _request("symbols", response_format, file_path=file_path, limit=limit, cursor=cursor)
 
 
 @mcp.tool()
-async def get_callees(file_path: str, function_name: str) -> str:
-    """Get all functions called by a given function (outgoing call graph).
-
-    Args:
-        file_path: Absolute or project-relative path to the file containing the function.
-        function_name: Name of the function to analyze.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                normalized = _normalize_path(file_path)
-                cpg_err = _validate_cpg_file(normalized)
-                if cpg_err:
-                    return cpg_err
-                # Lazy call graph: build CPG for deps first (so callees' function nodes exist),
-                # then build target (whose call sites resolve against those deps).
-                # This avoids the full-repo resolve_all() that causes hangs.
-                deps = _graph.get_dependencies(normalized)
-                _build_cpg_for_neighbors(normalized, deps)
-                global _cpg_enabled
-                _graph.ensure_cpg_for_file(normalized)
-                _cpg_enabled = True
-                callees = _graph.get_callees(normalized, function_name)
-                if not callees:
-                    return f"No callees found for {function_name} in {_to_relative(normalized)}"
-                lines = [f"Functions called by {function_name}:"]
-                for callee in callees:
-                    lines.append(f"  {callee['name']} ({_to_relative(callee['file'])}:{callee['line']})")
-                return "\n".join(lines)
-            with anyio.fail_after(CPG_TOOL_TIMEOUT_SECONDS):
-                return await anyio.to_thread.run_sync(_run, abandon_on_cancel=True)
-        except TimeoutError:
-            return f"ERROR: Call graph query timed out after {CPG_TOOL_TIMEOUT_SECONDS}s. The repository may be too large for full call graph analysis."
-        except Exception as e:
-            return f"ERROR: {e}"
+async def get_callees(file_path: str, function_name: str, limit: int = 100, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read statically resolved calls. Use a qualified name for duplicate method names."""
+    return await _request("callees", response_format, file_path=file_path, function_name=function_name, limit=limit, cursor=cursor)
 
 
 @mcp.tool()
-async def get_callers(file_path: str, function_name: str) -> str:
-    """Get all functions that call a given function (incoming call graph).
-
-    Args:
-        file_path: Absolute or project-relative path to the file containing the function.
-        function_name: Name of the function to analyze.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                normalized = _normalize_path(file_path)
-                cpg_err = _validate_cpg_file(normalized)
-                if cpg_err:
-                    return cpg_err
-                # Lazy call graph: build target first (so its function nodes exist),
-                # then build dependents (whose call sites resolve to target's functions),
-                # then additively resolve to pick up all incoming CalledBy edges.
-                global _cpg_enabled
-                _graph.ensure_cpg_for_file(normalized)
-                _cpg_enabled = True
-                dependents = _graph.get_dependents(normalized)
-                # Follow one level of __init__.py re-exports so that files
-                # importing via a package (e.g. `from airflow.models import X`)
-                # are included even though they depend on __init__.py, not the
-                # source file directly.
-                init_dependents = []
-                for dep_path, _ in dependents:
-                    if dep_path.endswith("__init__.py"):
-                        init_dependents.extend(_graph.get_dependents(dep_path))
-                all_dependents = dependents + init_dependents
-                # Pre-filter to dependents that actually reference the function name
-                relevant_dependents = _filter_dependents_by_function_name(all_dependents, function_name)
-                _build_cpg_for_neighbors(normalized, relevant_dependents, max_files=MAX_CALLER_NEIGHBOR_FILES)
-                # Additively resolve — adds new CalledBy edges without destroying
-                # edges from prior tool calls
-                _graph.resolve_new_callers(normalized)
-                callers = _graph.get_callers(normalized, function_name)
-                if not callers:
-                    return f"No callers found for {function_name} in {_to_relative(normalized)}"
-                lines = [f"Functions that call {function_name}:"]
-                for caller in callers:
-                    lines.append(f"  {caller['name']} ({_to_relative(caller['file'])}:{caller['line']})")
-                return "\n".join(lines)
-            with anyio.fail_after(CPG_TOOL_TIMEOUT_SECONDS):
-                return await anyio.to_thread.run_sync(_run, abandon_on_cancel=True)
-        except TimeoutError:
-            return f"ERROR: Call graph query timed out after {CPG_TOOL_TIMEOUT_SECONDS}s. The repository may be too large for full call graph analysis."
-        except Exception as e:
-            return f"ERROR: {e}"
+async def get_callers(file_path: str, function_name: str, limit: int = 100, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read callers across the complete lightweight index, independently of CFG load order."""
+    return await _request("callers", response_format, file_path=file_path, function_name=function_name, limit=limit, cursor=cursor)
 
 
 @mcp.tool()
-async def get_file_skeleton(file_path: str) -> str:
-    """Get function/class signatures without implementation bodies.
-
-    Useful for understanding a file's API surface without reading the full source.
-
-    Args:
-        file_path: Absolute or project-relative path to the file.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                _ensure_graph()
-                normalized = _normalize_path(file_path)
-                skeleton = _graph.get_skeleton(normalized)
-                if not skeleton or not skeleton.strip():
-                    return f"No skeleton available for {_to_relative(normalized)}"
-                return f"Skeleton of {_to_relative(normalized)}:\n\n{skeleton}"
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def get_file_skeleton(file_path: str, limit: int = 100, cursor: Optional[str] = None, response_format: str = "text") -> str:
+    """Read API-preserving declarations for Python, JS/TS, Rust or Go with retained spans."""
+    return await _request("skeleton", response_format, file_path=file_path, limit=limit, cursor=cursor)
 
 
 @mcp.tool()
-async def atlas_refresh() -> str:
-    """Re-scan the repository and rebuild the graph from scratch.
-
-    Use this after significant file system changes (branch switches, large
-    merges, etc.) to ensure the graph is up to date.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                global _cpg_enabled, _cpg_failed, _embedding_manager, _context_manager, _graph_initialized
-                if _project_root is None:
-                    return "ERROR: Project root not set"
-                _cpg_enabled = False
-                _cpg_failed = False
-                _embedding_manager = None
-                _context_manager = None
-                _graph_initialized = False
-                _initialize_graph(_project_root)
-                stats = _graph.get_statistics()
-                return (
-                    f"Graph refreshed: {stats.node_count} files, "
-                    f"{stats.edge_count} edges, {stats.total_definitions} symbols"
-                )
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR: {e}"
+async def atlas_refresh(response_format: str = "text") -> str:
+    """Force a fresh configuration epoch and graph rebuild; routine edits refresh automatically."""
+    return await _request("refresh", response_format)
 
 
 @mcp.tool()
 async def diag_full_cpg_build() -> str:
-    """[DIAGNOSTIC] Trigger a full CPG build to identify bottlenecks.
-
-    This runs enable_cpg_and_build() which processes ALL files.
-    Watch stderr for [DIAG] timing messages to identify the hang point.
-    Remove this tool after diagnosis is complete.
-    """
-    async with _get_lock():
-        try:
-            def _run():
-                global _cpg_enabled, _cpg_failed
-                _ensure_graph()
-                import time
-                log.info("[DIAG] Starting full CPG build via diagnostic tool...")
-                ignored = _load_ignore_dirs(_project_root) if _project_root else []
-                start = time.monotonic()
-                _graph.enable_cpg_and_build(excluded_dirs=ignored)
-                elapsed = time.monotonic() - start
-                _cpg_enabled = True
-                return f"Full CPG build completed in {elapsed:.1f}s. Check stderr for [DIAG] timing breakdown."
-            return await anyio.to_thread.run_sync(_run)
-        except Exception as e:
-            return f"ERROR during full CPG build: {e}"
+    """Explicit diagnostic: build CFG/data-flow overlays in the bounded worker process."""
+    return await _request("cpg_diagnostic")
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(
         prog="atlas-mcp",
@@ -873,7 +296,11 @@ def main():
 
     _project_root = project_root
     log.info("Atlas MCP server starting (project: %s, graph builds on first tool call)", project_root)
-    mcp.run(transport="stdio")
+    try:
+        mcp.run(transport="stdio")
+    finally:
+        if _session is not None:
+            _session.close()
 
 
 if __name__ == "__main__":
