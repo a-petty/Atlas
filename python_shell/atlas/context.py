@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 # Re-ranking weights for combining embedding similarity with PageRank.
 SIMILARITY_WEIGHT = 0.80
 PAGERANK_WEIGHT = 0.20
+_METADATA_CACHE_MAX_ENTRIES = 16_384
+_METADATA_CACHE_MAX_KEY_CHARS = 2048
 
 # Known context window sizes (tokens). Used to set max_tokens automatically.
 # Conservative utilization: use 60% of window (leave room for system prompt + response).
@@ -102,6 +104,7 @@ class ContextManager:
             self.encoder = tiktoken.get_encoding("cl100k_base")
         self.max_tokens = self._resolve_max_tokens(model, max_tokens)
         self._skeleton_cache = {}
+        self._minimum_chunk_cache = collections.OrderedDict()
 
     @staticmethod
     def _resolve_max_tokens(model: str, explicit_max_tokens: Optional[int]) -> int:
@@ -256,6 +259,39 @@ class ContextManager:
             "omitted": len(omissions), "omission_reasons": omission_counts,
             "omission_details_omitted": max(0, len(omissions) - len(details))})
 
+    def _minimum_chunk_overhead(self, path, reason):
+        """Source-independent metadata lower bound, with bounded warm reuse."""
+        path = str(path)
+        structured = getattr(semantic_engine, "create_skeleton_details_json", None) is not None
+        key = (path, reason, structured)
+        cached = self._minimum_chunk_cache.get(key)
+        if cached is not None:
+            self._minimum_chunk_cache.move_to_end(key)
+            return cached
+        # Every current nonempty structured chunk retains original bytes. The
+        # old string-only fallback does not expose that source-span evidence.
+        descriptor = {"file": path, "mode": "", "source_spans": [], "token_count": 0,
+            "selection_reason": reason, "start_char": 99999999999999999999,
+            "end_char": 99999999999999999999}
+        costs = []
+        for mode in ("full", "skeleton"):
+            descriptor["mode"] = mode
+            descriptor["source_spans"] = ([{"start_byte": 0, "end_byte": 1,
+                "start_line": 1, "end_line": 1}] if mode == "full" or structured else [])
+            encoded_descriptor = json.dumps(descriptor)
+            label = "FULL CONTENT" if mode == "full" else "SKELETON"
+            empty_addition = json.dumps(f"\n# {path} ({label})\n\n")
+            costs.append((self.count_tokens(encoded_descriptor) + self.count_tokens(empty_addition),
+                          len(encoded_descriptor) + len(empty_addition) - 2))
+        value = (min(cost[0] for cost in costs), min(cost[1] for cost in costs))
+        # Limit entry count and key size. Paths/reasons beyond this cap still
+        # receive identical accounting, without occupying the warm cache.
+        if len(path) + len(reason) <= _METADATA_CACHE_MAX_KEY_CHARS:
+            self._minimum_chunk_cache[key] = value
+            if len(self._minimum_chunk_cache) > _METADATA_CACHE_MAX_ENTRIES:
+                self._minimum_chunk_cache.popitem(last=False)
+        return value
+
     def pack_ranked_context_result(self, user_query, candidates, include_map=True,
                                    max_tokens=None, max_chars=60_000, generation=None):
         """Identical rendering/representation policy for Atlas and baselines.
@@ -321,24 +357,13 @@ class ContextManager:
 
         for candidate_index, (path, reason) in enumerate(unique):
             refresh_prefix()
-            # Every source chunk needs a manifest descriptor, irrespective of how
-            # short its declaration is. If even an empty descriptor cannot fit,
+            # Every source chunk needs a manifest descriptor and retained span,
+            # irrespective of how short its declaration is. If these cannot fit,
             # parsing this candidate's entire file cannot improve the result.
-            # Include the mandatory file header, and use the cheaper mode with
-            # no spans/content as a lower bound.
-            minimum_descriptor = {"file": str(path), "mode": "", "source_spans": [],
-                "token_count": 0, "selection_reason": reason,
-                "start_char": 99999999999999999999, "end_char": 99999999999999999999}
-            descriptor_costs = []
-            for mode in ("full", "skeleton"):
-                minimum_descriptor["mode"] = mode
-                encoded_descriptor = json.dumps(minimum_descriptor)
-                label = "FULL CONTENT" if mode == "full" else "SKELETON"
-                empty_addition = json.dumps(f"\n# {path} ({label})\n\n")
-                descriptor_costs.append((self.count_tokens(encoded_descriptor) + self.count_tokens(empty_addition),
-                                         len(encoded_descriptor) + len(empty_addition) - 2))
-            if (fit_cache["json_tokens"] + min(cost[0] for cost in descriptor_costs) + 2 > max(0, available - 128)
-                    or fit_cache["json_chars"] + min(cost[1] for cost in descriptor_costs) + 2 > max_chars - 768):
+            # Include the mandatory file header and cheapest valid source span.
+            minimum_tokens, minimum_chars = self._minimum_chunk_overhead(path, reason)
+            if (fit_cache["json_tokens"] + minimum_tokens + 2 > max(0, available - 128)
+                    or fit_cache["json_chars"] + minimum_chars + 2 > max_chars - 768):
                 omissions.append({"file": str(path), "reason": "budget", "mode": "file"})
                 continue
             try:

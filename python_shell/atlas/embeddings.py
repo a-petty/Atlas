@@ -166,7 +166,17 @@ class EmbeddingManager:
         if self.project_root is None:
             return ""
         try:
-            rel = file_path.resolve().relative_to(self.project_root.resolve())
+            if callable(getattr(type(self.repo_graph), "get_source", None)):
+                # Accepted graph paths name captured sources. Resolving them
+                # again can mix old source with a newly replaced symlink's name.
+                root = getattr(self.repo_graph, "project_root", self.project_root)
+                if not isinstance(root, (str, Path)):
+                    root = self.project_root
+                root = Path(os.path.abspath(root))
+                path = file_path if file_path.is_absolute() else root / file_path
+                rel = Path(os.path.abspath(path)).relative_to(root)
+            else:
+                rel = file_path.resolve().relative_to(self.project_root.resolve())
         except ValueError:
             return ""
 

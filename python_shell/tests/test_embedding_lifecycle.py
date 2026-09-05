@@ -64,6 +64,24 @@ def test_no_disk_fallback_for_missing_accepted_source(tmp_path):
         service.find_relevant_files('alpha', [path])
 
 
+def test_accepted_module_prefix_ignores_live_symlink_replacement(tmp_path):
+    from atlas.semantic_engine import RepoGraph
+    first, second = tmp_path / 'alpha.py', tmp_path / 'beta.py'
+    first.write_text('def alpha():\n    return 1\n')
+    second.write_text('def beta():\n    return 2\n')
+    graph = RepoGraph(str(tmp_path))
+    graph.build_from_sources({str(first): first.read_text(), str(second): second.read_text()})
+    service, _ = manager(tmp_path, repo_graph=graph, project_root=tmp_path)
+    captured = service._get_embedding_text(first)
+    first.unlink(); first.symlink_to(second)
+    assert service._file_path_to_module_prefix(first) == 'alpha'
+    assert service._get_embedding_text(first) == captured
+    assert captured.startswith('alpha\n') and 'def alpha' in captured
+    # Standalone callers still deliberately read the live symlink target.
+    standalone, _ = manager(tmp_path, project_root=tmp_path)
+    assert standalone._file_path_to_module_prefix(first) == 'beta'
+
+
 def test_failed_preparation_never_returns_partial_ranking(tmp_path):
     paths = []
     for i in range(70):

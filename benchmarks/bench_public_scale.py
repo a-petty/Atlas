@@ -15,9 +15,9 @@ from pathlib import Path
 import time
 
 try:
-    from benchmarks.bench_scale import TARGETS, EXTENSIONS, cold_request, persist, profile_evidence, summarize
+    from benchmarks.bench_scale import TARGETS, cold_request, persist, profile_evidence, summarize
 except ModuleNotFoundError:
-    from bench_scale import TARGETS, EXTENSIONS, cold_request, persist, profile_evidence, summarize
+    from bench_scale import TARGETS, cold_request, persist, profile_evidence, summarize
 
 QUERIES = [
     'How does Django initialize application configuration and load models?',
@@ -50,6 +50,14 @@ def insertion_edit(original, iteration):
     return changed.encode('utf-8')
 
 
+def public_source_files(root):
+    """Use the same language suffix contract as the production session."""
+    from atlas.session import EXTENSIONS as SOURCE_EXTENSIONS, IGNORED_DIRS
+    from atlas.semantic_engine import scan_repository
+    return sorted(Path(p) for p in scan_repository(str(root), ignored_dirs=sorted(IGNORED_DIRS))
+                  if Path(p).suffix.lower() in SOURCE_EXTENSIONS)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repository', type=Path, required=True)
@@ -65,10 +73,9 @@ def main():
     if args.samples < 10: parser.error('At least10samples are required')
     if len(args.commit) != 40 or any(c not in '0123456789abcdef' for c in args.commit):
         parser.error('--commit must be the full lower-case40-character SHA')
-    from atlas.session import RepositorySession, IGNORED_DIRS
-    from atlas.semantic_engine import scan_repository
+    from atlas.session import RepositorySession
     root = args.repository.resolve()
-    paths = sorted(Path(p) for p in scan_repository(str(root), ignored_dirs=sorted(IGNORED_DIRS)) if Path(p).suffix.lower()[1:] in EXTENSIONS.values() or Path(p).suffix == '.pyi')
+    paths = public_source_files(root)
     source_digest = hashlib.sha256()
     source_bytes = 0
     source_manifest = []
@@ -84,7 +91,8 @@ def main():
         'extensions': dict(collections.Counter(p.suffix for p in paths))}, 'build': profile_evidence('release'),
         'started_unix': time.time(), 'cold': {}, 'warm': {}, 'memory': [], 'errors': [], 'complete': False,
         'cache': {'path': str(args.cache.resolve()), 'entries_before': len(list(args.cache.rglob('*.npz')))},
-        'query_set': QUERIES, 'probe_file': args.probe_file, 'edit_file': args.edit_file}
+        'query_set': QUERIES, 'probe_file': args.probe_file, 'edit_file': args.edit_file,
+        'public_benchmark_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     checkpoint = lambda: persist(args.output, result)
     session = RepositorySession(root, timeout=args.cold_timeout)
     def memory(label):

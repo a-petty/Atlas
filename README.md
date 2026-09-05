@@ -24,7 +24,7 @@ uv sync --locked --python 3.11 --extra dev --extra mcp --extra benchmark
 uv run --no-sync python scripts/verify.py --release
 ```
 
-The verifier checks the Python lock, runs Rust tests, rebuilds the current extension, then runs Python and actual stdio MCP tests. It does not accept an old installed extension as verification of new Rust source. CI defines Linux and macOS checks; local verification is recorded separately from CI execution.
+The verifier checks the Python lock, runs Rust tests, rebuilds the current extension, then runs Python and actual stdio MCP tests. It does not accept an old installed extension as verification of new Rust source. CI defines Linux and macOS checks with the locally verified uv 0.11.26 and Rust 1.93.0 versions; local verification is recorded separately from CI execution.
 
 After a Rust-only edit, a quick rebuild is:
 
@@ -42,7 +42,7 @@ Before each answer, Atlas reconciles file and configuration metadata. Native wat
 
 An ordinary content edit updates the affected indexes. Create/delete/rename operations and relevant resolver, dependency, ignore or source-root configuration changes trigger a fresh graph epoch. A syntax-invalid file is excluded from graph/retrieval coverage until repaired; other files remain usable. Status and every JSON page expose incomplete coverage.
 
-A timeout or active cancellation terminates and joins the worker. The next request starts a clean generation. Cancelling a queued request cannot kill another caller's work. Finished embedding batches survive in the content cache, so a cold preparation can resume after restart. Incomplete preparation never returns a complete-looking semantic ranking.
+A timeout or active cancellation terminates and joins the worker. The next request starts a clean generation. Cancelling a queued request cannot kill another caller's work. Finished embedding batches survive in the content cache, so a cold preparation can resume after restart. For large repositories, set `ATLAS_REQUEST_TIMEOUT=900` in the server environment to allow one bounded cold preparation; configure the MCP client deadline accordingly. The default is 120 seconds, and status can report preparation progress while the query runs. Incomplete preparation never returns a complete-looking semantic ranking.
 
 The eager AST call index is independent of CFG/data-flow materialization. Detailed CPG files use a 128-file LRU by default; Rust callers can set another positive file capacity. Eviction does not change the public lightweight caller/callee answers. The diagnostic full-CPG command visits files but retains only the bounded overlay cache.
 
@@ -94,6 +94,7 @@ Embeddings are keyed by embedding input, model content/configuration, engine ver
 | `ATLAS_CACHE_DIR` | `~/.cache/atlas` (outside the checkout) |
 | `ATLAS_EMBEDDING_CACHE_BYTES` | 2 GiB; oldest-accessed eviction; `0` disables persistence |
 | `ATLAS_DIAGNOSTICS` | Unset; opt in to detailed Rust diagnostics |
+| `ATLAS_REQUEST_TIMEOUT` | 120 seconds; positive finite worker deadline shared by MCP and CLI |
 
 The CLI still supports its existing stub, Ollama and optional MLX clients. Model providers do not own Atlas's repository state. This implementation adds no hosted agent runtime or paid model trial.
 

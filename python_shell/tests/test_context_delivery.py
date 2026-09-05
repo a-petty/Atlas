@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+import pytest
 
 from atlas.context import ContextManager
 from atlas.semantic_engine import RepoGraph
@@ -186,3 +187,64 @@ def test_budget_rejection_does_not_parse_thousands_of_unreturnable_files(tmp_pat
     assert len(calls)<30
     assert result.counts['omitted']>900
     assert manager.count_tokens(json.dumps(result.to_dict()))<=999
+
+
+@pytest.mark.parametrize('query', ['batch validation', 'account reporting', 'invoice reconciliation'])
+@pytest.mark.parametrize('budget, expected_chunks', [(1722, 4), (1733, 4), (1832, 5)])
+def test_budget_tail_accounts_for_mandatory_source_span(query, budget, expected_chunks):
+    # Fixed graph identities make these narrow remaining-budget intervals
+    # independent of the temporary directory's tokenized path length.
+    root = Path('/repository-fixture')
+    graph = SnapshotGraph(root, {f'f{i:04d}.py': f'def f{i}():\n    return {i}\n' for i in range(100)})
+    reads = []
+    accepted_source = graph.get_source
+    def counted(path):
+        reads.append(path)
+        return accepted_source(path)
+    graph.get_source = counted
+    manager = ContextManager(graph, None, max_tokens=budget)
+    result = manager.assemble_context_result(query, [], include_map=False)
+    assert len(reads) < 10  # Previously read all 100 despite admitting the same 4–5 chunks.
+    assert len(result.chunks) == expected_chunks
+    assert all(chunk['source_spans'] for chunk in result.chunks)
+    assert [chunk['file'] for chunk in result.chunks] == [str(root / f'f{i:04d}.py') for i in range(expected_chunks)]
+    for chunk in result.chunks:
+        raw = graph.sources[chunk['file']].encode()
+        delivered = result.text[chunk['start_char']:chunk['end_char']].encode()
+        assert all(raw[span['start_byte']:span['end_byte']] in delivered for span in chunk['source_spans'])
+    assert manager.count_tokens(json.dumps(result.to_dict())) <= budget - 1000 - manager.count_tokens(query)
+
+
+def test_warm_metadata_cache_reuses_costs_without_caching_delivered_source(monkeypatch):
+    root = Path('/repository-fixture')
+    graph = SnapshotGraph(root, {f'f{i:04d}.py': f'def f{i}():\n    return {i}\n' for i in range(100)})
+    manager = ContextManager(graph, None, max_tokens=1733)
+    token_calls = []
+    count = manager.count_tokens
+    def counted(text):
+        token_calls.append(text)
+        return count(text)
+    monkeypatch.setattr(manager, 'count_tokens', counted)
+    cold = manager.assemble_context_result('batch validation', [], include_map=False)
+    cold_calls = len(token_calls); token_calls.clear()
+    warm = manager.assemble_context_result('batch validation', [], include_map=False)
+    assert warm.to_dict() == cold.to_dict()
+    assert len(token_calls) < cold_calls / 3
+    graph.sources[str(root / 'f0000.py')] = 'def renamed():\n    return 99\n'
+    changed = manager.assemble_context_result('batch validation', [], include_map=False)
+    assert 'def renamed()' in changed.text and 'def f0()' not in changed.text
+
+
+def test_metadata_cache_has_lru_entry_and_key_size_bounds(monkeypatch):
+    from atlas import context
+    monkeypatch.setattr(context, '_METADATA_CACHE_MAX_ENTRIES', 3)
+    manager = ContextManager(None, None)
+    for name in ('a', 'b', 'c', 'a', 'd'):
+        manager._minimum_chunk_overhead('/repo/' + name + '.py', 'anchor')
+    assert [key[0] for key in manager._minimum_chunk_cache] == ['/repo/c.py', '/repo/a.py', '/repo/d.py']
+    manager._minimum_chunk_overhead('/' + 'long' * 600 + '.py', 'anchor')
+    assert len(manager._minimum_chunk_cache) == 3
+    structured = manager._minimum_chunk_overhead('/repo/a.py', 'anchor')
+    monkeypatch.delattr(context.semantic_engine, 'create_skeleton_details_json')
+    legacy = manager._minimum_chunk_overhead('/repo/a.py', 'anchor')
+    assert legacy[0] < structured[0]

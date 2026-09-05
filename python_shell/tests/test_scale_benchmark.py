@@ -71,3 +71,18 @@ def test_public_edit_preserves_docstring_and_restorable_original(monkeypatch):
     assert ast.get_docstring(tree.body[0]) == 'API doc.'
     assert b'_atlas_scale_iteration = 9\r\n' in changed
     assert original == b'def api(value):\r\n    """API doc."""\r\n    return value\r\n'
+
+
+def test_public_manifest_covers_every_production_language_suffix(tmp_path, monkeypatch):
+    from atlas.session import EXTENSIONS
+    monkeypatch.syspath_prepend(str(_SCRIPT.parent))
+    path = _SCRIPT.parent / 'bench_public_scale.py'
+    spec = importlib.util.spec_from_file_location('atlas_public_scale_suffixes', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for index, extension in enumerate(sorted(EXTENSIONS)):
+        (tmp_path / f'source_{index}{extension}').write_text('// marker')
+    (tmp_path / 'not_source.txt').write_text('excluded')
+    paths = module.public_source_files(tmp_path)
+    assert {path.suffix for path in paths} == EXTENSIONS
+    assert len(paths) == len(EXTENSIONS)

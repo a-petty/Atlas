@@ -13,6 +13,7 @@ import fnmatch
 import hashlib
 import json
 import logging
+import math
 import multiprocessing as mp
 import os
 import resource
@@ -397,9 +398,11 @@ def _worker(connection, root):
 
 
 class RepositorySession:
-    def __init__(self, root, timeout=120, worker_target=None):
+    def __init__(self, root, timeout=None, worker_target=None):
         self.root = Path(root).resolve()
-        self.timeout = timeout
+        self.timeout = float(os.environ.get("ATLAS_REQUEST_TIMEOUT", "120") if timeout is None else timeout)
+        if not math.isfinite(self.timeout) or self.timeout <= 0:
+            raise ValueError("Repository request timeout must be a positive finite number of seconds")
         self._worker_target = worker_target or _worker
         self._lock = threading.Lock()
         self._process_lock = threading.RLock()

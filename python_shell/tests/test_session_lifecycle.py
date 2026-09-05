@@ -376,3 +376,18 @@ def test_symlink_retarget_starts_new_generation_and_rejects_old_cursor(tmp_path)
         assert "bravo_0" in second["items"][0]["text"]
     finally:
         state.close()
+
+
+def test_configured_cold_deadline_stays_bounded_and_explicit_timeout_wins(tmp_path, monkeypatch):
+    from atlas.session import RepositorySession
+    monkeypatch.setenv("ATLAS_REQUEST_TIMEOUT", "900")
+    session = RepositorySession(tmp_path)
+    assert session.timeout == 900
+    session.close()
+    session = RepositorySession(tmp_path, timeout=0.1)
+    assert session.timeout == 0.1
+    session.close()
+    for invalid in ("0", "-1", "nan", "inf", "nonsense"):
+        monkeypatch.setenv("ATLAS_REQUEST_TIMEOUT", invalid)
+        with pytest.raises(ValueError):
+            RepositorySession(tmp_path)
