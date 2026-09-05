@@ -141,3 +141,141 @@ redis>=4.0
     assert!(resolver.get_third_party_count() > 22,
         "Expected subdirectory packages to be found, got {}", resolver.get_third_party_count());
 }
+
+/// Depth-3 layout: `vendored/requirements/requirements-extra.txt`.
+/// This is the FountainOfYouth llama.cpp shape — depth-1 walks miss it.
+#[test]
+fn test_depth_3_requirements_txt_detected() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    create_file(root, "vendored/requirements/requirements-extra.txt", "\
+peft==0.5.0
+trl>=0.7
+");
+    create_file(root, "app.py", "");
+
+    let resolver = PythonImportResolver::new(root, &[], None);
+    let baseline = baseline_third_party_count();
+    assert!(
+        resolver.get_third_party_count() > baseline,
+        "Expected depth-3 requirements file to add packages: {} (baseline {})",
+        resolver.get_third_party_count(),
+        baseline,
+    );
+}
+
+/// Depth-3 `pyproject.toml` (e.g., llama.cpp/gguf-py/pyproject.toml).
+#[test]
+fn test_depth_3_pyproject_toml_detected() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    create_file(root, "vendored/sub/pyproject.toml", r#"
+[project]
+name = "nested"
+dependencies = ["peft", "trl"]
+"#);
+    create_file(root, "app.py", "");
+
+    let resolver = PythonImportResolver::new(root, &[], None);
+    let baseline = baseline_third_party_count();
+    assert!(
+        resolver.get_third_party_count() > baseline,
+        "Expected depth-3 pyproject.toml to add packages: {} (baseline {})",
+        resolver.get_third_party_count(),
+        baseline,
+    );
+}
+
+/// Boundary check: depth-4 requirements files are NOT walked. This bounds
+/// the cost of a deep recursive walk on large projects with vendored trees.
+/// `a/b/c/requirements.txt` has 4 path segments below root.
+#[test]
+fn test_depth_4_not_walked() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    create_file(root, "a/b/c/requirements.txt", "\
+peft==0.5.0
+trl>=0.7
+");
+    create_file(root, "app.py", "");
+
+    let resolver = PythonImportResolver::new(root, &[], None);
+    let baseline = baseline_third_party_count();
+    assert_eq!(
+        resolver.get_third_party_count(),
+        baseline,
+        "Depth-4 requirements.txt must not be discovered (got {}, baseline {})",
+        resolver.get_third_party_count(),
+        baseline,
+    );
+}
+
+/// Vendored trees explicitly listed in `.gitignore` must be skipped during
+/// dependency discovery — declarations there are typically transitive deps
+/// of the vendored package, not first-party dependencies of this project.
+///
+/// The `ignore` crate default is `require_git=true`, so a `.git/` marker is
+/// needed for `.gitignore` to take effect. In production this is the common
+/// case (Atlas runs against repos); the marker here just simulates that.
+#[test]
+fn test_gitignored_vendored_tree_skipped() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    fs::create_dir_all(root.join(".git")).unwrap();
+    create_file(root, ".gitignore", "vendored/\n");
+    create_file(root, "vendored/requirements.txt", "\
+peft==0.5.0
+trl>=0.7
+");
+    create_file(root, "app.py", "");
+
+    let resolver = PythonImportResolver::new(root, &[], None);
+    let baseline = baseline_third_party_count();
+    assert_eq!(
+        resolver.get_third_party_count(),
+        baseline,
+        ".gitignored vendored tree must not contribute packages (got {}, baseline {})",
+        resolver.get_third_party_count(),
+        baseline,
+    );
+}
+
+/// `node_modules` is in `DEFAULT_IGNORED_DIRS` and must always be skipped,
+/// even with the deeper recursive walk. JS packages occasionally ship
+/// `requirements.txt` for tooling — that should not pollute the Python
+/// third-party set.
+#[test]
+fn test_node_modules_skipped() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+
+    create_file(root, "node_modules/foo/requirements.txt", "\
+peft==0.5.0
+trl>=0.7
+");
+    create_file(root, "app.py", "");
+
+    let resolver = PythonImportResolver::new(root, &[], None);
+    let baseline = baseline_third_party_count();
+    assert_eq!(
+        resolver.get_third_party_count(),
+        baseline,
+        "node_modules must not be walked (got {}, baseline {})",
+        resolver.get_third_party_count(),
+        baseline,
+    );
+}
+
+/// Builds a baseline by constructing a resolver in a fresh empty project,
+/// so tests can assert deltas against the hardcoded fallback set without
+/// needing to know its exact size.
+fn baseline_third_party_count() -> usize {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    create_file(root, "app.py", "");
+    PythonImportResolver::new(root, &[], None).get_third_party_count()
+}

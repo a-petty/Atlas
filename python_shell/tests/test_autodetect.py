@@ -94,3 +94,60 @@ def test_explicit_languages_arg_skips_detection():
     # Detection ran nowhere — both maps stay empty.
     assert dict(stats.file_counts_by_language) == {}
     assert dict(stats.unsupported_language_counts) == {}
+
+
+def _write(path, content):
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w") as f:
+        f.write(content)
+
+
+def test_jsts_resolver_contributes_to_attempted_and_failed_imports():
+    """JS/TS resolver must populate attempted/failed counters and the
+    failed-name registry, mirroring the Python resolver. Without this, mixed
+    repos report Python-only stats and the 'Atlas worse than grep' coverage
+    gap returns for JS/TS users.
+
+    A TS-only repo isolates the JS/TS contribution: every stat increment
+    comes from the JS/TS resolver, so we can assert exact counts.
+    """
+    tmp = tempfile.mkdtemp()
+    _write(os.path.join(tmp, "src/app.ts"), "import { x } from './missing';\n")
+
+    g = semantic_engine.RepoGraph(tmp, languages=["typescript"])
+    g.build_complete([os.path.join(tmp, "src/app.ts")])
+
+    stats = g.get_statistics()
+    assert stats.attempted_imports == 1, (
+        f"JS/TS resolver must increment attempted_imports for unresolved relative "
+        f"imports, got {stats.attempted_imports}"
+    )
+    assert stats.failed_imports == 1
+    failed = g.get_failed_import_names(10)
+    assert any(name == "./missing" for name, _ in failed), (
+        f"Missing specifier must appear in failed_import_names, got {failed}"
+    )
+
+
+def test_jsts_resolver_skips_third_party_and_node_builtins():
+    """Imports of declared third-party packages and Node built-ins must not
+    inflate the failure rate. Python made the same fix in session 3 (stdlib
+    + third-party filter); JS/TS now has parity."""
+    tmp = tempfile.mkdtemp()
+    _write(os.path.join(tmp, "package.json"), '{"dependencies": {"react": "^18.0.0"}}')
+    _write(
+        os.path.join(tmp, "src/app.ts"),
+        "import React from 'react';\nimport fs from 'fs';\n",
+    )
+
+    g = semantic_engine.RepoGraph(tmp, languages=["typescript"])
+    g.build_complete([os.path.join(tmp, "src/app.ts")])
+
+    stats = g.get_statistics()
+    assert stats.attempted_imports == 0, (
+        f"declared third-party + node builtins must not be counted, "
+        f"got attempted={stats.attempted_imports}"
+    )
+    assert stats.failed_imports == 0

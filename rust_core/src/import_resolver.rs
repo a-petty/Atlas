@@ -899,79 +899,67 @@ impl PythonImportResolver {
 
     /// Discover third-party packages from requirements.txt and pyproject.toml files.
     /// Merges with the hardcoded COMMON_THIRD_PARTY_MODULES fallback.
+    ///
+    /// Walks `project_root` up to depth 3 with the `ignore` crate so `.gitignore`
+    /// and `DEFAULT_IGNORED_DIRS` (`.venv`, `node_modules`, etc.) are honored.
+    /// Depth 3 catches nested layouts like `vendored/<pkg>/requirements/*.txt`
+    /// (e.g., llama.cpp's per-task requirements) without traversing deeply
+    /// vendored trees end-to-end.
     fn discover_third_party_packages(project_root: &Path) -> HashSet<String> {
+        use ignore::WalkBuilder;
+
         let mut packages: HashSet<String> = COMMON_THIRD_PARTY_MODULES.iter()
             .map(|s| s.to_string())
             .collect();
 
         let mut discovered = 0usize;
+        let ignored_set = build_ignored_set(&[]);
+        let walker = WalkBuilder::new(project_root)
+            .hidden(false)
+            .git_ignore(true)
+            .git_global(true)
+            .parents(true)
+            .max_depth(Some(3))
+            .filter_entry(move |e| {
+                e.file_name()
+                    .to_str()
+                    .map(|n| !ignored_set.contains(n))
+                    .unwrap_or(true)
+            })
+            .build();
 
-        // requirements.txt in project root
-        let req_path = project_root.join("requirements.txt");
-        if req_path.is_file() {
-            let found = Self::parse_requirements_txt(&req_path);
-            discovered += found.len();
-            debug!("Found {} packages in {}", found.len(), req_path.display());
-            packages.extend(found);
-        }
-
-        // requirements/*.txt (all files in requirements/ dir)
-        let req_dir = project_root.join("requirements");
-        if req_dir.is_dir() {
-            if let Ok(entries) = std::fs::read_dir(&req_dir) {
-                for entry in entries.filter_map(Result::ok) {
-                    let p = entry.path();
-                    if p.extension().and_then(|e| e.to_str()) == Some("txt") {
-                        let found = Self::parse_requirements_txt(&p);
-                        discovered += found.len();
-                        debug!("Found {} packages in {}", found.len(), p.display());
-                        packages.extend(found);
-                    }
-                }
+        for entry in walker.filter_map(Result::ok) {
+            if !entry.file_type().map_or(false, |ft| ft.is_file()) {
+                continue;
             }
-        }
+            let path = entry.path();
+            let name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(n) => n,
+                None => continue,
+            };
+            let parent_name = path
+                .parent()
+                .and_then(|p| p.file_name())
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
 
-        // One level deep: */requirements.txt
-        if let Ok(entries) = std::fs::read_dir(project_root) {
-            for entry in entries.filter_map(Result::ok) {
-                let p = entry.path();
-                if p.is_dir() {
-                    let sub_req = p.join("requirements.txt");
-                    if sub_req.is_file() {
-                        let found = Self::parse_requirements_txt(&sub_req);
-                        discovered += found.len();
-                        debug!("Found {} packages in {}", found.len(), sub_req.display());
-                        packages.extend(found);
-                    }
-                }
-            }
-        }
+            // Match: requirements.txt, requirements-<x>.txt, or any *.txt
+            // inside a directory named `requirements/`.
+            let is_requirements = name == "requirements.txt"
+                || (name.starts_with("requirements-") && name.ends_with(".txt"))
+                || (parent_name == "requirements" && name.ends_with(".txt"));
 
-        // pyproject.toml in project root
-        let pyproject_path = project_root.join("pyproject.toml");
-        if pyproject_path.is_file() {
-            if let Some(pyproject) = parse_pyproject_toml(&pyproject_path) {
-                let found = Self::extract_dependencies_from_pyproject(&pyproject);
+            if is_requirements {
+                let found = Self::parse_requirements_txt(path);
                 discovered += found.len();
-                debug!("Found {} packages in {}", found.len(), pyproject_path.display());
+                debug!("Found {} packages in {}", found.len(), path.display());
                 packages.extend(found);
-            }
-        }
-
-        // One level deep: */pyproject.toml
-        if let Ok(entries) = std::fs::read_dir(project_root) {
-            for entry in entries.filter_map(Result::ok) {
-                let p = entry.path();
-                if p.is_dir() {
-                    let sub_pyproject = p.join("pyproject.toml");
-                    if sub_pyproject.is_file() {
-                        if let Some(pyproject) = parse_pyproject_toml(&sub_pyproject) {
-                            let found = Self::extract_dependencies_from_pyproject(&pyproject);
-                            discovered += found.len();
-                            debug!("Found {} packages in {}", found.len(), sub_pyproject.display());
-                            packages.extend(found);
-                        }
-                    }
+            } else if name == "pyproject.toml" {
+                if let Some(pyproject) = parse_pyproject_toml(path) {
+                    let found = Self::extract_dependencies_from_pyproject(&pyproject);
+                    discovered += found.len();
+                    debug!("Found {} packages in {}", found.len(), path.display());
+                    packages.extend(found);
                 }
             }
         }
@@ -2178,6 +2166,9 @@ pub struct JsTsImportResolver {
     ignored_dirs: HashSet<String>,
     /// Third-party package names from package.json (+ Node built-ins).
     third_party_packages: HashSet<String>,
+    attempted_imports: AtomicUsize,
+    failed_imports: AtomicUsize,
+    failed_import_names: Mutex<HashMap<String, usize>>,
 }
 
 impl JsTsImportResolver {
@@ -2203,11 +2194,28 @@ impl JsTsImportResolver {
             path_aliases: HashMap::new(),
             base_url: None,
             third_party_packages,
+            attempted_imports: AtomicUsize::new(0),
+            failed_imports: AtomicUsize::new(0),
+            failed_import_names: Mutex::new(HashMap::new()),
         };
 
         resolver.load_tsconfig();
         resolver.index_modules();
         resolver
+    }
+
+    /// Register a failed import name. Mirrors `PythonImportResolver::record_failed_import`:
+    /// increments an existing entry, or adds a new one if we haven't hit the cap.
+    fn record_failed_import(&self, name: &str) {
+        if name.is_empty() {
+            return;
+        }
+        let mut map = self.failed_import_names.lock();
+        if let Some(count) = map.get_mut(name) {
+            *count += 1;
+        } else if map.len() < MAX_TRACKED_FAILED_NAMES {
+            map.insert(name.to_string(), 1);
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -2520,8 +2528,22 @@ impl ImportResolver for JsTsImportResolver {
                 if capture_name == "import" {
                     if let Ok(import_text) = capture.node.utf8_text(source) {
                         let specifier = import_text.trim_matches(|c| c == '"' || c == '\'' || c == '`');
+
+                        // Filter bare third-party / Node built-in specifiers before
+                        // counting — mirrors the Python resolver's stdlib + third-party
+                        // pre-check. `third_party_packages` already includes
+                        // NODE_BUILTIN_MODULES (see discover_third_party_packages).
+                        let is_bare = !specifier.starts_with('.') && !specifier.starts_with('/');
+                        if is_bare && self.is_third_party_package(specifier) {
+                            continue;
+                        }
+
+                        self.attempted_imports.fetch_add(1, Ordering::Relaxed);
                         if let Some(path) = self.resolve_import_specifier(specifier, current_file) {
-                             imports.insert(path);
+                            imports.insert(path);
+                        } else {
+                            self.failed_imports.fetch_add(1, Ordering::Relaxed);
+                            self.record_failed_import(specifier);
                         }
                     }
                 }
@@ -2536,6 +2558,23 @@ impl ImportResolver for JsTsImportResolver {
 
     fn get_third_party_count(&self) -> usize {
         self.third_party_packages.len()
+    }
+
+    fn get_attempted_imports(&self) -> usize {
+        self.attempted_imports.load(Ordering::Relaxed)
+    }
+
+    fn get_failed_imports(&self) -> usize {
+        self.failed_imports.load(Ordering::Relaxed)
+    }
+
+    fn get_failed_import_names(&self, limit: usize) -> Vec<(String, usize)> {
+        let map = self.failed_import_names.lock();
+        let mut v: Vec<(String, usize)> =
+            map.iter().map(|(k, v)| (k.clone(), *v)).collect();
+        v.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        v.truncate(limit);
+        v
     }
 }
 
@@ -4045,6 +4084,134 @@ where = ["src"]
                 .unsupported_language_counts
                 .contains_key(&SupportedLanguage::Python),
             "Python has a resolver — it must not appear in unsupported_language_counts"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // JS/TS resolver stat tracking — mirrors the Python tests above.
+    // -----------------------------------------------------------------------
+
+    /// Build a JsTsImportResolver in a tempdir populated with `files` and
+    /// return it alongside a JS-configured tree-sitter parser. Files are
+    /// written before the resolver is constructed so module indexing and
+    /// package.json discovery see them.
+    fn js_repo(files: &[(&str, &str)]) -> (tempfile::TempDir, JsTsImportResolver, Parser, PathBuf) {
+        let dir = tempdir().unwrap();
+        let root_path = dir.path().canonicalize().unwrap();
+        for (rel, content) in files {
+            create_dummy_file(&root_path, rel, content);
+        }
+        let resolver = JsTsImportResolver::new(&root_path, &[]);
+        let mut parser = Parser::new();
+        parser
+            .set_language(tree_sitter_javascript::language())
+            .expect("Failed to load JS grammar");
+        (dir, resolver, parser, root_path)
+    }
+
+    fn run_js_find_imports(
+        resolver: &JsTsImportResolver,
+        parser: &mut Parser,
+        source: &str,
+        current_file: &Path,
+    ) -> HashSet<PathBuf> {
+        let tree = parser.parse(source, None).unwrap();
+        resolver.find_imports(&tree, current_file, source.as_bytes())
+    }
+
+    #[test]
+    fn test_js_missing_relative_import_counts_as_failed() {
+        let (_dir, resolver, mut parser, root) = js_repo(&[("app.js", "")]);
+        let _ = run_js_find_imports(
+            &resolver,
+            &mut parser,
+            "import x from './missing';",
+            &root.join("app.js"),
+        );
+        assert_eq!(resolver.get_attempted_imports(), 1);
+        assert_eq!(resolver.get_failed_imports(), 1);
+        let names = resolver.get_failed_import_names(10);
+        assert!(
+            names.iter().any(|(n, _)| n == "./missing"),
+            "expected './missing' in failed names, got {:?}",
+            names
+        );
+    }
+
+    #[test]
+    fn test_js_resolved_relative_import_not_failed() {
+        let (_dir, resolver, mut parser, root) = js_repo(&[
+            ("app.js", ""),
+            ("helpers.js", "export const x = 1;"),
+        ]);
+        let _ = run_js_find_imports(
+            &resolver,
+            &mut parser,
+            "import { x } from './helpers';",
+            &root.join("app.js"),
+        );
+        assert_eq!(resolver.get_attempted_imports(), 1);
+        assert_eq!(resolver.get_failed_imports(), 0);
+    }
+
+    #[test]
+    fn test_js_third_party_declared_not_counted() {
+        // `react` declared in package.json → must be filtered before counting.
+        let (_dir, resolver, mut parser, root) = js_repo(&[
+            ("app.js", ""),
+            (
+                "package.json",
+                r#"{"dependencies": {"react": "^18.0.0"}}"#,
+            ),
+        ]);
+        let _ = run_js_find_imports(
+            &resolver,
+            &mut parser,
+            "import React from 'react';",
+            &root.join("app.js"),
+        );
+        assert_eq!(
+            resolver.get_attempted_imports(),
+            0,
+            "third-party 'react' must not increment attempted_imports"
+        );
+        assert_eq!(resolver.get_failed_imports(), 0);
+    }
+
+    #[test]
+    fn test_js_node_builtin_not_counted() {
+        // `fs` is a Node built-in (folded into third_party_packages by the
+        // discovery step). Imports of it must not be counted as failed.
+        let (_dir, resolver, mut parser, root) = js_repo(&[("app.js", "")]);
+        let _ = run_js_find_imports(
+            &resolver,
+            &mut parser,
+            "import fs from 'fs';",
+            &root.join("app.js"),
+        );
+        assert_eq!(resolver.get_attempted_imports(), 0);
+        assert_eq!(resolver.get_failed_imports(), 0);
+    }
+
+    /// A bare specifier with no entry in package.json and not a Node built-in
+    /// is treated as a failure. This surfaces undeclared dependencies — the
+    /// same behavior the Python resolver applies for unknown bare imports.
+    #[test]
+    fn test_js_undeclared_bare_import_counts_as_failed() {
+        let (_dir, resolver, mut parser, root) = js_repo(&[("app.js", "")]);
+        let _ = run_js_find_imports(
+            &resolver,
+            &mut parser,
+            "import x from 'totally_unknown_pkg';",
+            &root.join("app.js"),
+        );
+        assert_eq!(resolver.get_attempted_imports(), 1);
+        assert_eq!(resolver.get_failed_imports(), 1);
+        let names = resolver.get_failed_import_names(10);
+        assert!(
+            names.iter().any(|(n, _)| n == "totally_unknown_pkg"),
+            "expected 'totally_unknown_pkg' in failed names, got {:?}",
+            names
         );
     }
 }
