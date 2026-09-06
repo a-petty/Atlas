@@ -78,13 +78,14 @@ def test_frozen_sample_is_stratified_excludes_old_ids_and_pins_commits():
 
 
 def _resume_fixture():
-    from benchmarks.bench_retrieval import run_configuration, STRATEGIES, MODEL_NAME
+    from benchmarks.bench_retrieval import run_configuration, STRATEGIES, MODEL_NAME, GOLD_PATH_POLICY
     task = dict(instance_id='task1', repo='org/repo', language='python', base_commit='a'*40)
     manifest = {'dataset_sha256':'data', 'strategies':list(STRATEGIES), 'budgets':[8000,12000],
                 'max_chars':60000, 'tasks':[task]}
     config = run_configuration(manifest,3,'actual-model-digest')
     rows = [{**task,'strategy':strategy,'budget':budget,'model':MODEL_NAME,
-             'model_identity':'actual-model-digest','embedding_engine_key':'actual-model-digest','error':None}
+             'model_identity':'actual-model-digest','embedding_engine_key':'actual-model-digest',
+             'gold_path_policy':GOLD_PATH_POLICY['id'],'error':None}
             for strategy in STRATEGIES for budget in (8000,12000)]
     return {'manifest':manifest,'manifest_sha256':'manifest','run_configuration':config,'measurements':rows}
 
@@ -269,8 +270,9 @@ def test_runner_uses_session_eligibility_and_accounts_for_actual_delivery(tmp_pa
     monkeypatch.setattr(mcp_server, '_render', render)
     task = dict(instance_id='capture-fixture', repo='org/repo', language='python',
         base_commit='a'*40, problem_statement='invoice reconciliation', gold_context=[
-            {'file': 'src/main.py', 'start_line': 1, 'end_line': 3},
-            {'file': 'src/broken.py', 'start_line': 1, 'end_line': 1}])
+            {'file': '/workspace/org__repo__0.1/src/main.py', 'start_line': 1, 'end_line': 3},
+            {'file': 'src/broken.py', 'start_line': 1, 'end_line': 1},
+            {'file': '/workspace/reproduce.py', 'start_line': 1, 'end_line': 1}])
     rows = runner.evaluate(task, tmp_path, [8000, 12000], repeats=1,
         model_identity='deterministic-test-model')
     assert len(rows) == 8
@@ -287,8 +289,11 @@ def test_runner_uses_session_eligibility_and_accounts_for_actual_delivery(tmp_pa
         assert response_format == 'text' and '\nCOVERAGE: ' in delivered_text
         assert row['eligible_files'] == 2
         assert row['coverage']['eligible'] == 3 and row['coverage']['invalid_count'] == 1
-        assert row['incomplete'] is True and row['invalid_gold_blocks'] == []
-        assert row['file_recall'] == .5
+        assert row['incomplete'] is True and len(row['invalid_gold_blocks']) == 1
+        assert row['invalid_gold_blocks'][0]['file'] == '/workspace/reproduce.py'
+        assert row['gold_files'] == ['/workspace/reproduce.py', 'src/broken.py', 'src/main.py']
+        assert '/workspace/org__repo__0.1/src/main.py' in row['gold_original_files']
+        assert row['file_recall'] == pytest.approx(1 / 3)
         assert row['tokens'] == tokenizer.count_tokens(delivered_text)
         assert row['tokens'] > tokenizer.count_tokens(source_text)
         assert row['json_tokens'] == tokenizer.count_tokens(delivered_json)
@@ -296,3 +301,139 @@ def test_runner_uses_session_eligibility_and_accounts_for_actual_delivery(tmp_pa
         assert max(row['characters'], row['json_characters']) <= 60000
         assert row['warm_assembly_ms'] == [0.]
         assert row['warm_latency_ms'] == pytest.approx([20.])
+
+
+def test_gold_container_prefix_uses_pinned_url_despite_repo_alias(tmp_path):
+    from benchmarks.bench_retrieval import normalize_gold_paths, gold_path_provenance
+    (tmp_path / 'api').mkdir()
+    (tmp_path / 'api/index.js').write_text('export const value = 1;\n')
+    original = '/workspace/anuraghazra__github-readme-stats__0.1/api/index.js'
+    task = {'repo': 'anuraghazra/github',
+        'repo_url': 'https://github.com/anuraghazra/github-readme-stats.git'}
+    gold = normalize_gold_paths([GoldBlock(original, 1, 1, '')], tmp_path, task)
+    assert gold[0].file == 'api/index.js' and gold[0].invalid_reason is None
+    assert gold_path_provenance(gold, tmp_path) == [{
+        'original_file': original, 'file': 'api/index.js',
+        'mapping': 'verified_container_prefix',
+        'container_prefix': '/workspace/anuraghazra__github-readme-stats__0.1/',
+        'canonical_file': 'api/index.js', 'invalid_reason': None}]
+
+
+@pytest.mark.parametrize('file', [
+    '/workspace/wrong__repo__0.1/a.js',
+    '/workspace/org__wrong__0.1/a.js',
+    '/workspace/org__repo__other__0.1/a.js',
+    '/workspace/org__repo/a.js',
+    '/workspace/org__repo__/a.js',
+    '/workspace/org__repo__0.1/missing.js',
+    '/somewhere/org__repo__0.1/a.js',
+])
+def test_gold_container_rejects_unverified_prefix_or_missing_suffix(tmp_path, file):
+    from benchmarks.bench_retrieval import normalize_gold_paths
+    (tmp_path / 'a.js').write_text('export const value = 1;\n')
+    gold = normalize_gold_paths([GoldBlock(file, 1, 1, '')], tmp_path,
+        {'repo': 'org/repo', 'repo_url': 'https://github.com/org/repo.git'})
+    assert gold[0].file == file and gold[0].path is None
+    assert gold[0].mapping == 'invalid' and gold[0].invalid_reason
+
+
+@pytest.mark.parametrize('file', [
+    '../secret.js', 'src/../a.js',
+    '/workspace/org__repo__0.1/../secret.js',
+    '/workspace/org__repo__0.1//outside.js',
+    '/workspace/org__repo__0.1/src/../../secret.js',
+])
+def test_gold_path_traversal_is_invalid_without_reading_outside(tmp_path, monkeypatch, file):
+    from benchmarks.bench_retrieval import normalize_gold_paths
+    def forbidden_read(path):
+        raise AssertionError(f'Unexpected annotation read: {path}')
+    monkeypatch.setattr(Path, 'read_bytes', forbidden_read)
+    gold = normalize_gold_paths([GoldBlock(file, 1, 1, '')], tmp_path, {'repo': 'org/repo'})
+    metric = retained_span_metrics(gold, SimpleNamespace(text='', chunks=[]), tmp_path)
+    assert metric['gold_bytes'] == 0 and metric['blocks_missed'] == 1
+    assert len(metric['invalid_gold_blocks']) == 1 and metric['span_metrics_complete'] is False
+
+
+def test_gold_annotation_scratch_preserves_file_denominator_and_valid_bytes(tmp_path, monkeypatch):
+    from benchmarks.bench_retrieval import normalize_gold_paths, compute_file_metrics
+    path = tmp_path / 'a.js'; path.write_text('value\n')
+    original = '/workspace/sveltejs__svelte__0.1/a.js'
+    scratch = '/workspace/compiled.js'
+    wrong = '/workspace/other__svelte__0.1/a.js'
+    gold = normalize_gold_paths([GoldBlock(file, 1, 1, '') for file in (original, scratch, wrong)],
+        tmp_path, {'repo': 'sveltejs/svelte'})
+    actual_read = Path.read_bytes
+    def read_inside_only(candidate):
+        assert candidate.is_relative_to(tmp_path)
+        return actual_read(candidate)
+    monkeypatch.setattr(Path, 'read_bytes', read_inside_only)
+    result = SimpleNamespace(text='value\n', chunks=[{'file': str(path),
+        'start_char': 0, 'end_char': 6, 'source_spans': [{'start_byte': 0, 'end_byte': 6}]}])
+    metric = retained_span_metrics(gold, result, tmp_path)
+    files = {block.file for block in gold}
+    assert files == {'a.js', scratch, wrong}
+    assert compute_file_metrics(files, {'a.js'})[0] == pytest.approx(1 / 3)
+    assert metric['gold_bytes'] == metric['retained_gold_bytes'] == 6
+    assert metric['blocks_fully_covered'] == 1 and metric['blocks_missed'] == 2
+    assert {item['original_file'] for item in metric['invalid_gold_blocks']} == {scratch, wrong}
+
+
+def test_gold_path_symlink_escape_is_invalid(tmp_path, monkeypatch):
+    from benchmarks.bench_retrieval import normalize_gold_paths
+    (tmp_path / 'escape.js').symlink_to(tmp_path.parent / 'external.js')
+    gold = normalize_gold_paths([GoldBlock('/workspace/org__repo__0.1/escape.js', 1, 1, '')],
+        tmp_path, {'repo': 'org/repo'})
+    assert gold[0].path is None and 'outside' in gold[0].invalid_reason
+    monkeypatch.setattr(Path, 'read_bytes', lambda path: pytest.fail('External gold was read'))
+    assert retained_span_metrics(gold, SimpleNamespace(text='', chunks=[]), tmp_path)['blocks_missed'] == 1
+
+
+def test_gold_container_aliases_share_file_and_byte_identity_with_provenance(tmp_path):
+    from benchmarks.bench_retrieval import normalize_gold_paths, gold_path_provenance
+    (tmp_path / 'a.js').write_text('value\n')
+    gold = normalize_gold_paths([GoldBlock(file, 1, 1, '') for file in
+        ('a.js', '/workspace/org__repo__0.1/a.js')], tmp_path, {'repo': 'org/repo'})
+    assert {block.file for block in gold} == {'a.js'}
+    assert len(gold_path_provenance(gold, tmp_path)) == 2
+    metric = retained_span_metrics(gold, SimpleNamespace(text='', chunks=[]), tmp_path)
+    assert metric['gold_bytes'] == 6 and metric['blocks_missed'] == 2
+
+
+def test_gold_path_dot_and_internal_symlink_aliases_use_canonical_identity(tmp_path):
+    from benchmarks.bench_retrieval import normalize_gold_paths, gold_path_provenance, compute_file_metrics
+    path = tmp_path / 'a.js'; path.write_text('value\n')
+    (tmp_path / 'alias.js').symlink_to('a.js')
+    originals = ['a.js', './a.js', 'alias.js', '/workspace/org__repo__0.1/alias.js']
+    gold = normalize_gold_paths([GoldBlock(file, 1, 1, '') for file in originals],
+        tmp_path, {'repo': 'org/repo'})
+    files = {block.file for block in gold}
+    assert files == {'a.js'}
+    mappings = gold_path_provenance(gold, tmp_path)
+    assert {item['original_file'] for item in mappings} == set(originals)
+    assert all(item['file'] == item['canonical_file'] == 'a.js' for item in mappings)
+    assert compute_file_metrics(files, {'a.js'}) == (1., 1., 1.)
+    result = SimpleNamespace(text='value\n', chunks=[{'file': str(path), 'start_char': 0, 'end_char': 6,
+        'source_spans': [{'start_byte': 0, 'end_byte': 6}]}])
+    metric = retained_span_metrics(gold, result, tmp_path)
+    assert metric['gold_bytes'] == metric['retained_gold_bytes'] == 6
+    assert metric['gold_byte_recall'] == 1. and metric['span_metrics_complete'] is True
+    assert metric['blocks_fully_covered'] == 4
+
+
+def test_gold_annotation_invalid_line_type_is_explicit_not_task_failure(tmp_path):
+    (tmp_path / 'a.js').write_text('value\n')
+    metric = retained_span_metrics([GoldBlock('a.js', '1', 1, '')],
+        SimpleNamespace(text='', chunks=[]), tmp_path)
+    assert metric['gold_bytes'] == 0 and len(metric['invalid_gold_blocks']) == 1
+
+
+def test_resume_rejects_changed_gold_evaluation_policy(monkeypatch):
+    import copy
+    from benchmarks import bench_retrieval as runner
+    monkeypatch.setattr(runner, 'implementation_fingerprint', lambda: {'sha256': 'fixed-fixture'})
+    saved = _resume_fixture()
+    assert saved['run_configuration']['schema_version'] == 3
+    changed = copy.deepcopy(saved['run_configuration'])
+    changed['gold_path_policy']['id'] = 'different-policy'
+    with pytest.raises(ValueError, match='configuration'):
+        runner.validate_resume(saved, saved['manifest'], 'manifest', changed)

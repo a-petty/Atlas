@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 import hashlib
 import importlib
 import importlib.metadata
@@ -17,7 +18,7 @@ import json
 import math
 import os
 import platform
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import random
 import re
 import subprocess
@@ -31,7 +32,13 @@ STRATEGIES = ('bm25', 'flat_embedding', 'atlas_no_expansion', 'atlas')
 DATASET_REVISION = 'c2855792b006af41c67202d33883fb9d46362853'
 SEED = 20260905
 MODEL_NAME = 'BAAI/bge-small-en-v1.5'
-RUNNER_SCHEMA_VERSION = 2
+RUNNER_SCHEMA_VERSION = 3
+GOLD_PATH_POLICY = {
+    'id': 'verified-repository-container-prefix-v1',
+    'normalization': 'Valid repository-relative paths resolve to canonical relative IDs. Absolute paths require /workspace/<owner>__<repository>__<version>/ matching the pinned GitHub URL, an unambiguous version label without __, and a suffix resolving to a file inside the pinned checkout.',
+    'file_denominator': 'Distinct canonical repository-relative IDs plus original unresolved path IDs. Unresolved, missing, unsupported, and external gold files remain in the denominator. Relative, container-prefix, dot-path, and internal-symlink aliases of the same canonical source count once.',
+    'byte_denominator': 'Union of valid gold line intervals in verified base-checkout files. Invalid paths or line ranges have unknown bytes, are explicitly listed, and count as missed blocks.',
+}
 DEFAULT_MANIFEST = Path(__file__).parent / 'manifests/contextbench_50_v1.json'
 
 
@@ -155,6 +162,85 @@ def merged_ranges(ranges):
     return merged
 
 
+@dataclass(frozen=True)
+class EvaluationGoldBlock:
+    file: str
+    original_file: object
+    start_line: object
+    end_line: object
+    path: Path | None
+    mapping: str
+    container_prefix: str | None = None
+    invalid_reason: str | None = None
+
+
+def normalize_gold_paths(gold_blocks, root, task=None):
+    """Resolve annotation identities without reading untrusted external paths.
+
+    The public repository URL is authoritative: dataset ``repo`` labels may be
+    abbreviated aliases. Arbitrary absolute paths and workspace scratch files
+    remain explicit invalid annotations; they are never rebased by basename.
+    """
+    root = Path(root).resolve()
+    identity = None
+    if task is not None:
+        url = task.get('repo_url') or f'https://github.com/{task.get("repo", "")}.git'
+        match = re.fullmatch(r'https://github.com/([\w.-]+)/([\w.-]+)\.git', url)
+        if match and all(part not in {'.', '..'} for part in match.groups()):
+            identity = '__'.join(match.groups())
+    normalized, paths = [], {}
+    for block in gold_blocks:
+        original = block.file
+        key = json.dumps(original, sort_keys=True)
+        if key not in paths:
+            file = original if isinstance(original, str) else '[invalid gold path: ' + key + ']'
+            path, prefix, mapping, reason = None, None, 'invalid', None
+            try:
+                if not isinstance(original, str) or not original or '\x00' in original or '\\' in original:
+                    raise ValueError('Gold path is not a nonempty POSIX path')
+                relative = original
+                mapping = 'repository_relative'
+                if original.startswith('/'):
+                    match = (re.fullmatch(r'/workspace/' + re.escape(identity) +
+                        r'__([A-Za-z0-9][A-Za-z0-9._-]*)/(.+)', original) if identity else None)
+                    if match is None:
+                        raise ValueError('Absolute gold path does not match the pinned repository container prefix')
+                    if '__' in match.group(1):
+                        raise ValueError('Container version contains an ambiguous repository separator')
+                    relative = match.group(2)
+                    prefix = original[:-len(relative)]
+                    mapping = 'verified_container_prefix'
+                if PurePosixPath(relative).is_absolute() or '..' in PurePosixPath(relative).parts:
+                    raise ValueError('Gold path contains an absolute suffix or parent traversal')
+                candidate = (root / relative).resolve()
+                if not candidate.is_relative_to(root):
+                    raise ValueError('Gold path resolves outside the pinned repository')
+                if not candidate.is_file():
+                    raise ValueError('Gold path is absent from the pinned base checkout')
+                file, path = candidate.relative_to(root).as_posix(), candidate
+            except (OSError, ValueError, TypeError, RuntimeError) as exc:
+                mapping, reason = 'invalid', str(exc)
+            paths[key] = (file, path, mapping, prefix, reason)
+        file, path, mapping, prefix, reason = paths[key]
+        normalized.append(EvaluationGoldBlock(file, original, block.start_line,
+            block.end_line, path, mapping, prefix, reason))
+    return normalized
+
+
+def gold_path_provenance(gold_blocks, root):
+    """One original-path mapping per distinct annotation path, shared by all arms."""
+    root = Path(root).resolve()
+    mappings = {}
+    for block in gold_blocks:
+        mappings[json.dumps(block.original_file, sort_keys=True)] = {
+            'original_file': block.original_file, 'file': block.file,
+            'mapping': block.mapping, 'container_prefix': block.container_prefix,
+            'canonical_file': str(block.path.relative_to(root)) if block.path is not None else None,
+            'invalid_reason': block.invalid_reason,
+        }
+    return [mappings[key] for key in sorted(mappings)]
+
+
 def retained_span_metrics(gold_blocks, result, root):
     """Exact byte coverage of gold line intervals, validated against delivered text.
 
@@ -163,6 +249,8 @@ def retained_span_metrics(gold_blocks, result, root):
     Generated placeholders never receive credit. Newline bytes count as source.
     """
     root = Path(root).resolve()
+    if any(not isinstance(block, EvaluationGoldBlock) for block in gold_blocks):
+        gold_blocks = normalize_gold_paths(gold_blocks, root)
     delivered = defaultdict(list)
     sources = {}
     missing = []
@@ -188,21 +276,25 @@ def retained_span_metrics(gold_blocks, result, root):
     gold_ranges = defaultdict(list)
     full = partial = missed = 0
     for block in gold_blocks:
-        path = (root / block.file).resolve()
-        if not path.is_relative_to(root):
-            raise ValueError('Gold path escapes repository')
         try:
+            if block.invalid_reason:
+                raise ValueError(block.invalid_reason)
+            path = (root / block.file).resolve()
+            if not path.is_relative_to(root):
+                raise ValueError('Gold path resolves outside the pinned repository')
             raw = sources.get(path)
             if raw is None:
                 raw = path.read_bytes(); sources[path] = raw
             parts = raw.split(b'\n')
             lines = [part + b'\n' for part in parts[:-1]] + ([parts[-1]] if parts[-1] else [])
-            if not 1 <= block.start_line <= block.end_line <= len(lines):
+            if (type(block.start_line) is not int or type(block.end_line) is not int or
+                    not 1 <= block.start_line <= block.end_line <= len(lines)):
                 raise ValueError('Gold lines outside base source')
             start = sum(map(len, lines[:block.start_line - 1]))
             end = start + sum(map(len, lines[block.start_line - 1:block.end_line]))
-        except (OSError, ValueError) as exc:
-            missing.append({'file': block.file, 'reason': str(exc)})
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            missing.append({'file': block.file, 'original_file': block.original_file,
+                'start_line': block.start_line, 'end_line': block.end_line, 'reason': str(exc)})
             missed += 1
             continue
         gold_ranges[block.file].append((start, end))
@@ -250,6 +342,7 @@ def evaluate(task, cache, budgets=(8000, 12000), repeats=3, model_identity=None)
     base = {k: task[k] for k in ('instance_id', 'repo', 'language', 'base_commit')}
     base['model'] = MODEL_NAME
     base['model_identity'] = model_identity
+    base['gold_path_policy'] = GOLD_PATH_POLICY['id']
     rows = []
     try:
         t = time.perf_counter(); root = pinned_checkout(task, cache)
@@ -281,7 +374,8 @@ def evaluate(task, cache, budgets=(8000, 12000), repeats=3, model_identity=None)
         lexical = BM25([(p, embeddings._get_embedding_text(p)) for p in files])
         lexical_prepare_ms = (time.perf_counter() - t) * 1000
         eligible_hash = hashlib.sha256('\n'.join(sorted(str(p.relative_to(root)) for p in files)).encode()).hexdigest()
-        gold = parse_gold_context(task['gold_context'])
+        gold = normalize_gold_paths(parse_gold_context(task['gold_context']), root, task)
+        gold_mappings = gold_path_provenance(gold, root)
         gold_files = {b.file for b in gold}
         for budget in budgets:
             strategies = list(STRATEGIES)
@@ -322,6 +416,8 @@ def evaluate(task, cache, budgets=(8000, 12000), repeats=3, model_identity=None)
                 rows.append({**base, 'strategy': strategy, 'budget': budget,
                     'file_recall': recall, 'file_precision': precision, 'file_f1': f1,
                     'gold_files': sorted(gold_files), 'retrieved_files': sorted(retrieved),
+                    'gold_original_files': [mapping['original_file'] for mapping in gold_mappings],
+                    'gold_path_mappings': gold_mappings,
                     **spans, 'tokens': delivered_tokens,
                     'characters': len(delivered_text), 'json_characters': len(delivered_json),
                     'json_tokens': json_tokens, 'coverage': coverage,
@@ -398,6 +494,7 @@ def run_configuration(manifest, repeats, model_identity):
         raise ValueError('Frozen transport ceiling differs from this runner')
     return {'schema_version': RUNNER_SCHEMA_VERSION,
             'dataset_sha256': manifest['dataset_sha256'],
+            'gold_path_policy': GOLD_PATH_POLICY,
             'strategies': list(STRATEGIES), 'budgets': manifest['budgets'],
             'max_chars': manifest['max_chars'], 'repeats': repeats,
             'model': MODEL_NAME, 'model_identity': model_identity,
@@ -426,6 +523,8 @@ def validate_resume(output, manifest, manifest_sha256, configuration):
             raise ValueError('Resume row model identity differs')
         if row.get('embedding_engine_key') not in (None, configuration['model_identity']):
             raise ValueError('Resume row actual embedding engine identity differs')
+        if row.get('gold_path_policy') != configuration['gold_path_policy']['id']:
+            raise ValueError('Resume row gold evaluation policy differs')
 
 
 def completed_tasks(rows, budgets):
