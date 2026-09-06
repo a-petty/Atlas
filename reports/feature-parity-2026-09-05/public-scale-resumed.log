@@ -1,0 +1,44 @@
+{"event": "cold_progress", "seconds": 0.10522774996934459, "phase": "not_started"}
+{"event": "cold_progress", "seconds": 0.5228614999796264, "phase": "capturing_sources", "completed": 0, "total": 2803, "generation": null}
+{"event": "cold_progress", "seconds": 0.6279282089672051, "phase": "indexing", "completed": 0, "total": 2803, "generation": null}
+{"event": "public_graph_complete", "seconds": 6.446046583994757, "coverage": {"indexed": 2799, "eligible": 2803, "invalid_count": 4, "invalid_files": {"/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/openlayers.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/osm.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/i18n/commands/javascript.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/test_runner_apps/tagged/tests_syntax_error.py": "syntax_error"}, "invalid_details_omitted": 0, "import_resolvers": ["python", "javascript_typescript"], "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved", "watcher": "native hints plus manifest reconciliation"}}
+{"event": "public_warm_complete", "operation": "dependencies", "p95_seconds": 0.2663137500057928}
+{"event": "public_warm_complete", "operation": "map", "p95_seconds": 0.27939262497238815}
+{"event": "cold_progress", "seconds": 0.10121562500717118, "phase": "ready", "completed": 2799, "total": 2803, "generation": "cf6494d88db0:1"}
+2026-09-05 16:22:18.591 Python[61832:19876335] 2026-09-05 16:22:18.590978 [W:onnxruntime:Default, telemetry.cc:800 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+{"event": "cold_progress", "seconds": 0.6166927500162274, "phase": "loading_embedding_model", "completed": 0, "total": 2803}
+{"event": "cold_progress", "seconds": 0.7170180000248365, "phase": "preparing_embeddings", "completed": 0, "total": 2799}
+2026-09-05 16:22:27.607 Python[61832:19876696] NetworkStorageDB:_openDBReadConnections: failed to open read connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:22:27.607 Python[61832:19876696] The read-connection to the DB=/Users/apetty/Library/Caches/org.python.python/Cache.db is NOT valid.  Unable to determine schema version.
+2026-09-05 16:22:27.607 Python[61832:19876696] NetworkStorageDB:_openDBWriteConnections: failed to open write connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:22:27.607 Python[61832:19876696] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db.
+2026-09-05 16:22:27.607 Python[61832:19876696] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-shm.
+2026-09-05 16:22:27.607 Python[61832:19876696] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-wal.
+{"event": "cold_progress", "seconds": 10.745737333025318, "phase": "preparing_embeddings", "completed": 1266, "total": 2799}
+{"event": "cold_progress", "seconds": 20.74575158301741, "phase": "preparing_embeddings", "completed": 1356, "total": 2799}
+{"event": "cold_progress", "seconds": 30.75050695799291, "phase": "preparing_embeddings", "completed": 1391, "total": 2799}
+{"event": "cold_progress", "seconds": 40.752135874994565, "phase": "preparing_embeddings", "completed": 1469, "total": 2799}
+{"event": "cold_progress", "seconds": 50.77202491700882, "phase": "preparing_embeddings", "completed": 1554, "total": 2799}
+{"event": "cold_progress", "seconds": 60.8719332080218, "phase": "preparing_embeddings", "completed": 1652, "total": 2799}
+{"event": "cold_progress", "seconds": 70.87884941702941, "phase": "preparing_embeddings", "completed": 1726, "total": 2799}
+{"event": "cold_progress", "seconds": 80.98088550003013, "phase": "preparing_embeddings", "completed": 1769, "total": 2799}
+{"event": "cold_progress", "seconds": 91.0840008330415, "phase": "preparing_embeddings", "completed": 1818, "total": 2799}
+{"event": "cold_progress", "seconds": 101.10889062500792, "phase": "preparing_embeddings", "completed": 1900, "total": 2799}
+{"event": "cold_progress", "seconds": 111.13407625001855, "phase": "preparing_embeddings", "completed": 1952, "total": 2799}
+{"event": "cold_progress", "seconds": 121.16702954203356, "phase": "preparing_embeddings", "completed": 2065, "total": 2799}
+{"event": "cold_progress", "seconds": 131.21032524999464, "phase": "preparing_embeddings", "completed": 2187, "total": 2799}
+{"event": "cold_progress", "seconds": 141.29403000004822, "phase": "preparing_embeddings", "completed": 2219, "total": 2799}
+{"event": "cold_progress", "seconds": 151.35007283301093, "phase": "preparing_embeddings", "completed": 2242, "total": 2799}
+{"event": "cold_progress", "seconds": 161.3916504170047, "phase": "preparing_embeddings", "completed": 2303, "total": 2799}
+{"event": "cold_progress", "seconds": 171.42829445801908, "phase": "preparing_embeddings", "completed": 2340, "total": 2799}
+{"event": "cold_progress", "seconds": 181.5377188330167, "phase": "preparing_embeddings", "completed": 2379, "total": 2799}
+{"event": "cold_progress", "seconds": 191.63951333303703, "phase": "preparing_embeddings", "completed": 2442, "total": 2799}
+{"event": "cold_progress", "seconds": 201.64960566704394, "phase": "preparing_embeddings", "completed": 2547, "total": 2799}
+{"event": "cold_progress", "seconds": 211.6892405420076, "phase": "preparing_embeddings", "completed": 2575, "total": 2799}
+{"event": "cold_progress", "seconds": 221.70944345800672, "phase": "preparing_embeddings", "completed": 2615, "total": 2799}
+{"event": "cold_progress", "seconds": 231.73303649999434, "phase": "preparing_embeddings", "completed": 2690, "total": 2799}
+{"event": "cold_progress", "seconds": 241.8175877080066, "phase": "preparing_embeddings", "completed": 2790, "total": 2799}
+{"event": "public_semantic_preparation_complete", "seconds": 244.83390525000868}
+{"event": "public_warm_complete", "operation": "search", "p95_seconds": 0.3118993749958463}
+{"event": "public_warm_complete", "operation": "context", "p95_seconds": 5.092670958023518}
+{"event": "public_benchmark_complete", "complete": true, "errors": []}

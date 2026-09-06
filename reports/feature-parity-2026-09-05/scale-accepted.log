@@ -1,0 +1,20 @@
+{"event": "cold_progress", "seconds": 0.10520833398913965, "phase": "not_started"}
+{"event": "cold_progress", "seconds": 0.5234618749818765, "phase": "capturing_sources", "completed": 0, "total": 10000, "generation": null}
+{"event": "cold_progress", "seconds": 0.6286792089813389, "phase": "indexing", "completed": 0, "total": 10000, "generation": null}
+{"event": "cold_graph_complete", "seconds": 3.5150077500147745, "indexed": 10000}
+{"event": "warm_complete", "operation": "dependencies", "samples_seconds": [0.23299812502227724, 0.22846262500388548, 0.21984920802060515, 0.21973595896270126, 0.24769774999003857, 0.22945441695628688, 0.22963541600620374, 0.23669337498722598, 0.24272450001444668, 0.22143220901489258], "sample_count": 10, "median_seconds": 0.2295449164812453, "p95_seconds": 0.24769774999003857, "maximum_seconds": 0.24769774999003857, "target_seconds": 0.5, "meets_target": true}
+{"event": "warm_complete", "operation": "map", "samples_seconds": [0.25658133398974314, 0.2638951660483144, 0.2752973330207169, 0.2734057499910705, 0.2646555000101216, 0.26167237502522767, 0.25896412500878796, 0.2580559169873595, 0.27134329202817753, 0.31412408396136016], "sample_count": 10, "median_seconds": 0.264275333029218, "p95_seconds": 0.31412408396136016, "maximum_seconds": 0.31412408396136016, "target_seconds": 0.5, "meets_target": true}
+{"event": "cold_progress", "seconds": 0.10399700002744794, "phase": "ready", "completed": 10000, "total": 10000, "generation": "93f4791410d6:1"}
+2026-09-05 16:42:06.589 Python[64712:19919711] 2026-09-05 16:42:06.589911 [W:onnxruntime:Default, telemetry.cc:800 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+{"event": "cold_progress", "seconds": 0.5216834580060095, "phase": "loading_embedding_model", "completed": 0, "total": 10000}
+{"event": "cold_progress", "seconds": 0.7315782500081696, "phase": "preparing_embeddings", "completed": 0, "total": 10000}
+{"event": "semantic_preparation_complete", "seconds": 2.16620758298086}
+{"event": "warm_complete", "operation": "search", "p95_seconds": 0.35490749997552484}
+2026-09-05 16:42:15.602 Python[64712:19920033] NetworkStorageDB:_openDBReadConnections: failed to open read connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:42:15.602 Python[64712:19920033] The read-connection to the DB=/Users/apetty/Library/Caches/org.python.python/Cache.db is NOT valid.  Unable to determine schema version.
+2026-09-05 16:42:15.602 Python[64712:19920033] NetworkStorageDB:_openDBWriteConnections: failed to open write connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:42:15.602 Python[64712:19920033] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db.
+2026-09-05 16:42:15.602 Python[64712:19920033] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-shm.
+2026-09-05 16:42:15.602 Python[64712:19920033] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-wal.
+{"event": "warm_complete", "operation": "context", "p95_seconds": 1.095017707964871}
+{"event": "benchmark_complete", "complete": true, "output": "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/scale-accepted.json", "errors": []}

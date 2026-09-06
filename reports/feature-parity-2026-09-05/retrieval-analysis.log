@@ -1,0 +1,3093 @@
+{
+  "output": "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-results-corrected.analysis.json",
+  "tasks": 50,
+  "rows": 400,
+  "failed_rows": 0,
+  "budgets": [
+    {
+      "budget": 8000,
+      "methods": {
+        "bm25": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.16899350649350645,
+            "file_precision": 0.24,
+            "file_f1": 0.12694329526682469,
+            "gold_byte_recall": 0.036140015482936425
+          },
+          "incomplete": 38,
+          "file_recall": 0.16899350649350645,
+          "file_precision": 0.24,
+          "file_f1": 0.12694329526682469,
+          "gold_byte_recall": 0.036140015482936425,
+          "tokens": 3632.9,
+          "json_tokens": 6681.36,
+          "warm_p95_ms": 2415.156624978408
+        },
+        "flat_embedding": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.183633307868602,
+            "file_precision": 0.23983333333333334,
+            "file_f1": 0.14062251082251084,
+            "gold_byte_recall": 0.07285907204820194
+          },
+          "incomplete": 38,
+          "file_recall": 0.183633307868602,
+          "file_precision": 0.23983333333333334,
+          "file_f1": 0.14062251082251084,
+          "gold_byte_recall": 0.07285907204820194,
+          "tokens": 3457.6,
+          "json_tokens": 6675.54,
+          "warm_p95_ms": 2021.2863749475218
+        },
+        "atlas_no_expansion": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.17936159918512862,
+            "file_precision": 0.22177777777777777,
+            "file_f1": 0.13491891441891446,
+            "gold_byte_recall": 0.07285907204820194
+          },
+          "incomplete": 38,
+          "file_recall": 0.17936159918512862,
+          "file_precision": 0.22177777777777777,
+          "file_f1": 0.13491891441891446,
+          "gold_byte_recall": 0.07285907204820194,
+          "tokens": 3484.4,
+          "json_tokens": 6676.62,
+          "warm_p95_ms": 2133.0282920389436
+        },
+        "atlas": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.17936159918512862,
+            "file_precision": 0.22177777777777777,
+            "file_f1": 0.13491891441891446,
+            "gold_byte_recall": 0.07285907204820194
+          },
+          "incomplete": 38,
+          "file_recall": 0.17936159918512862,
+          "file_precision": 0.22177777777777777,
+          "file_f1": 0.13491891441891446,
+          "gold_byte_recall": 0.07285907204820194,
+          "tokens": 3485.4,
+          "json_tokens": 6678.36,
+          "warm_p95_ms": 2200.9712080471218
+        }
+      }
+    },
+    {
+      "budget": 12000,
+      "methods": {
+        "bm25": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.18097763347763343,
+            "file_precision": 0.23499999999999996,
+            "file_f1": 0.13371602253955195,
+            "gold_byte_recall": 0.08040242561854999
+          },
+          "incomplete": 38,
+          "file_recall": 0.18097763347763343,
+          "file_precision": 0.23499999999999996,
+          "file_f1": 0.13371602253955195,
+          "gold_byte_recall": 0.08040242561854999,
+          "tokens": 5910.56,
+          "json_tokens": 10688.68,
+          "warm_p95_ms": 2502.564250025898
+        },
+        "flat_embedding": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.20006187929717342,
+            "file_precision": 0.19772649572649573,
+            "file_f1": 0.1416193022663611,
+            "gold_byte_recall": 0.10008955186669696
+          },
+          "incomplete": 38,
+          "file_recall": 0.20006187929717342,
+          "file_precision": 0.19772649572649573,
+          "file_f1": 0.1416193022663611,
+          "gold_byte_recall": 0.10008955186669696,
+          "tokens": 5949.12,
+          "json_tokens": 10683.32,
+          "warm_p95_ms": 2068.727125006262
+        },
+        "atlas_no_expansion": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.21053806977336387,
+            "file_precision": 0.17573015873015868,
+            "file_f1": 0.1362562491272169,
+            "gold_byte_recall": 0.09937189629386323
+          },
+          "incomplete": 38,
+          "file_recall": 0.21053806977336387,
+          "file_precision": 0.17573015873015868,
+          "file_f1": 0.1362562491272169,
+          "gold_byte_recall": 0.09937189629386323,
+          "tokens": 5940.8,
+          "json_tokens": 10679.1,
+          "warm_p95_ms": 2214.7795420023613
+        },
+        "atlas": {
+          "rows": 50,
+          "quality_denominator": 50,
+          "response_token_denominator": 50,
+          "failures": 0,
+          "tasks_with_nonempty_measurable_gold": 47,
+          "tasks_with_complete_nonempty_gold": 32,
+          "successful_measurement_quality": {
+            "denominator": 50,
+            "file_recall": 0.21053806977336387,
+            "file_precision": 0.17582539682539677,
+            "file_f1": 0.13660635442988386,
+            "gold_byte_recall": 0.09921499150875457
+          },
+          "incomplete": 38,
+          "file_recall": 0.21053806977336387,
+          "file_precision": 0.17582539682539677,
+          "file_f1": 0.13660635442988386,
+          "gold_byte_recall": 0.09921499150875457,
+          "tokens": 5939.48,
+          "json_tokens": 10678.72,
+          "warm_p95_ms": 2198.9704169682227
+        }
+      }
+    }
+  ],
+  "paired_comparisons": [
+    {
+      "budget": 8000,
+      "comparison": "atlas minus bm25",
+      "primary_paired_denominator": 50,
+      "pairs_with_measurement_errors": [],
+      "actual_response_tokens": {
+        "paired_successful_responses": 50,
+        "excluded_failed_pairs": 0,
+        "tokens": {
+          "atlas_mean": 3485.4,
+          "baseline_mean": 3632.9,
+          "mean_delta": -147.5,
+          "aggregate_reduction_percent": 4.060117261691765
+        },
+        "json_tokens": {
+          "atlas_mean": 6678.36,
+          "baseline_mean": 6681.36,
+          "mean_delta": -3.0,
+          "aggregate_reduction_percent": 0.044901038111999636
+        }
+      },
+      "file_f1": {
+        "mean_delta": 0.007975619152089745,
+        "wins": 13,
+        "ties": 28,
+        "losses": 9,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.11986523664724358,
+            0.10238580863580865
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145",
+              "repo": "cli/cli",
+              "language": "go",
+              "delta": 0.6666666666666666,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 1.0,
+                "tokens": 3969,
+                "json_tokens": 6847,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 3801,
+                "json_tokens": 6885,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ]
+            },
+            {
+              "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__7827bc22",
+              "repo": "mui/material-ui",
+              "language": "typescript",
+              "delta": 0.6666666666666666,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 0.0,
+                "tokens": 2753,
+                "json_tokens": 6221,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 3816,
+                "json_tokens": 6198,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "packages/material-ui/src/Tabs/Tabs.js"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "packages/material-ui/src/Tabs/Tabs.js"
+              ]
+            },
+            {
+              "instance_id": "SWE-PolyBench__typescript__evolution__feature__d520ba22",
+              "repo": "mui/material-ui",
+              "language": "typescript",
+              "delta": 0.5714285714285715,
+              "atlas": {
+                "file_recall": 0.6666666666666666,
+                "file_f1": 0.5714285714285715,
+                "gold_byte_recall": 0.09032364597093791,
+                "tokens": 3264,
+                "json_tokens": 6498,
+                "blocks_partially_covered": 5,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4846,
+                "json_tokens": 6519,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "packages/mui-system/src/spacing.d.ts",
+                "packages/mui-system/src/spacing.js"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "docs/src/pages/system/properties/properties.md",
+                "packages/mui-system/src/spacing.d.ts",
+                "packages/mui-system/src/spacing.js"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__986c9e85",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -1.0,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 2891,
+                "json_tokens": 6769,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 1.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 2868,
+                "json_tokens": 6769,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/forms/widgets.py"
+              ],
+              "gold_files": [
+                "django/forms/widgets.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.6666666666666666,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 3148,
+                "json_tokens": 6871,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 0.3629257398101619,
+                "tokens": 3130,
+                "json_tokens": 6910,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/migrations/executor.py"
+              ],
+              "gold_files": [
+                "django/db/migrations/executor.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.6666666666666666,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 3178,
+                "json_tokens": 6771,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 0.39519190215099115,
+                "tokens": 3072,
+                "json_tokens": 6824,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/models/query_utils.py"
+              ],
+              "gold_files": [
+                "django/db/models/query_utils.py"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.007975619152089745,
+          "wins": 13,
+          "ties": 28,
+          "losses": 9
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": -0.01904131407807878,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              -0.21711621711621712,
+              0.12466450216450216
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      },
+      "gold_byte_recall": {
+        "mean_delta": 0.03671905656526553,
+        "wins": 11,
+        "ties": 31,
+        "losses": 8,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.023643891836113904,
+            0.12189767429976116
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145",
+              "repo": "cli/cli",
+              "language": "go",
+              "delta": 1.0,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 1.0,
+                "tokens": 3969,
+                "json_tokens": 6847,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 3801,
+                "json_tokens": 6885,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ]
+            },
+            {
+              "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__6d48775e",
+              "repo": "cli/cli",
+              "language": "go",
+              "delta": 1.0,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.4,
+                "gold_byte_recall": 1.0,
+                "tokens": 4358,
+                "json_tokens": 6839,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4052,
+                "json_tokens": 6889,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "pkg/cmd/browse/browse.go"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "pkg/cmd/browse/browse.go"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__d939b999",
+              "repo": "django/django",
+              "language": "python",
+              "delta": 0.5885543802549498,
+              "atlas": {
+                "file_recall": 0.375,
+                "file_f1": 0.5,
+                "gold_byte_recall": 0.5885543802549498,
+                "tokens": 3888,
+                "json_tokens": 6588,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.125,
+                "file_f1": 0.2222222222222222,
+                "gold_byte_recall": 0.0,
+                "tokens": 2705,
+                "json_tokens": 6556,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "django/template/autoreload.py",
+                "tests/template_tests/test_autoreloader.py"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "django/template/autoreload.py",
+                "django/template/backends/base.py",
+                "django/template/backends/django.py",
+                "django/template/loaders/app_directories.py",
+                "django/template/loaders/filesystem.py",
+                "django/utils/_os.py",
+                "django/utils/autoreload.py",
+                "tests/template_tests/test_autoreloader.py"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.39519190215099115,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 3178,
+                "json_tokens": 6771,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 0.39519190215099115,
+                "tokens": 3072,
+                "json_tokens": 6824,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/models/query_utils.py"
+              ],
+              "gold_files": [
+                "django/db/models/query_utils.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.3629257398101619,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 3148,
+                "json_tokens": 6871,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 0.3629257398101619,
+                "tokens": 3130,
+                "json_tokens": 6910,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/migrations/executor.py"
+              ],
+              "gold_files": [
+                "django/db/migrations/executor.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681",
+              "repo": "element-hq/element-web",
+              "language": "javascript",
+              "delta": -0.2941901755770369,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4207,
+                "json_tokens": 6764,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.07142857142857142,
+                "file_f1": 0.11764705882352941,
+                "gold_byte_recall": 0.2941901755770369,
+                "tokens": 4262,
+                "json_tokens": 6736,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "src/components/views/settings/devices/FilteredDeviceList.tsx"
+              ],
+              "gold_files": [
+                "res/css/components/views/settings/devices/_DeviceType.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceList.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceListHeader.pcss",
+                "res/css/views/elements/_AccessibleButton.pcss",
+                "src/components/views/elements/AccessibleButton.tsx",
+                "src/components/views/settings/devices/DeviceTile.tsx",
+                "src/components/views/settings/devices/DeviceType.tsx",
+                "src/components/views/settings/devices/FilteredDeviceList.tsx",
+                "src/components/views/settings/devices/FilteredDeviceListHeader.tsx",
+                "src/components/views/settings/devices/SelectableDeviceTile.tsx",
+                "src/components/views/settings/devices/deleteDevices.tsx",
+                "src/components/views/settings/devices/useOwnDevices.ts",
+                "src/components/views/settings/tabs/user/SessionManagerTab.tsx",
+                "src/i18n/strings/en_EN.json"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.03671905656526553,
+          "wins": 11,
+          "ties": 31,
+          "losses": 8
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": 0.02943197202911186,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              -0.08260057534759425,
+              0.17271823757268093
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      }
+    },
+    {
+      "budget": 8000,
+      "comparison": "atlas minus flat_embedding",
+      "primary_paired_denominator": 50,
+      "pairs_with_measurement_errors": [],
+      "actual_response_tokens": {
+        "paired_successful_responses": 50,
+        "excluded_failed_pairs": 0,
+        "tokens": {
+          "atlas_mean": 3485.4,
+          "baseline_mean": 3457.6,
+          "mean_delta": 27.8,
+          "aggregate_reduction_percent": -0.8040259139287409
+        },
+        "json_tokens": {
+          "atlas_mean": 6678.36,
+          "baseline_mean": 6675.54,
+          "mean_delta": 2.82,
+          "aggregate_reduction_percent": -0.04224377353743147
+        }
+      },
+      "file_f1": {
+        "mean_delta": -0.0057035964035964,
+        "wins": 2,
+        "ties": 44,
+        "losses": 4,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.02761212861212861,
+            0.011377607899347036
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__a8655bb4",
+              "repo": "expressjs/express",
+              "language": "javascript",
+              "delta": 0.2380952380952382,
+              "atlas": {
+                "file_recall": 0.5,
+                "file_f1": 0.5714285714285715,
+                "gold_byte_recall": 0.0,
+                "tokens": 4890,
+                "json_tokens": 6926,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "lib/request.js",
+                    "original_file": "/workspace/expressjs__express__0.1/lib/request.js",
+                    "start_line": 1,
+                    "end_line": 522,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "package.json",
+                    "original_file": "/workspace/expressjs__express__0.1/package.json",
+                    "start_line": 70,
+                    "end_line": 99,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "test/req.hostname.js",
+                    "original_file": "/workspace/expressjs__express__0.1/test/req.hostname.js",
+                    "start_line": 1,
+                    "end_line": 138,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "/workspace/reproduce_error.js",
+                    "original_file": "/workspace/reproduce_error.js",
+                    "start_line": 1,
+                    "end_line": 47,
+                    "reason": "Absolute gold path does not match the pinned repository container prefix"
+                  },
+                  {
+                    "file": "/workspace/reproduce_error.js",
+                    "original_file": "/workspace/reproduce_error.js",
+                    "start_line": 1,
+                    "end_line": 148,
+                    "reason": "Absolute gold path does not match the pinned repository container prefix"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.25,
+                "file_f1": 0.3333333333333333,
+                "gold_byte_recall": 0.0,
+                "tokens": 3288,
+                "json_tokens": 6950,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "lib/request.js",
+                    "original_file": "/workspace/expressjs__express__0.1/lib/request.js",
+                    "start_line": 1,
+                    "end_line": 522,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "package.json",
+                    "original_file": "/workspace/expressjs__express__0.1/package.json",
+                    "start_line": 70,
+                    "end_line": 99,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "test/req.hostname.js",
+                    "original_file": "/workspace/expressjs__express__0.1/test/req.hostname.js",
+                    "start_line": 1,
+                    "end_line": 138,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "/workspace/reproduce_error.js",
+                    "original_file": "/workspace/reproduce_error.js",
+                    "start_line": 1,
+                    "end_line": 47,
+                    "reason": "Absolute gold path does not match the pinned repository container prefix"
+                  },
+                  {
+                    "file": "/workspace/reproduce_error.js",
+                    "original_file": "/workspace/reproduce_error.js",
+                    "start_line": 1,
+                    "end_line": 148,
+                    "reason": "Absolute gold path does not match the pinned repository container prefix"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "lib/request.js"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "/workspace/reproduce_error.js",
+                "lib/request.js",
+                "package.json",
+                "test/req.hostname.js"
+              ]
+            },
+            {
+              "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf",
+              "repo": "anuraghazra/github",
+              "language": "javascript",
+              "delta": 0.06666666666666671,
+              "atlas": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.4,
+                "gold_byte_recall": 0.12983706720977597,
+                "tokens": 4064,
+                "json_tokens": 6926,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "api/index.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+                    "start_line": 1,
+                    "end_line": 107,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/cards/stats-card.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+                    "start_line": 1,
+                    "end_line": 347,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/icons.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+                    "start_line": 1,
+                    "end_line": 37,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/utils.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+                    "start_line": 1,
+                    "end_line": 467,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/translations.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js",
+                    "start_line": 1,
+                    "end_line": 460,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.3333333333333333,
+                "gold_byte_recall": 0.12983706720977597,
+                "tokens": 4097,
+                "json_tokens": 6902,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "api/index.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+                    "start_line": 1,
+                    "end_line": 107,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/cards/stats-card.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+                    "start_line": 1,
+                    "end_line": 347,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/icons.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+                    "start_line": 1,
+                    "end_line": 37,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/utils.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+                    "start_line": 1,
+                    "end_line": 467,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/translations.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js",
+                    "start_line": 1,
+                    "end_line": 460,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "api/index.js",
+                "package.json",
+                "src/cards/stats-card.js",
+                "src/common/icons.js",
+                "src/common/utils.js",
+                "src/translations.js"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__9ad2c37d",
+              "repo": "sympy/sympy",
+              "language": "python",
+              "delta": -0.3333333333333333,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 2785,
+                "json_tokens": 6710,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.3333333333333333,
+                "gold_byte_recall": 0.0,
+                "tokens": 4065,
+                "json_tokens": 6761,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "sympy/core/function.py"
+              ],
+              "gold_files": [
+                "sympy/core/function.py",
+                "sympy/printing/latex.py",
+                "sympy/printing/tests/test_latex.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681",
+              "repo": "element-hq/element-web",
+              "language": "javascript",
+              "delta": -0.125,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4207,
+                "json_tokens": 6764,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.07142857142857142,
+                "file_f1": 0.125,
+                "gold_byte_recall": 0.0,
+                "tokens": 3069,
+                "json_tokens": 6738,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "src/components/views/settings/tabs/user/SessionManagerTab.tsx"
+              ],
+              "gold_files": [
+                "res/css/components/views/settings/devices/_DeviceType.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceList.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceListHeader.pcss",
+                "res/css/views/elements/_AccessibleButton.pcss",
+                "src/components/views/elements/AccessibleButton.tsx",
+                "src/components/views/settings/devices/DeviceTile.tsx",
+                "src/components/views/settings/devices/DeviceType.tsx",
+                "src/components/views/settings/devices/FilteredDeviceList.tsx",
+                "src/components/views/settings/devices/FilteredDeviceListHeader.tsx",
+                "src/components/views/settings/devices/SelectableDeviceTile.tsx",
+                "src/components/views/settings/devices/deleteDevices.tsx",
+                "src/components/views/settings/devices/useOwnDevices.ts",
+                "src/components/views/settings/tabs/user/SessionManagerTab.tsx",
+                "src/i18n/strings/en_EN.json"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__153337fe",
+              "repo": "flipt-io/flipt",
+              "language": "go",
+              "delta": -0.08615384615384616,
+              "atlas": {
+                "file_recall": 0.11764705882352941,
+                "file_f1": 0.15384615384615383,
+                "gold_byte_recall": 0.15203196569535132,
+                "tokens": 3531,
+                "json_tokens": 6737,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.17647058823529413,
+                "file_f1": 0.24,
+                "gold_byte_recall": 0.15203196569535132,
+                "tokens": 3462,
+                "json_tokens": 6696,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "internal/ext/importer.go"
+              ],
+              "gold_files": [
+                "build/testing/integration.go",
+                "build/testing/integration/readonly/testdata/seed.yaml",
+                "cmd/flipt/export.go",
+                "cmd/flipt/import.go",
+                "internal/ext/common.go",
+                "internal/ext/exporter.go",
+                "internal/ext/exporter_test.go",
+                "internal/ext/importer.go",
+                "internal/ext/importer_fuzz_test.go",
+                "internal/ext/importer_test.go",
+                "internal/ext/testdata/export.yml",
+                "internal/ext/testdata/import.yml",
+                "internal/ext/testdata/import_no_attachment.yml",
+                "internal/info/flipt.go",
+                "internal/storage/sql/migrator.go",
+                "internal/storage/storage.go",
+                "internal/telemetry/telemetry.go"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": -0.0057035964035964,
+          "wins": 2,
+          "ties": 44,
+          "losses": 4
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": -0.014322916666666666,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              -0.04824561403508771,
+              0.0
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      },
+      "gold_byte_recall": {
+        "mean_delta": 0.0,
+        "wins": 0,
+        "ties": 50,
+        "losses": 0,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [],
+          "worst": []
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.0,
+          "wins": 0,
+          "ties": 50,
+          "losses": 0
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": 0.0,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              0.0,
+              0.0
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      }
+    },
+    {
+      "budget": 8000,
+      "comparison": "atlas minus atlas_no_expansion",
+      "primary_paired_denominator": 50,
+      "pairs_with_measurement_errors": [],
+      "actual_response_tokens": {
+        "paired_successful_responses": 50,
+        "excluded_failed_pairs": 0,
+        "tokens": {
+          "atlas_mean": 3485.4,
+          "baseline_mean": 3484.4,
+          "mean_delta": 1.0,
+          "aggregate_reduction_percent": -0.0286993456549256
+        },
+        "json_tokens": {
+          "atlas_mean": 6678.36,
+          "baseline_mean": 6676.62,
+          "mean_delta": 1.74,
+          "aggregate_reduction_percent": -0.026061090791440478
+        }
+      },
+      "file_f1": {
+        "mean_delta": 0.0,
+        "wins": 0,
+        "ties": 50,
+        "losses": 0,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [],
+          "worst": []
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.0,
+          "wins": 0,
+          "ties": 50,
+          "losses": 0
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": 0.0,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              0.0,
+              0.0
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      },
+      "gold_byte_recall": {
+        "mean_delta": 0.0,
+        "wins": 0,
+        "ties": 50,
+        "losses": 0,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [],
+          "worst": []
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.0,
+          "wins": 0,
+          "ties": 50,
+          "losses": 0
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": 0.0,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              0.0,
+              0.0
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      }
+    },
+    {
+      "budget": 12000,
+      "comparison": "atlas minus bm25",
+      "primary_paired_denominator": 50,
+      "pairs_with_measurement_errors": [],
+      "actual_response_tokens": {
+        "paired_successful_responses": 50,
+        "excluded_failed_pairs": 0,
+        "tokens": {
+          "atlas_mean": 5939.48,
+          "baseline_mean": 5910.56,
+          "mean_delta": 28.92,
+          "aggregate_reduction_percent": -0.48929373866435366
+        },
+        "json_tokens": {
+          "atlas_mean": 10678.72,
+          "baseline_mean": 10688.68,
+          "mean_delta": -9.96,
+          "aggregate_reduction_percent": 0.09318269421481062
+        }
+      },
+      "file_f1": {
+        "mean_delta": 0.0028903318903318914,
+        "wins": 14,
+        "ties": 23,
+        "losses": 13,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.10890717851502164,
+            0.09471718757433042
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__7827bc22",
+              "repo": "mui/material-ui",
+              "language": "typescript",
+              "delta": 0.6666666666666666,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 0.1254396248534584,
+                "tokens": 6299,
+                "json_tokens": 10176,
+                "blocks_partially_covered": 1,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 7132,
+                "json_tokens": 10227,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "packages/material-ui/src/Tabs/Tabs.js"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "packages/material-ui/src/Tabs/Tabs.js"
+              ]
+            },
+            {
+              "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145",
+              "repo": "cli/cli",
+              "language": "go",
+              "delta": 0.5,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.5,
+                "gold_byte_recall": 1.0,
+                "tokens": 5760,
+                "json_tokens": 10865,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 5405,
+                "json_tokens": 10884,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ]
+            },
+            {
+              "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__6d48775e",
+              "repo": "cli/cli",
+              "language": "go",
+              "delta": 0.5,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.5,
+                "gold_byte_recall": 1.0,
+                "tokens": 6000,
+                "json_tokens": 10861,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 6886,
+                "json_tokens": 10900,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "pkg/cmd/browse/browse.go"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "pkg/cmd/browse/browse.go"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__986c9e85",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -1.0,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 5896,
+                "json_tokens": 10799,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 1.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4382,
+                "json_tokens": 10797,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/forms/widgets.py"
+              ],
+              "gold_files": [
+                "django/forms/widgets.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.6666666666666666,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 5079,
+                "json_tokens": 10879,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 1.0,
+                "tokens": 6784,
+                "json_tokens": 10883,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/migrations/executor.py"
+              ],
+              "gold_files": [
+                "django/db/migrations/executor.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.6666666666666666,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 6316,
+                "json_tokens": 10785,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 1.0,
+                "tokens": 6058,
+                "json_tokens": 10763,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/models/query_utils.py"
+              ],
+              "gold_files": [
+                "django/db/models/query_utils.py"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.0028903318903318914,
+          "wins": 14,
+          "ties": 23,
+          "losses": 13
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": -0.024494082306582305,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              -0.19141997708174177,
+              0.10179235796882856
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      },
+      "gold_byte_recall": {
+        "mean_delta": 0.018812565890204573,
+        "wins": 13,
+        "ties": 27,
+        "losses": 10,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.09826419405285987,
+            0.13163064208725705
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145",
+              "repo": "cli/cli",
+              "language": "go",
+              "delta": 1.0,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.5,
+                "gold_byte_recall": 1.0,
+                "tokens": 5760,
+                "json_tokens": 10865,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 5405,
+                "json_tokens": 10884,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "pkg/cmd/pr/status/status.go"
+              ]
+            },
+            {
+              "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__6d48775e",
+              "repo": "cli/cli",
+              "language": "go",
+              "delta": 1.0,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.5,
+                "gold_byte_recall": 1.0,
+                "tokens": 6000,
+                "json_tokens": 10861,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 6886,
+                "json_tokens": 10900,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "pkg/cmd/browse/browse.go"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "pkg/cmd/browse/browse.go"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__d939b999",
+              "repo": "django/django",
+              "language": "python",
+              "delta": 0.5372931922972606,
+              "atlas": {
+                "file_recall": 0.375,
+                "file_f1": 0.5,
+                "gold_byte_recall": 0.5885543802549498,
+                "tokens": 5485,
+                "json_tokens": 10574,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.125,
+                "file_f1": 0.2222222222222222,
+                "gold_byte_recall": 0.05126118795768918,
+                "tokens": 4365,
+                "json_tokens": 10610,
+                "blocks_partially_covered": 1,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "django/template/autoreload.py",
+                "tests/template_tests/test_autoreloader.py"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "django/template/autoreload.py",
+                "django/template/backends/base.py",
+                "django/template/backends/django.py",
+                "django/template/loaders/app_directories.py",
+                "django/template/loaders/filesystem.py",
+                "django/utils/_os.py",
+                "django/utils/autoreload.py",
+                "tests/template_tests/test_autoreloader.py"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -1.0,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 5079,
+                "json_tokens": 10879,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 1.0,
+                "tokens": 6784,
+                "json_tokens": 10883,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/migrations/executor.py"
+              ],
+              "gold_files": [
+                "django/db/migrations/executor.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -1.0,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 6316,
+                "json_tokens": 10785,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 1.0,
+                "file_f1": 0.6666666666666666,
+                "gold_byte_recall": 1.0,
+                "tokens": 6058,
+                "json_tokens": 10763,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/db/models/query_utils.py"
+              ],
+              "gold_files": [
+                "django/db/models/query_utils.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__2d5d4dcd",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.39437396580253725,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4600,
+                "json_tokens": 10780,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.25,
+                "file_f1": 0.3333333333333333,
+                "gold_byte_recall": 0.39437396580253725,
+                "tokens": 6591,
+                "json_tokens": 10780,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "django/contrib/admin/filters.py"
+              ],
+              "gold_files": [
+                "django/contrib/admin/filters.py",
+                "django/contrib/admin/options.py",
+                "django/db/models/fields/__init__.py",
+                "django/db/models/fields/reverse_related.py"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.018812565890204573,
+          "wins": 13,
+          "ties": 27,
+          "losses": 10
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": 0.0002619265375449443,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              -0.19550586850374935,
+              0.1808302925752163
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      }
+    },
+    {
+      "budget": 12000,
+      "comparison": "atlas minus flat_embedding",
+      "primary_paired_denominator": 50,
+      "pairs_with_measurement_errors": [],
+      "actual_response_tokens": {
+        "paired_successful_responses": 50,
+        "excluded_failed_pairs": 0,
+        "tokens": {
+          "atlas_mean": 5939.48,
+          "baseline_mean": 5949.12,
+          "mean_delta": -9.64,
+          "aggregate_reduction_percent": 0.16204077241676051
+        },
+        "json_tokens": {
+          "atlas_mean": 10678.72,
+          "baseline_mean": 10683.32,
+          "mean_delta": -4.6,
+          "aggregate_reduction_percent": 0.043057776047150664
+        }
+      },
+      "file_f1": {
+        "mean_delta": -0.005012947836477248,
+        "wins": 2,
+        "ties": 43,
+        "losses": 5,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.03375810672431448,
+            0.014552088081499848
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__7e498c7a",
+              "repo": "django/django",
+              "language": "python",
+              "delta": 0.4,
+              "atlas": {
+                "file_recall": 1.0,
+                "file_f1": 0.4,
+                "gold_byte_recall": 0.0,
+                "tokens": 6101,
+                "json_tokens": 10703,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4624,
+                "json_tokens": 10725,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [
+                "django/forms/models.py"
+              ],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "django/forms/models.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-PolyBench__typescript__evolution__feature__684a3415",
+              "repo": "mui/material-ui",
+              "language": "typescript",
+              "delta": 0.017647058823529405,
+              "atlas": {
+                "file_recall": 0.2,
+                "file_f1": 0.11764705882352941,
+                "gold_byte_recall": 0.13504916136495085,
+                "tokens": 6367,
+                "json_tokens": 10791,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.2,
+                "file_f1": 0.1,
+                "gold_byte_recall": 0.13504916136495085,
+                "tokens": 6693,
+                "json_tokens": 10785,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                ".size-limit.js",
+                "docs/src/pages/style/icons/SvgIcons.js",
+                "packages/material-ui/src/SvgIcon/SvgIcon.d.ts",
+                "packages/material-ui/src/SvgIcon/SvgIcon.js",
+                "pages/api/svg-icon.md"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__9ad2c37d",
+              "repo": "sympy/sympy",
+              "language": "python",
+              "delta": -0.3333333333333333,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 4256,
+                "json_tokens": 10714,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.3333333333333333,
+                "gold_byte_recall": 0.0,
+                "tokens": 5756,
+                "json_tokens": 10709,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "sympy/core/function.py"
+              ],
+              "gold_files": [
+                "sympy/core/function.py",
+                "sympy/printing/latex.py",
+                "sympy/printing/tests/test_latex.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681",
+              "repo": "element-hq/element-web",
+              "language": "javascript",
+              "delta": -0.23529411764705882,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 6086,
+                "json_tokens": 10769,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.14285714285714285,
+                "file_f1": 0.23529411764705882,
+                "gold_byte_recall": 0.06608798579601499,
+                "tokens": 6537,
+                "json_tokens": 10780,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "src/components/views/settings/devices/FilteredDeviceList.tsx",
+                "src/components/views/settings/tabs/user/SessionManagerTab.tsx"
+              ],
+              "gold_files": [
+                "res/css/components/views/settings/devices/_DeviceType.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceList.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceListHeader.pcss",
+                "res/css/views/elements/_AccessibleButton.pcss",
+                "src/components/views/elements/AccessibleButton.tsx",
+                "src/components/views/settings/devices/DeviceTile.tsx",
+                "src/components/views/settings/devices/DeviceType.tsx",
+                "src/components/views/settings/devices/FilteredDeviceList.tsx",
+                "src/components/views/settings/devices/FilteredDeviceListHeader.tsx",
+                "src/components/views/settings/devices/SelectableDeviceTile.tsx",
+                "src/components/views/settings/devices/deleteDevices.tsx",
+                "src/components/views/settings/devices/useOwnDevices.ts",
+                "src/components/views/settings/tabs/user/SessionManagerTab.tsx",
+                "src/i18n/strings/en_EN.json"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__d939b999",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.045454545454545414,
+              "atlas": {
+                "file_recall": 0.375,
+                "file_f1": 0.5,
+                "gold_byte_recall": 0.5885543802549498,
+                "tokens": 5485,
+                "json_tokens": 10574,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.375,
+                "file_f1": 0.5454545454545454,
+                "gold_byte_recall": 0.639815568212639,
+                "tokens": 5045,
+                "json_tokens": 10566,
+                "blocks_partially_covered": 1,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "django/template/autoreload.py",
+                "django/template/backends/base.py",
+                "django/template/backends/django.py",
+                "django/template/loaders/app_directories.py",
+                "django/template/loaders/filesystem.py",
+                "django/utils/_os.py",
+                "django/utils/autoreload.py",
+                "tests/template_tests/test_autoreloader.py"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": -0.005012947836477248,
+          "wins": 2,
+          "ties": 43,
+          "losses": 5
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": -0.00471813725490196,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              -0.05073529411764705,
+              0.02756302521008404
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      },
+      "gold_byte_recall": {
+        "mean_delta": -0.0008745603579424222,
+        "wins": 1,
+        "ties": 46,
+        "losses": 3,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.005574922286422211,
+            0.004403588924973853
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf",
+              "repo": "anuraghazra/github",
+              "language": "javascript",
+              "delta": 0.08146639511201628,
+              "atlas": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.30769230769230765,
+                "gold_byte_recall": 0.21130346232179226,
+                "tokens": 7021,
+                "json_tokens": 10933,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "api/index.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+                    "start_line": 1,
+                    "end_line": 107,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/cards/stats-card.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+                    "start_line": 1,
+                    "end_line": 347,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/icons.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+                    "start_line": 1,
+                    "end_line": 37,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/utils.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+                    "start_line": 1,
+                    "end_line": 467,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/translations.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js",
+                    "start_line": 1,
+                    "end_line": 460,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.3333333333333333,
+                "gold_byte_recall": 0.12983706720977597,
+                "tokens": 7493,
+                "json_tokens": 10892,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "api/index.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+                    "start_line": 1,
+                    "end_line": 107,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/cards/stats-card.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+                    "start_line": 1,
+                    "end_line": 347,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/icons.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+                    "start_line": 1,
+                    "end_line": 37,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/utils.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+                    "start_line": 1,
+                    "end_line": 467,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/translations.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js",
+                    "start_line": 1,
+                    "end_line": 460,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "api/index.js",
+                "package.json",
+                "src/cards/stats-card.js",
+                "src/common/icons.js",
+                "src/common/utils.js",
+                "src/translations.js"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681",
+              "repo": "element-hq/element-web",
+              "language": "javascript",
+              "delta": -0.06608798579601499,
+              "atlas": {
+                "file_recall": 0.0,
+                "file_f1": 0.0,
+                "gold_byte_recall": 0.0,
+                "tokens": 6086,
+                "json_tokens": 10769,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.14285714285714285,
+                "file_f1": 0.23529411764705882,
+                "gold_byte_recall": 0.06608798579601499,
+                "tokens": 6537,
+                "json_tokens": 10780,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [
+                "src/components/views/settings/devices/FilteredDeviceList.tsx",
+                "src/components/views/settings/tabs/user/SessionManagerTab.tsx"
+              ],
+              "gold_files": [
+                "res/css/components/views/settings/devices/_DeviceType.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceList.pcss",
+                "res/css/components/views/settings/devices/_FilteredDeviceListHeader.pcss",
+                "res/css/views/elements/_AccessibleButton.pcss",
+                "src/components/views/elements/AccessibleButton.tsx",
+                "src/components/views/settings/devices/DeviceTile.tsx",
+                "src/components/views/settings/devices/DeviceType.tsx",
+                "src/components/views/settings/devices/FilteredDeviceList.tsx",
+                "src/components/views/settings/devices/FilteredDeviceListHeader.tsx",
+                "src/components/views/settings/devices/SelectableDeviceTile.tsx",
+                "src/components/views/settings/devices/deleteDevices.tsx",
+                "src/components/views/settings/devices/useOwnDevices.ts",
+                "src/components/views/settings/tabs/user/SessionManagerTab.tsx",
+                "src/i18n/strings/en_EN.json"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__d939b999",
+              "repo": "django/django",
+              "language": "python",
+              "delta": -0.05126118795768919,
+              "atlas": {
+                "file_recall": 0.375,
+                "file_f1": 0.5,
+                "gold_byte_recall": 0.5885543802549498,
+                "tokens": 5485,
+                "json_tokens": 10574,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.375,
+                "file_f1": 0.5454545454545454,
+                "gold_byte_recall": 0.639815568212639,
+                "tokens": 5045,
+                "json_tokens": 10566,
+                "blocks_partially_covered": 1,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "django/template/autoreload.py",
+                    "original_file": "django/template/autoreload.py",
+                    "start_line": 47,
+                    "end_line": 55,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "django/utils/_os.py",
+                    "original_file": "django/utils/_os.py",
+                    "start_line": 56,
+                    "end_line": 63,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "django/template/autoreload.py",
+                "django/template/backends/base.py",
+                "django/template/backends/django.py",
+                "django/template/loaders/app_directories.py",
+                "django/template/loaders/filesystem.py",
+                "django/utils/_os.py",
+                "django/utils/autoreload.py",
+                "tests/template_tests/test_autoreloader.py"
+              ]
+            },
+            {
+              "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__153337fe",
+              "repo": "flipt-io/flipt",
+              "language": "go",
+              "delta": -0.007845239255433206,
+              "atlas": {
+                "file_recall": 0.17647058823529413,
+                "file_f1": 0.17142857142857143,
+                "gold_byte_recall": 0.15203196569535132,
+                "tokens": 6539,
+                "json_tokens": 10685,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.17647058823529413,
+                "file_f1": 0.20000000000000004,
+                "gold_byte_recall": 0.15987720495078453,
+                "tokens": 6364,
+                "json_tokens": 10732,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "build/testing/integration.go",
+                "build/testing/integration/readonly/testdata/seed.yaml",
+                "cmd/flipt/export.go",
+                "cmd/flipt/import.go",
+                "internal/ext/common.go",
+                "internal/ext/exporter.go",
+                "internal/ext/exporter_test.go",
+                "internal/ext/importer.go",
+                "internal/ext/importer_fuzz_test.go",
+                "internal/ext/importer_test.go",
+                "internal/ext/testdata/export.yml",
+                "internal/ext/testdata/import.yml",
+                "internal/ext/testdata/import_no_attachment.yml",
+                "internal/info/flipt.go",
+                "internal/storage/sql/migrator.go",
+                "internal/storage/storage.go",
+                "internal/telemetry/telemetry.go"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": -0.0008745603579424222,
+          "wins": 1,
+          "ties": 46,
+          "losses": 3
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": -0.0020652495561254685,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              -0.007930558295521799,
+              0.0
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      }
+    },
+    {
+      "budget": 12000,
+      "comparison": "atlas minus atlas_no_expansion",
+      "primary_paired_denominator": 50,
+      "pairs_with_measurement_errors": [],
+      "actual_response_tokens": {
+        "paired_successful_responses": 50,
+        "excluded_failed_pairs": 0,
+        "tokens": {
+          "atlas_mean": 5939.48,
+          "baseline_mean": 5940.8,
+          "mean_delta": -1.32,
+          "aggregate_reduction_percent": 0.022219229733366763
+        },
+        "json_tokens": {
+          "atlas_mean": 10678.72,
+          "baseline_mean": 10679.1,
+          "mean_delta": -0.38,
+          "aggregate_reduction_percent": 0.0035583522956073033
+        }
+      },
+      "file_f1": {
+        "mean_delta": 0.00035010530266697094,
+        "wins": 2,
+        "ties": 47,
+        "losses": 1,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.0012178097045269717,
+            0.001831501831501825
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [
+            {
+              "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf",
+              "repo": "anuraghazra/github",
+              "language": "javascript",
+              "delta": 0.0219780219780219,
+              "atlas": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.30769230769230765,
+                "gold_byte_recall": 0.21130346232179226,
+                "tokens": 7021,
+                "json_tokens": 10933,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "api/index.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+                    "start_line": 1,
+                    "end_line": 107,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/cards/stats-card.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+                    "start_line": 1,
+                    "end_line": 347,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/icons.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+                    "start_line": 1,
+                    "end_line": 37,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/utils.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+                    "start_line": 1,
+                    "end_line": 467,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/translations.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js",
+                    "start_line": 1,
+                    "end_line": 460,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.3333333333333333,
+                "file_f1": 0.28571428571428575,
+                "gold_byte_recall": 0.21130346232179226,
+                "tokens": 6992,
+                "json_tokens": 10938,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "api/index.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+                    "start_line": 1,
+                    "end_line": 107,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/cards/stats-card.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+                    "start_line": 1,
+                    "end_line": 347,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/icons.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+                    "start_line": 1,
+                    "end_line": 37,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/common/utils.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+                    "start_line": 1,
+                    "end_line": 467,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "src/translations.js",
+                    "original_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js",
+                    "start_line": 1,
+                    "end_line": 460,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "api/index.js",
+                "package.json",
+                "src/cards/stats-card.js",
+                "src/common/icons.js",
+                "src/common/utils.js",
+                "src/translations.js"
+              ]
+            },
+            {
+              "instance_id": "SWE-PolyBench__typescript__evolution__feature__684a3415",
+              "repo": "mui/material-ui",
+              "language": "typescript",
+              "delta": 0.017647058823529405,
+              "atlas": {
+                "file_recall": 0.2,
+                "file_f1": 0.11764705882352941,
+                "gold_byte_recall": 0.13504916136495085,
+                "tokens": 6367,
+                "json_tokens": 10791,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.2,
+                "file_f1": 0.1,
+                "gold_byte_recall": 0.13504916136495085,
+                "tokens": 6693,
+                "json_tokens": 10785,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                ".size-limit.js",
+                "docs/src/pages/style/icons/SvgIcons.js",
+                "packages/material-ui/src/SvgIcon/SvgIcon.d.ts",
+                "packages/material-ui/src/SvgIcon/SvgIcon.js",
+                "pages/api/svg-icon.md"
+              ]
+            }
+          ],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__153337fe",
+              "repo": "flipt-io/flipt",
+              "language": "go",
+              "delta": -0.022119815668202758,
+              "atlas": {
+                "file_recall": 0.17647058823529413,
+                "file_f1": 0.17142857142857143,
+                "gold_byte_recall": 0.15203196569535132,
+                "tokens": 6539,
+                "json_tokens": 10685,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.17647058823529413,
+                "file_f1": 0.1935483870967742,
+                "gold_byte_recall": 0.15987720495078453,
+                "tokens": 6458,
+                "json_tokens": 10688,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "build/testing/integration.go",
+                "build/testing/integration/readonly/testdata/seed.yaml",
+                "cmd/flipt/export.go",
+                "cmd/flipt/import.go",
+                "internal/ext/common.go",
+                "internal/ext/exporter.go",
+                "internal/ext/exporter_test.go",
+                "internal/ext/importer.go",
+                "internal/ext/importer_fuzz_test.go",
+                "internal/ext/importer_test.go",
+                "internal/ext/testdata/export.yml",
+                "internal/ext/testdata/import.yml",
+                "internal/ext/testdata/import_no_attachment.yml",
+                "internal/info/flipt.go",
+                "internal/storage/sql/migrator.go",
+                "internal/storage/storage.go",
+                "internal/telemetry/telemetry.go"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": 0.00035010530266697094,
+          "wins": 2,
+          "ties": 47,
+          "losses": 1
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": 0.0005514705882352939,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              0.0,
+              0.0014405762304921963
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      },
+      "gold_byte_recall": {
+        "mean_delta": -0.00015690478510866412,
+        "wins": 0,
+        "ties": 49,
+        "losses": 1,
+        "uncertainty": {
+          "method": "paired repository-cluster percentile bootstrap",
+          "repetitions": 10000,
+          "seed": 20260905,
+          "repositories": 19,
+          "ci95": [
+            -0.0006276191404346565,
+            0.0
+          ],
+          "language_quota_preserved_in_resamples": false,
+          "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+        },
+        "examples": {
+          "selection": "Illustrative extremes selected after observing this sample; not representative task estimates.",
+          "best": [],
+          "worst": [
+            {
+              "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__153337fe",
+              "repo": "flipt-io/flipt",
+              "language": "go",
+              "delta": -0.007845239255433206,
+              "atlas": {
+                "file_recall": 0.17647058823529413,
+                "file_f1": 0.17142857142857143,
+                "gold_byte_recall": 0.15203196569535132,
+                "tokens": 6539,
+                "json_tokens": 10685,
+                "blocks_partially_covered": 0,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "baseline": {
+                "file_recall": 0.17647058823529413,
+                "file_f1": 0.1935483870967742,
+                "gold_byte_recall": 0.15987720495078453,
+                "tokens": 6458,
+                "json_tokens": 10688,
+                "blocks_partially_covered": 2,
+                "invalid_gold_blocks": [
+                  {
+                    "file": "internal/ext/testdata/export.yml",
+                    "original_file": "internal/ext/testdata/export.yml",
+                    "start_line": 1,
+                    "end_line": 44,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import.yml",
+                    "original_file": "internal/ext/testdata/import.yml",
+                    "start_line": 1,
+                    "end_line": 38,
+                    "reason": "Gold lines outside base source"
+                  },
+                  {
+                    "file": "internal/ext/testdata/import_no_attachment.yml",
+                    "original_file": "internal/ext/testdata/import_no_attachment.yml",
+                    "start_line": 1,
+                    "end_line": 25,
+                    "reason": "Gold lines outside base source"
+                  }
+                ],
+                "error": null
+              },
+              "atlas_only_gold_files": [],
+              "baseline_only_gold_files": [],
+              "gold_files": [
+                "build/testing/integration.go",
+                "build/testing/integration/readonly/testdata/seed.yaml",
+                "cmd/flipt/export.go",
+                "cmd/flipt/import.go",
+                "internal/ext/common.go",
+                "internal/ext/exporter.go",
+                "internal/ext/exporter_test.go",
+                "internal/ext/importer.go",
+                "internal/ext/importer_fuzz_test.go",
+                "internal/ext/importer_test.go",
+                "internal/ext/testdata/export.yml",
+                "internal/ext/testdata/import.yml",
+                "internal/ext/testdata/import_no_attachment.yml",
+                "internal/info/flipt.go",
+                "internal/storage/sql/migrator.go",
+                "internal/storage/storage.go",
+                "internal/telemetry/telemetry.go"
+              ]
+            }
+          ]
+        },
+        "successful_pairs_companion": {
+          "denominator": 50,
+          "mean_delta": -0.00015690478510866412,
+          "wins": 0,
+          "ties": 49,
+          "losses": 1
+        },
+        "complete_gold_subset": {
+          "tasks": 32,
+          "mean_delta": 0.0,
+          "requirement": "Both measurements succeeded, have nonempty gold files and positive measurable gold bytes, and report complete span metrics.",
+          "uncertainty": {
+            "method": "paired repository-cluster percentile bootstrap",
+            "repetitions": 10000,
+            "seed": 20260905,
+            "repositories": 14,
+            "ci95": [
+              0.0,
+              0.0
+            ],
+            "language_quota_preserved_in_resamples": false,
+            "interpretation": "Descriptive sensitivity interval under resampling of observed repository clusters. It is not a confirmatory test, does not preserve the original equal language quotas, and is not adjusted for multiple contrasts."
+          }
+        }
+      }
+    }
+  ],
+  "preparation": {
+    "checkout_seconds": {
+      "tasks_measured": 50,
+      "total": 5.700363206095062,
+      "mean": 0.11400726412190125,
+      "median": 0.09451352100586519,
+      "p95": 0.2566127920290455,
+      "maximum": 0.29978370905155316
+    },
+    "graph_seconds": {
+      "tasks_measured": 50,
+      "total": 204.78107104077935,
+      "mean": 4.095621420815587,
+      "median": 2.2610145205107983,
+      "p95": 14.580775875016116,
+      "maximum": 16.473791749973316
+    },
+    "embedding_prepare_seconds": {
+      "tasks_measured": 50,
+      "total": 91.87007966940291,
+      "mean": 1.8374015933880583,
+      "median": 1.2092982915055472,
+      "p95": 5.726292458013631,
+      "maximum": 7.132182833040133
+    },
+    "lexical_prepare_seconds": {
+      "tasks_measured": 50,
+      "total": 37.41203524725279,
+      "mean": 0.7482407049450558,
+      "median": 0.29058112503844313,
+      "p95": 3.3963660420267843,
+      "maximum": 3.4432253330014646
+    },
+    "preparation_seconds": {
+      "tasks_measured": 50,
+      "total": 334.06318595743505,
+      "mean": 6.681263719148701,
+      "median": 3.527843103511259,
+      "p95": 22.738877500989474,
+      "maximum": 27.032456375018228
+    }
+  }
+}

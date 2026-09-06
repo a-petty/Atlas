@@ -1,0 +1,219 @@
+[
+  {
+    "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf",
+    "repo": "anuraghazra/github",
+    "repo_url": "https://github.com/anuraghazra/github-readme-stats.git",
+    "base_commit": "c5d4bcbc1ac5e1811681e4acd825cd39145fb2d9",
+    "blocks": 9,
+    "parsed_blocks": 9,
+    "unique_files": 6,
+    "errors": [
+      "ValueError: Gold path escapes repository"
+    ],
+    "files": [
+      {
+        "raw_file": "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "api/index.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/anuraghazra__github-readme-stats__0.1/package.json",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "package.json",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "src/cards/stats-card.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "src/common/icons.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "src/common/utils.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "src/translations.js",
+        "candidate_exists": true
+      }
+    ]
+  },
+  {
+    "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed92fe3",
+    "repo": "sveltejs/svelte",
+    "repo_url": "https://github.com/sveltejs/svelte.git",
+    "base_commit": "ae9f53a3bde79e8777e865acac3b99612c2cec71",
+    "blocks": 12,
+    "parsed_blocks": 12,
+    "unique_files": 8,
+    "errors": [
+      "ValueError: Gold path escapes repository"
+    ],
+    "files": [
+      {
+        "raw_file": "/workspace/ast_parsed.json",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": null,
+        "candidate_exists": null
+      },
+      {
+        "raw_file": "/workspace/compiled.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": null,
+        "candidate_exists": null
+      },
+      {
+        "raw_file": "/workspace/reproduce.mjs",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": null,
+        "candidate_exists": null
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/package.json",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "package.json",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/package.json",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/package.json",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/transform-client.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/src/compiler/phases/3-transform/client/transform-client.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/visitors/Component.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/src/compiler/phases/3-transform/client/visitors/Component.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/visitors/shared/component.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/src/compiler/phases/3-transform/client/visitors/shared/component.js",
+        "candidate_exists": true
+      }
+    ]
+  },
+  {
+    "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__00fd24ea",
+    "repo": "sveltejs/svelte",
+    "repo_url": "https://github.com/sveltejs/svelte.git",
+    "base_commit": "eab690d31a7203ac23334460c9ae68844d43dc26",
+    "blocks": 13,
+    "parsed_blocks": 13,
+    "unique_files": 5,
+    "errors": [
+      "ValueError: Gold path escapes repository"
+    ],
+    "files": [
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/package.json",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "package.json",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/errors.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/src/compiler/errors.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/1-parse/read/style.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/src/compiler/phases/1-parse/read/style.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/tests/parser-modern/samples/css-nth-syntax/input.svelte",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/tests/parser-modern/samples/css-nth-syntax/input.svelte",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/tests/parser-modern/test.ts",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/tests/parser-modern/test.ts",
+        "candidate_exists": true
+      }
+    ]
+  },
+  {
+    "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__18cb0c28",
+    "repo": "sveltejs/svelte",
+    "repo_url": "https://github.com/sveltejs/svelte.git",
+    "base_commit": "2fa06447cf51893715bfe776f753d1b1f0587d83",
+    "blocks": 9,
+    "parsed_blocks": 9,
+    "unique_files": 4,
+    "errors": [
+      "ValueError: Gold path escapes repository"
+    ],
+    "files": [
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/package.json",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "package.json",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/package.json",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/package.json",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/visitors/template.js",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/src/compiler/phases/3-transform/client/visitors/template.js",
+        "candidate_exists": true
+      },
+      {
+        "raw_file": "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/types/template.d.ts",
+        "absolute": true,
+        "escapes_local_root": true,
+        "candidate_relative": "packages/svelte/src/compiler/types/template.d.ts",
+        "candidate_exists": true
+      }
+    ]
+  }
+]

@@ -1,0 +1,632 @@
+{
+  "scope": "Local FastMCP list_tools descriptors plus server instructions, compact JSON; not client prompt format or billed usage.",
+  "model_or_repository_started": false,
+  "tool_count": 13,
+  "tokenizer": "cl100k_base",
+  "characters": 8253,
+  "serialized_tokens": 1756,
+  "source_sha256": "8bb230c88a4d45135d584209e88d064b66c90ffd0e6e03183f3eef2a68f6d4c4",
+  "payload_sha256": "42efd0ab28ab198dc216f05e359c51e4bada2877e5014d65292a561af388546e",
+  "payload": {
+    "tools": [
+      {
+        "name": "atlas_status",
+        "description": "Read coverage, generation, and preparation progress without forcing embeddings.",
+        "inputSchema": {
+          "properties": {
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "title": "atlas_statusArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "atlas_statusOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_repository_map",
+        "description": "Read the architecture ordered by PageRank; continue large maps with next_cursor.",
+        "inputSchema": {
+          "properties": {
+            "max_files": {
+              "default": 50,
+              "title": "Max Files",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "title": "get_repository_mapArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_repository_mapOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_dependencies",
+        "description": "Read outgoing imports and symbol-use evidence, retaining both kinds per file pair.",
+        "inputSchema": {
+          "properties": {
+            "file_path": {
+              "title": "File Path",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "file_path"
+          ],
+          "title": "get_dependenciesArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_dependenciesOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_dependents",
+        "description": "Read incoming dependencies from the latest accepted source generation.",
+        "inputSchema": {
+          "properties": {
+            "file_path": {
+              "title": "File Path",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "file_path"
+          ],
+          "title": "get_dependentsArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_dependentsOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_top_ranked_files",
+        "description": "Read architectural importance with generation-bound continuation.",
+        "inputSchema": {
+          "properties": {
+            "limit": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "title": "get_top_ranked_filesArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_top_ranked_filesOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "find_relevant_files",
+        "description": "Rank all eligible files semantically. Cold preparation completes before ranking is returned.",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "title": "Query",
+              "type": "string"
+            },
+            "top_n": {
+              "default": 10,
+              "title": "Top N",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "find_relevant_filesArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "find_relevant_filesOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "assemble_context",
+        "description": "Pack map, full sources and complete skeleton declarations within token/transport budgets.\n\n    JSON includes the exact delivered source spans, modes, reasons and omissions.\n    Explicit files take priority. Every part comes from the reported generation.\n    ",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "title": "Query",
+              "type": "string"
+            },
+            "files_in_scope": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Files In Scope"
+            },
+            "max_tokens": {
+              "default": 12000,
+              "title": "Max Tokens",
+              "type": "integer"
+            },
+            "include_map": {
+              "default": true,
+              "title": "Include Map",
+              "type": "boolean"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "assemble_contextArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "assemble_contextOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_file_symbols",
+        "description": "Read declared symbols without building CFG or data-flow overlays.",
+        "inputSchema": {
+          "properties": {
+            "file_path": {
+              "title": "File Path",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "file_path"
+          ],
+          "title": "get_file_symbolsArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_file_symbolsOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_callees",
+        "description": "Read statically resolved calls. Use a qualified name for duplicate method names.",
+        "inputSchema": {
+          "properties": {
+            "file_path": {
+              "title": "File Path",
+              "type": "string"
+            },
+            "function_name": {
+              "title": "Function Name",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "file_path",
+            "function_name"
+          ],
+          "title": "get_calleesArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_calleesOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_callers",
+        "description": "Read callers across the complete lightweight index, independently of CFG load order.",
+        "inputSchema": {
+          "properties": {
+            "file_path": {
+              "title": "File Path",
+              "type": "string"
+            },
+            "function_name": {
+              "title": "Function Name",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "file_path",
+            "function_name"
+          ],
+          "title": "get_callersArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_callersOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "get_file_skeleton",
+        "description": "Read API-preserving declarations for Python, JS/TS, Rust or Go with retained spans.",
+        "inputSchema": {
+          "properties": {
+            "file_path": {
+              "title": "File Path",
+              "type": "string"
+            },
+            "limit": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "cursor": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Cursor"
+            },
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "file_path"
+          ],
+          "title": "get_file_skeletonArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "get_file_skeletonOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "atlas_refresh",
+        "description": "Force a fresh configuration epoch and graph rebuild; routine edits refresh automatically.",
+        "inputSchema": {
+          "properties": {
+            "response_format": {
+              "default": "text",
+              "title": "Response Format",
+              "type": "string"
+            }
+          },
+          "title": "atlas_refreshArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "atlas_refreshOutput",
+          "type": "object"
+        }
+      },
+      {
+        "name": "diag_full_cpg_build",
+        "description": "Explicit diagnostic: build CFG/data-flow overlays in the bounded worker process.",
+        "inputSchema": {
+          "properties": {},
+          "title": "diag_full_cpg_buildArguments",
+          "type": "object"
+        },
+        "outputSchema": {
+          "properties": {
+            "result": {
+              "title": "Result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "result"
+          ],
+          "title": "diag_full_cpg_buildOutput",
+          "type": "object"
+        }
+      }
+    ],
+    "instructions": "Repository analysis from coherent source generations. Each query reconciles edits automatically. Lists are paginated; use next_cursor only with the same query and generation. Context includes delivered source spans."
+  },
+  "per_tool_serialized_tokens": {
+    "atlas_status": 85,
+    "get_repository_map": 126,
+    "get_dependencies": 138,
+    "get_dependents": 136,
+    "get_top_ranked_files": 123,
+    "find_relevant_files": 143,
+    "assemble_context": 200,
+    "get_file_symbols": 137,
+    "get_callees": 158,
+    "get_callers": 155,
+    "get_file_skeleton": 148,
+    "atlas_refresh": 87,
+    "diag_full_cpg_build": 78
+  }
+}

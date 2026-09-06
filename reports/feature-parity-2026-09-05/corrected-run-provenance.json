@@ -1,0 +1,33 @@
+{
+  "recorded_at_utc": "2026-09-06T02:38:36.040528+00:00",
+  "purpose": "Fresh complete schema-3 run after the preserved complete schema-2 run; no schema-2 resume.",
+  "corrected_evaluator_commit": "0580d7b674cddfdbae21c63b67b518925b601beb",
+  "production_commit": "d90e59d90701bc9059385e80f9c626dca77f846a",
+  "schema_version": 3,
+  "gold_path_policy": "verified-repository-container-prefix-v1",
+  "changed_files": {
+    "benchmarks/bench_retrieval.py": "272bef92b23f8ab63520890064d0fec13a0fbd78493bbbd21ce64a5ea0cd6afc",
+    "python_shell/tests/test_retrieval_benchmark.py": "9c0f87932726ccf7342e47b1b57f6fdd7acb9c977e0b298aacbda4a09f388961"
+  },
+  "original_result_file": "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-results-final.json",
+  "original_result_sha256": "dbb180282882c694c84dc00cde3dbc80574956ba7cafc208031f95ab181e673a",
+  "original_started_at": "2026-09-05T23:45:12.532417+00:00",
+  "original_finished_at": "2026-09-06T02:34:34.511585+00:00",
+  "original_rows": 400,
+  "original_error_rows": 136,
+  "original_implementation_fingerprint": "6a2834642c9a69c4074eb2284f9ed780aedc792f66ef51df42c863626379c204",
+  "manifest_sha256": "ce2b4d699c5f6d85744afdc51fb7831de65ff8bbb80c0ec95659f33d0327abc3",
+  "cache_directory": "/Users/apetty/Documents/Codex/2026-09-05/i/work/retrieval-cache",
+  "cache_npz_entries": 104769,
+  "cache_npz_bytes": 549433609,
+  "cache_key_size_manifest_sha256": "b298f3311864264dd57238ae873b861cad5a53f74121c35eff44e183556e52e1",
+  "cache_manifest_scope": "Relative npz path and byte size, not a hash of every vector payload.",
+  "cache_provenance_note": "Reuses embeddings accumulated by the complete original 50-task run, which itself reused the documented Django and earlier locked-environment entries. Corrected preparation is not cold preparation.",
+  "starting_cache_provenance_sha256": "d23e99897e508db1c269b7f62c259665b4b97463ea403002b475267fed5b76a5",
+  "python_executable": "/Users/apetty/Documents/Codex/2026-09-05/i/work/locked-venv/bin/python",
+  "post_grader_test_result": "209 passed in 7.28s",
+  "post_grader_log_sha256": "3f85a399172d45e2c3f5cc853a9d0eb0a39190227e9399604d1ab3342f029f42",
+  "test_environment_note": "Initial post-grader invocation omitted the writable cache setting and had four PermissionErrors. Its log is preserved separately. The passing full suite used task-local post-grader-test-cache.",
+  "same_sample_model_ranking_and_packing": true,
+  "coding_model_trial": false
+}

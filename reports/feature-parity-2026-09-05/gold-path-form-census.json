@@ -1,0 +1,477 @@
+{
+  "by_language": {
+    "go": {
+      "total_tasks": 10,
+      "tasks_with_absolute_gold": 4,
+      "tasks_with_parent_components": 0
+    },
+    "javascript": {
+      "total_tasks": 10,
+      "tasks_with_absolute_gold": 6,
+      "tasks_with_parent_components": 0
+    },
+    "python": {
+      "total_tasks": 10,
+      "tasks_with_absolute_gold": 0,
+      "tasks_with_parent_components": 0
+    },
+    "rust": {
+      "total_tasks": 10,
+      "tasks_with_absolute_gold": 6,
+      "tasks_with_parent_components": 0
+    },
+    "typescript": {
+      "total_tasks": 10,
+      "tasks_with_absolute_gold": 1,
+      "tasks_with_parent_components": 0
+    }
+  },
+  "tasks": [
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__2d5d4dcd",
+      "language": "python",
+      "gold_files": 4,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__986c9e85",
+      "language": "python",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714",
+      "language": "python",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__7e498c7a",
+      "language": "python",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6",
+      "language": "python",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__d939b999",
+      "language": "python",
+      "gold_files": 8,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__9ad2c37d",
+      "language": "python",
+      "gold_files": 3,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__720b4d92",
+      "language": "go",
+      "gold_files": 11,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__e957d0a9",
+      "language": "go",
+      "gold_files": 19,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__2cef67df",
+      "language": "go",
+      "gold_files": 14,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__153337fe",
+      "language": "go",
+      "gold_files": 17,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681",
+      "language": "javascript",
+      "gold_files": 14,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__python__maintenance__bugfix__83c269c9",
+      "language": "python",
+      "gold_files": 9,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__python__maintenance__bugfix__6ebb54dc",
+      "language": "python",
+      "gold_files": 6,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__javascript__maintenance__bugfix__c6d3e230",
+      "language": "javascript",
+      "gold_files": 3,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__7d106697",
+      "language": "typescript",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__16d1ff7a",
+      "language": "typescript",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__evolution__feature__684a3415",
+      "language": "typescript",
+      "gold_files": 5,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__6659fd5a",
+      "language": "typescript",
+      "gold_files": 2,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__7827bc22",
+      "language": "typescript",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__evolution__feature__676e9486",
+      "language": "typescript",
+      "gold_files": 6,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__evolution__feature__d520ba22",
+      "language": "typescript",
+      "gold_files": 3,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__42165c4e",
+      "language": "typescript",
+      "gold_files": 4,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "SWE-PolyBench__python__maintenance__bugfix__6516ee68",
+      "language": "python",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__0a6b76ff",
+      "language": "go",
+      "gold_files": 4,
+      "absolute_gold_files": [
+        "/workspace/cli__cli__0.1/api/queries_repo.go",
+        "/workspace/cli__cli__0.1/api/query_builder.go",
+        "/workspace/cli__cli__0.1/pkg/cmd/repo/edit/edit.go",
+        "/workspace/cli__cli__0.1/pkg/cmd/repo/edit/edit_test.go"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__eda678ea",
+      "language": "go",
+      "gold_files": 8,
+      "absolute_gold_files": [
+        "/workspace/cli__cli__0.1/cmd/gh/main.go",
+        "/workspace/cli__cli__0.1/internal/ghcmd/cmd.go",
+        "/workspace/cli__cli__0.1/pkg/cmd/extension/command.go",
+        "/workspace/cli__cli__0.1/pkg/cmd/extension/extension.go",
+        "/workspace/cli__cli__0.1/pkg/cmd/extension/manager.go",
+        "/workspace/cli__cli__0.1/pkg/cmd/root/extension.go",
+        "/workspace/cli__cli__0.1/pkg/cmd/root/root.go",
+        "/workspace/cli__cli__0.1/pkg/extensions/extension.go"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__1aec1ae3",
+      "language": "go",
+      "gold_files": 2,
+      "absolute_gold_files": [
+        "/workspace/cli__cli__0.1/acceptance/testdata/repo/repo-edit.txtar",
+        "/workspace/cli__cli__0.1/pkg/cmd/repo/edit/edit.go"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145",
+      "language": "go",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__6d48775e",
+      "language": "go",
+      "gold_files": 1,
+      "absolute_gold_files": [
+        "/workspace/cli__cli__0.1/pkg/cmd/browse/browse.go"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__0498ad7f",
+      "language": "go",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf",
+      "language": "javascript",
+      "gold_files": 6,
+      "absolute_gold_files": [
+        "/workspace/anuraghazra__github-readme-stats__0.1/api/index.js",
+        "/workspace/anuraghazra__github-readme-stats__0.1/package.json",
+        "/workspace/anuraghazra__github-readme-stats__0.1/src/cards/stats-card.js",
+        "/workspace/anuraghazra__github-readme-stats__0.1/src/common/icons.js",
+        "/workspace/anuraghazra__github-readme-stats__0.1/src/common/utils.js",
+        "/workspace/anuraghazra__github-readme-stats__0.1/src/translations.js"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__a8655bb4",
+      "language": "javascript",
+      "gold_files": 4,
+      "absolute_gold_files": [
+        "/workspace/expressjs__express__0.1/lib/request.js",
+        "/workspace/expressjs__express__0.1/package.json",
+        "/workspace/expressjs__express__0.1/test/req.hostname.js",
+        "/workspace/reproduce_error.js"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__3cd96c13",
+      "language": "javascript",
+      "gold_files": 0,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed92fe3",
+      "language": "javascript",
+      "gold_files": 8,
+      "absolute_gold_files": [
+        "/workspace/ast_parsed.json",
+        "/workspace/compiled.js",
+        "/workspace/reproduce.mjs",
+        "/workspace/sveltejs__svelte__0.1/package.json",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/package.json",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/transform-client.js",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/visitors/Component.js",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/visitors/shared/component.js"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__bb727b6d",
+      "language": "javascript",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__bd81816f",
+      "language": "javascript",
+      "gold_files": 4,
+      "absolute_gold_files": [
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/package.json",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/internal/client/dom/operations.js",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/internal/client/dom/template.js",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/internal/client/runtime.js"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__00fd24ea",
+      "language": "javascript",
+      "gold_files": 5,
+      "absolute_gold_files": [
+        "/workspace/sveltejs__svelte__0.1/package.json",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/errors.js",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/1-parse/read/style.js",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/tests/parser-modern/samples/css-nth-syntax/input.svelte",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/tests/parser-modern/test.ts"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__18cb0c28",
+      "language": "javascript",
+      "gold_files": 4,
+      "absolute_gold_files": [
+        "/workspace/sveltejs__svelte__0.1/package.json",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/package.json",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/phases/3-transform/client/visitors/template.js",
+        "/workspace/sveltejs__svelte__0.1/packages/svelte/src/compiler/types/template.d.ts"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__e2c42cbe",
+      "language": "rust",
+      "gold_files": 4,
+      "absolute_gold_files": [
+        "/workspace/clap-rs__clap__0.1/src/builder/arg.rs",
+        "/workspace/clap-rs__clap__0.1/src/builder/arg_settings.rs",
+        "/workspace/repro_project/Cargo.toml",
+        "/workspace/repro_project/src/main.rs"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__3c69099b",
+      "language": "rust",
+      "gold_files": 9,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__b613bda3",
+      "language": "rust",
+      "gold_files": 1,
+      "absolute_gold_files": [
+        "/workspace/reproduce_issue/Cargo.toml"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__627665a2",
+      "language": "rust",
+      "gold_files": 14,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__3a080ce7",
+      "language": "rust",
+      "gold_files": 7,
+      "absolute_gold_files": [
+        "/workspace/clap-rs__clap__0.1/clap_derive/src/attrs.rs",
+        "/workspace/clap-rs__clap__0.1/clap_derive/src/derives/args.rs",
+        "/workspace/clap-rs__clap__0.1/clap_derive/src/parse.rs",
+        "/workspace/clap-rs__clap__0.1/clap_derive/tests/custom-string-parsers.rs",
+        "/workspace/clap-rs__clap__0.1/clap_derive/tests/flags.rs",
+        "/workspace/clap-rs__clap__0.1/src/build/arg/mod.rs",
+        "/workspace/clap-rs__clap__0.1/src/output/help.rs"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__c763032c",
+      "language": "rust",
+      "gold_files": 4,
+      "absolute_gold_files": [
+        "/workspace/clap-rs__clap__0.1/src/parse/errors.rs",
+        "/workspace/clap-rs__clap__0.1/src/parse/parser.rs",
+        "/workspace/clap-rs__clap__0.1/src/util/argstr.rs",
+        "/workspace/clap-rs__clap__0.1/tests/opts.rs"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__0e4e102e",
+      "language": "rust",
+      "gold_files": 0,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__07a7e898",
+      "language": "rust",
+      "gold_files": 3,
+      "absolute_gold_files": [
+        "/workspace/clap-rs__clap__0.1/clap_derive/src/attrs.rs",
+        "/workspace/clap-rs__clap__0.1/clap_derive/src/parse.rs",
+        "/workspace/clap-rs__clap__0.1/src/build/arg/mod.rs"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__7e1b8f0a",
+      "language": "rust",
+      "gold_files": 9,
+      "absolute_gold_files": [
+        "/workspace/tokio-rs__tokio__0.1/.github/workflows/ci.yml",
+        "/workspace/tokio-rs__tokio__0.1/Cargo.toml",
+        "/workspace/tokio-rs__tokio__0.1/tokio-macros/Cargo.toml",
+        "/workspace/tokio-rs__tokio__0.1/tokio-macros/src/lib.rs",
+        "/workspace/tokio-rs__tokio__0.1/tokio-stream/src/lib.rs",
+        "/workspace/tokio-rs__tokio__0.1/tokio-test/src/lib.rs",
+        "/workspace/tokio-rs__tokio__0.1/tokio-util/src/lib.rs",
+        "/workspace/tokio-rs__tokio__0.1/tokio/Cargo.toml",
+        "/workspace/tokio-rs__tokio__0.1/tokio/src/lib.rs"
+      ],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__aa16b8b2",
+      "language": "rust",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__typescript__maintenance__bugfix__4c3f5d3d",
+      "language": "typescript",
+      "gold_files": 1,
+      "absolute_gold_files": [],
+      "parent_component_paths": []
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__typescript__maintenance__bugfix__3c1a4f89",
+      "language": "typescript",
+      "gold_files": 4,
+      "absolute_gold_files": [
+        "/workspace/vuejs__core__0.1/packages/runtime-core/src/apiCreateApp.ts",
+        "/workspace/vuejs__core__0.1/packages/runtime-core/src/componentProps.ts",
+        "/workspace/vuejs__core__0.1/packages/runtime-dom/src/index.ts",
+        "/workspace/vuejs__core__0.1/vitest.config.ts"
+      ],
+      "parent_component_paths": []
+    }
+  ],
+  "scope": "Raw annotation path-form census only; no repository scan, normalization, score change, or model initialization."
+}

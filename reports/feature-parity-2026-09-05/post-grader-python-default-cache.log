@@ -1,0 +1,284 @@
+........................................................................ [ 34%]
+...........................................FFFF......................... [ 68%]
+.................................................................        [100%]
+=================================== FAILURES ===================================
+___________ TestFindRelevantFilesChunked.test_caches_file_embeddings ___________
+
+self = PosixPath('/Users/apetty/.cache/atlas/embeddings-v2'), mode = 511
+parents = True, exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           FileNotFoundError: [Errno 2] No such file or directory: '/Users/apetty/.cache/atlas/embeddings-v2'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: FileNotFoundError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_embeddings.TestFindRelevantFilesChunked object at 0x10737b290>
+tmp_path = PosixPath('/private/var/folders/32/r8bbr6rx7knffbmn__6kx8l00000gn/T/pytest-of-apetty/pytest-210/test_caches_file_embeddings0')
+
+    def test_caches_file_embeddings(self, tmp_path):
+        """Files should be cached after first embedding and reused on second call."""
+        with patch("atlas.embeddings.TextEmbedding") as MockModel:
+            mock_instance = MagicMock()
+            # Return 384-dim embeddings
+            dim = 384
+            mock_instance.embed.side_effect = lambda texts: [
+                np.random.randn(dim) for _ in texts
+            ]
+            MockModel.return_value = mock_instance
+    
+            mgr = EmbeddingManager()
+            f1 = tmp_path / "a.py"
+            f1.write_text("def hello(): pass")
+    
+            # First call: should embed
+>           mgr.find_relevant_files("hello", [f1], top_n=1)
+
+python_shell/tests/test_embeddings.py:355: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python_shell/atlas/embeddings.py:495: in find_relevant_files
+    return [path for path, _ in self.find_relevant_files_scored(query, file_paths, top_n)]
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python_shell/atlas/embeddings.py:480: in find_relevant_files_scored
+    paths = self.prepare(file_paths)
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+python_shell/atlas/embeddings.py:453: in prepare
+    flush()
+python_shell/atlas/embeddings.py:423: in flush
+    self._save_cached(entry)
+python_shell/atlas/embeddings.py:370: in _save_cached
+    self.cache_dir.mkdir(parents=True, exist_ok=True)
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1120: in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/apetty/.cache/atlas'), mode = 511, parents = True
+exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           PermissionError: [Errno 1] Operation not permitted: '/Users/apetty/.cache/atlas'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: PermissionError
+_____ TestFindRelevantFilesChunked.test_returns_correct_number_of_results ______
+
+self = PosixPath('/Users/apetty/.cache/atlas/embeddings-v2'), mode = 511
+parents = True, exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           FileNotFoundError: [Errno 2] No such file or directory: '/Users/apetty/.cache/atlas/embeddings-v2'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: FileNotFoundError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_embeddings.TestFindRelevantFilesChunked object at 0x10737ad90>
+tmp_path = PosixPath('/private/var/folders/32/r8bbr6rx7knffbmn__6kx8l00000gn/T/pytest-of-apetty/pytest-210/test_returns_correct_number_of0')
+
+    def test_returns_correct_number_of_results(self, tmp_path):
+        """Should return at most top_n results."""
+        with patch("atlas.embeddings.TextEmbedding") as MockModel:
+            mock_instance = MagicMock()
+            dim = 384
+            mock_instance.embed.side_effect = lambda texts: [
+                np.random.randn(dim) for _ in texts
+            ]
+            MockModel.return_value = mock_instance
+    
+            mgr = EmbeddingManager()
+            files = []
+            for i in range(10):
+                f = tmp_path / f"file_{i}.py"
+                f.write_text(f"def func_{i}(): pass")
+                files.append(f)
+    
+>           result = mgr.find_relevant_files("test query", files, top_n=3)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+python_shell/tests/test_embeddings.py:382: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python_shell/atlas/embeddings.py:495: in find_relevant_files
+    return [path for path, _ in self.find_relevant_files_scored(query, file_paths, top_n)]
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python_shell/atlas/embeddings.py:480: in find_relevant_files_scored
+    paths = self.prepare(file_paths)
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+python_shell/atlas/embeddings.py:453: in prepare
+    flush()
+python_shell/atlas/embeddings.py:423: in flush
+    self._save_cached(entry)
+python_shell/atlas/embeddings.py:370: in _save_cached
+    self.cache_dir.mkdir(parents=True, exist_ok=True)
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1120: in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/apetty/.cache/atlas'), mode = 511, parents = True
+exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           PermissionError: [Errno 1] Operation not permitted: '/Users/apetty/.cache/atlas'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: PermissionError
+_____ TestFindRelevantFilesChunked.test_scored_returns_tuples_with_scores ______
+
+self = PosixPath('/Users/apetty/.cache/atlas/embeddings-v2'), mode = 511
+parents = True, exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           FileNotFoundError: [Errno 2] No such file or directory: '/Users/apetty/.cache/atlas/embeddings-v2'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: FileNotFoundError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_embeddings.TestFindRelevantFilesChunked object at 0x10737b750>
+tmp_path = PosixPath('/private/var/folders/32/r8bbr6rx7knffbmn__6kx8l00000gn/T/pytest-of-apetty/pytest-210/test_scored_returns_tuples_wit0')
+
+    def test_scored_returns_tuples_with_scores(self, tmp_path):
+        """find_relevant_files_scored should return (Path, float) tuples."""
+        with patch("atlas.embeddings.TextEmbedding") as MockModel:
+            mock_instance = MagicMock()
+            dim = 384
+            mock_instance.embed.side_effect = lambda texts: [
+                np.random.randn(dim) for _ in texts
+            ]
+            MockModel.return_value = mock_instance
+    
+            mgr = EmbeddingManager()
+            files = []
+            for i in range(5):
+                f = tmp_path / f"file_{i}.py"
+                f.write_text(f"def func_{i}(): pass")
+                files.append(f)
+    
+>           result = mgr.find_relevant_files_scored("test query", files, top_n=3)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+python_shell/tests/test_embeddings.py:403: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python_shell/atlas/embeddings.py:480: in find_relevant_files_scored
+    paths = self.prepare(file_paths)
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+python_shell/atlas/embeddings.py:453: in prepare
+    flush()
+python_shell/atlas/embeddings.py:423: in flush
+    self._save_cached(entry)
+python_shell/atlas/embeddings.py:370: in _save_cached
+    self.cache_dir.mkdir(parents=True, exist_ok=True)
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1120: in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/apetty/.cache/atlas'), mode = 511, parents = True
+exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           PermissionError: [Errno 1] Operation not permitted: '/Users/apetty/.cache/atlas'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: PermissionError
+______ TestFindRelevantFilesChunked.test_scored_consistent_with_unscored _______
+
+self = PosixPath('/Users/apetty/.cache/atlas/embeddings-v2'), mode = 511
+parents = True, exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           FileNotFoundError: [Errno 2] No such file or directory: '/Users/apetty/.cache/atlas/embeddings-v2'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: FileNotFoundError
+
+During handling of the above exception, another exception occurred:
+
+self = <test_embeddings.TestFindRelevantFilesChunked object at 0x10737b9d0>
+tmp_path = PosixPath('/private/var/folders/32/r8bbr6rx7knffbmn__6kx8l00000gn/T/pytest-of-apetty/pytest-210/test_scored_consistent_with_un0')
+
+    def test_scored_consistent_with_unscored(self, tmp_path):
+        """find_relevant_files and find_relevant_files_scored should return same ordering."""
+        with patch("atlas.embeddings.TextEmbedding") as MockModel:
+            mock_instance = MagicMock()
+            dim = 384
+            # Use deterministic embeddings
+            np.random.seed(42)
+            mock_instance.embed.side_effect = lambda texts: [
+                np.random.randn(dim) for _ in texts
+            ]
+            MockModel.return_value = mock_instance
+    
+            mgr = EmbeddingManager()
+            files = []
+            for i in range(5):
+                f = tmp_path / f"file_{i}.py"
+                f.write_text(f"def func_{i}(): pass")
+                files.append(f)
+    
+>           scored = mgr.find_relevant_files_scored("test", files, top_n=3)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+python_shell/tests/test_embeddings.py:431: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+python_shell/atlas/embeddings.py:480: in find_relevant_files_scored
+    paths = self.prepare(file_paths)
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+python_shell/atlas/embeddings.py:453: in prepare
+    flush()
+python_shell/atlas/embeddings.py:423: in flush
+    self._save_cached(entry)
+python_shell/atlas/embeddings.py:370: in _save_cached
+    self.cache_dir.mkdir(parents=True, exist_ok=True)
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1120: in mkdir
+    self.parent.mkdir(parents=True, exist_ok=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/Users/apetty/.cache/atlas'), mode = 511, parents = True
+exist_ok = True
+
+    def mkdir(self, mode=0o777, parents=False, exist_ok=False):
+        """
+        Create a new directory at this given path.
+        """
+        try:
+>           os.mkdir(self, mode)
+E           PermissionError: [Errno 1] Operation not permitted: '/Users/apetty/.cache/atlas'
+
+/opt/homebrew/Cellar/python@3.11/3.11.14_1/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py:1116: PermissionError
+=========================== short test summary info ============================
+FAILED python_shell/tests/test_embeddings.py::TestFindRelevantFilesChunked::test_caches_file_embeddings
+FAILED python_shell/tests/test_embeddings.py::TestFindRelevantFilesChunked::test_returns_correct_number_of_results
+FAILED python_shell/tests/test_embeddings.py::TestFindRelevantFilesChunked::test_scored_returns_tuples_with_scores
+FAILED python_shell/tests/test_embeddings.py::TestFindRelevantFilesChunked::test_scored_consistent_with_unscored
+4 failed, 205 passed in 7.78s

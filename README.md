@@ -1,6 +1,6 @@
 # Atlas
 
-Atlas is a local code intelligence engine for repository maps, dependency and call analysis, semantic search, and source-attributed context. Rust parses source and builds indexes; Python manages repository sessions, retrieval and MCP/CLI interfaces. Source and embeddings remain local.
+Atlas is a local code intelligence engine for repository maps, dependency and call analysis, semantic search, and source-attributed context. Rust parses source and builds indexes; Python manages repository sessions, retrieval and MCP/CLI interfaces. Parsing, embedding inference and cache storage run locally.
 
 ## Supported analysis
 
@@ -36,13 +36,13 @@ uv run --no-sync maturin develop --release
 
 ## Repository sessions
 
-MCP and the CLI use `RepositorySession`. One worker process owns the graph, captured source buffers, AST call index, embedding matrix and optional detailed overlays. Requests are serialized within that session.
+MCP and the CLI share the `RepositorySession` implementation. Each session owns a worker process with its graph, captured source buffers, AST call index, embedding matrix and optional detailed overlays. Requests are serialized within that session.
 
 Before each answer, Atlas reconciles file and configuration metadata. Native watcher events are hints; missed events do not prevent the next request from seeing edits. Changed buffers are read without newline conversion. Atlas checks the manifest again before accepting a generation, and answers from those accepted buffers. A later edit belongs to the next generation.
 
 An ordinary content edit updates the affected indexes. Create/delete/rename operations and relevant resolver, dependency, ignore or source-root configuration changes trigger a fresh graph epoch. A syntax-invalid file is excluded from graph/retrieval coverage until repaired; other files remain usable. Status and every JSON page expose incomplete coverage.
 
-A timeout or active cancellation terminates and joins the worker. The next request starts a clean generation. Cancelling a queued request cannot kill another caller's work. Finished embedding batches survive in the content cache, so a cold preparation can resume after restart. For large repositories, set `ATLAS_REQUEST_TIMEOUT=900` in the server environment to allow one bounded cold preparation; configure the MCP client deadline accordingly. The default is 120 seconds, and status can report preparation progress while the query runs. Incomplete preparation never returns a complete-looking semantic ranking.
+A timeout or active cancellation terminates and joins the worker. The next request starts a clean generation. Cancelling a queued request cannot kill another caller's work. Finished embedding batches survive in the content cache, so a cold preparation can resume after restart. For large repositories, set `ATLAS_REQUEST_TIMEOUT` in the server environment to cover expected cold preparation and configure the MCP client deadline accordingly. The default is 120 seconds; some measured snapshots required more than 20 minutes, so even a 900-second override would not cover every first preparation. Status can report preparation progress while the query runs. Incomplete preparation never returns a complete-looking semantic ranking.
 
 The eager AST call index is independent of CFG/data-flow materialization. Detailed CPG files use a 128-file LRU by default; Rust callers can set another positive file capacity. Eviction does not change the public lightweight caller/callee answers. The diagnostic full-CPG command visits files but retains only the bounded overlay cache.
 
@@ -111,4 +111,6 @@ uv run --no-sync python -m benchmarks.bench_retrieval run \
 
 The runner compares BM25, flat embeddings, Atlas without expansion, and Atlas with expansion at 8k and 12k budgets. All use identical eligible files, representation/packing rules, prompt allowance and transport ceilings. Metrics credit only delivered retained source bytes; failures remain in the denominator. Cold graph/model preparation and warm retrieval latency are separate. `--resume` validates dataset, manifest, model, dependency and implementation fingerprints; partial/failed tasks rerun as a unit.
 
-`benchmarks/bench_scale.py` constructs a deterministic 10,000-file mixed-language fixture and measures actual worker requests, preparation, warm p95, edit-to-answer latency and peak RSS. Quality and scale results, including unmet targets, belong in the implementation report; the existence of these harnesses is not a passing result.
+`benchmarks/bench_scale.py` constructs a deterministic 10,000-file mixed-language fixture and measures actual worker requests, preparation, warm p95, edit-to-answer latency and peak RSS.
+
+The September 5, 2026 evaluation passed the agreed warm gates on the 10,000-file fixture and pinned Django. Verification includes 313 Rust tests and 209 Python tests. The complete frozen comparison found no demonstrated retrieval advantage for graph expansion over the simpler embedding variants; total agent-token savings and coding-task accuracy were not measured. See the [implementation report](IMPLEMENTATION_REPORT.md) and [reproduction evidence](reports/feature-parity-2026-09-05/REPRODUCE.md) for results, cold preparation costs, grader correction and limitations.

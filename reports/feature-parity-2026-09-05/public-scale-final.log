@@ -1,0 +1,40 @@
+{"event": "cold_progress", "seconds": 0.10460374999092892, "phase": "not_started"}
+{"event": "cold_progress", "seconds": 0.5159862089785747, "phase": "capturing_sources", "completed": 0, "total": 2803, "generation": null}
+{"event": "cold_progress", "seconds": 0.6210482500027865, "phase": "indexing", "completed": 0, "total": 2803, "generation": null}
+{"event": "public_graph_complete", "seconds": 5.662722125009168, "coverage": {"indexed": 2799, "eligible": 2803, "invalid_count": 4, "invalid_files": {"/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/openlayers.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/osm.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/i18n/commands/javascript.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/test_runner_apps/tagged/tests_syntax_error.py": "syntax_error"}, "invalid_details_omitted": 0, "import_resolvers": ["python", "javascript_typescript"], "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved", "watcher": "native hints plus manifest reconciliation"}}
+{"event": "public_warm_complete", "operation": "dependencies", "p95_seconds": 0.2719952499610372}
+{"event": "public_warm_complete", "operation": "map", "p95_seconds": 0.2891789170098491}
+{"event": "cold_progress", "seconds": 0.10047016595490277, "phase": "ready", "completed": 2799, "total": 2803, "generation": "c2f0d3da313e:1"}
+2026-09-05 16:17:49.151 Python[61510:19871641] 2026-09-05 16:17:49.151903 [W:onnxruntime:Default, telemetry.cc:800 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+{"event": "cold_progress", "seconds": 0.5086917500011623, "phase": "loading_embedding_model", "completed": 0, "total": 2803}
+{"event": "cold_progress", "seconds": 0.7171400829683989, "phase": "preparing_embeddings", "completed": 0, "total": 2799}
+2026-09-05 16:17:58.167 Python[61510:19872053] NetworkStorageDB:_openDBReadConnections: failed to open read connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:17:58.167 Python[61510:19872053] The read-connection to the DB=/Users/apetty/Library/Caches/org.python.python/Cache.db is NOT valid.  Unable to determine schema version.
+2026-09-05 16:17:58.175 Python[61510:19872053] NetworkStorageDB:_openDBWriteConnections: failed to open write connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:17:58.175 Python[61510:19872053] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db.
+2026-09-05 16:17:58.175 Python[61510:19872053] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-shm.
+2026-09-05 16:17:58.175 Python[61510:19872053] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-wal.
+{"event": "cold_progress", "seconds": 10.796435541007668, "phase": "preparing_embeddings", "completed": 37, "total": 2799}
+{"event": "cold_progress", "seconds": 20.80954537499929, "phase": "preparing_embeddings", "completed": 67, "total": 2799}
+{"event": "cold_progress", "seconds": 30.90462370798923, "phase": "preparing_embeddings", "completed": 104, "total": 2799}
+{"event": "cold_progress", "seconds": 40.916872999980114, "phase": "preparing_embeddings", "completed": 145, "total": 2799}
+{"event": "cold_progress", "seconds": 50.93429833295522, "phase": "preparing_embeddings", "completed": 206, "total": 2799}
+{"event": "cold_progress", "seconds": 61.03924533299869, "phase": "preparing_embeddings", "completed": 296, "total": 2799}
+{"event": "cold_progress", "seconds": 71.05846979096532, "phase": "preparing_embeddings", "completed": 341, "total": 2799}
+{"event": "cold_progress", "seconds": 81.06801366596483, "phase": "preparing_embeddings", "completed": 388, "total": 2799}
+{"event": "cold_progress", "seconds": 91.14903979096562, "phase": "preparing_embeddings", "completed": 423, "total": 2799}
+{"event": "cold_progress", "seconds": 101.15782354096882, "phase": "preparing_embeddings", "completed": 553, "total": 2799}
+{"event": "cold_progress", "seconds": 111.23399212496588, "phase": "preparing_embeddings", "completed": 712, "total": 2799}
+{"event": "cold_progress", "seconds": 121.25196879100986, "phase": "preparing_embeddings", "completed": 720, "total": 2799}
+{"event": "cold_progress", "seconds": 131.3533376249834, "phase": "preparing_embeddings", "completed": 787, "total": 2799}
+{"event": "cold_progress", "seconds": 141.45037895796122, "phase": "preparing_embeddings", "completed": 840, "total": 2799}
+{"event": "cold_progress", "seconds": 151.546496749972, "phase": "preparing_embeddings", "completed": 885, "total": 2799}
+{"event": "cold_progress", "seconds": 161.5546930829878, "phase": "preparing_embeddings", "completed": 995, "total": 2799}
+{"event": "cold_progress", "seconds": 171.65458087500883, "phase": "preparing_embeddings", "completed": 1052, "total": 2799}
+{"event": "cold_progress", "seconds": 181.67073020798853, "phase": "preparing_embeddings", "completed": 1075, "total": 2799}
+{"event": "cold_progress", "seconds": 191.68590229097754, "phase": "preparing_embeddings", "completed": 1103, "total": 2799}
+{"event": "cold_progress", "seconds": 201.70748070796253, "phase": "preparing_embeddings", "completed": 1127, "total": 2799}
+{"event": "cold_progress", "seconds": 211.8035327909747, "phase": "preparing_embeddings", "completed": 1153, "total": 2799}
+{"event": "cold_progress", "seconds": 221.9072399159777, "phase": "preparing_embeddings", "completed": 1178, "total": 2799}
+{"event": "cold_progress", "seconds": 231.93214362498838, "phase": "preparing_embeddings", "completed": 1197, "total": 2799}
+{"event": "public_benchmark_complete", "complete": false, "errors": [{"type": "TimeoutError", "message": "search exceeded 240.0s; worker terminated and joined. Retry starts a clean generation.", "last_progress": {"phase": "timed_out", "operation": "search"}}]}

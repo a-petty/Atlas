@@ -1,0 +1,745 @@
+{
+  "schema_version": 1,
+  "repository": {
+    "name": "django/django",
+    "commit": "8c3bd0b708b488a1f6e8bd8cc6b96569904605be",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django",
+    "eligible_files": 2803,
+    "source_bytes": 15979072,
+    "source_sha256": "b4e9a5bd5ed9bcad9fec134c92d8af70f1e4be4a7195f7c625c8a86c8df6af5f",
+    "extensions": {
+      ".js": 108,
+      ".py": 2695
+    }
+  },
+  "build": {
+    "label": "release",
+    "extension_path": "/Users/apetty/Dev/Atlas/python_shell/atlas/semantic_engine.cpython-311-darwin.so",
+    "extension_sha256": "80a276b6d0bbfba972a408a702515916236ccbdd9c56672f0a61788a511ba3a5",
+    "benchmark_sha256": "556effe8249dc7ccff5a26ae21370b657dcaf1d12e3ceedd256acc4b088b7c36",
+    "python_source_sha256": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "agent.py": "27235253aa7b519a7fd36ab0886ee7cdd9637f1d5fe3fdc8c85b12c2ff459d28",
+      "cli.py": "218c54625552a3efe2b5ff25ac1320f34d00a43e611f09002dcbb0d1bbbe789b",
+      "context.py": "31a56a8696434373f0928e2462a4de6ac382ea6e627b552675f5211c680359a4",
+      "embeddings.py": "f25bede755a6ddd05e5ab6e97de60b9c62d6a41ca0b92c6ba6991dbe18681f9d",
+      "health.py": "5fe1b17af8cdca7190c7f0c124a0a5eae70e6ea0b1f5853562b11f40e598251a",
+      "llm.py": "b8c3633424ca6e020e87d8eb26834eebbe7fec9a0657ce93a75fd51e74278abf",
+      "mcp_server.py": "8bb230c88a4d45135d584209e88d064b66c90ffd0e6e03183f3eef2a68f6d4c4",
+      "session.py": "7f38e726da7fa4ba5e62d02b532df6e58037feadd22b8391e7f9e1303227a0cd",
+      "tools.py": "858c1ccd9395e71f71896cdd8bec316b3ddae0596c578706b97f241bb1a746b6"
+    },
+    "embedding_model": {
+      "name": "BAAI/bge-small-en-v1.5",
+      "fastembed_version": "0.7.4"
+    },
+    "git_commit": "a796d490238bb0b686e1ba4b517518ec68b2f50e",
+    "tracked_diff_sha256": "19d471e3c449f17bd85f8b28fd8cc66fc7b9d1dff029e63ed68d5a78e19be869",
+    "python": "3.11.14 (main, Oct  9 2025, 16:16:55) [Clang 17.0.0 (clang-1700.0.13.3)]",
+    "platform": "macOS-15.7.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "cpu": null,
+    "logical_cpus": 14,
+    "physical_memory_bytes": null
+  },
+  "started_unix": 1788650526.066839,
+  "cold": {
+    "graph": {
+      "seconds": 6.446046583994757,
+      "progress_timeline": [
+        {
+          "seconds": 0.10522774996934459,
+          "phase": "not_started"
+        },
+        {
+          "seconds": 0.5228614999796264,
+          "phase": "capturing_sources",
+          "completed": 0,
+          "total": 2803,
+          "generation": null
+        },
+        {
+          "seconds": 0.6279282089672051,
+          "phase": "indexing",
+          "completed": 0,
+          "total": 2803,
+          "generation": null
+        }
+      ]
+    },
+    "semantic_preparation": {
+      "seconds": 244.83390525000868,
+      "progress_timeline": [
+        {
+          "seconds": 0.10121562500717118,
+          "phase": "ready",
+          "completed": 2799,
+          "total": 2803,
+          "generation": "cf6494d88db0:1"
+        },
+        {
+          "seconds": 0.6166927500162274,
+          "phase": "loading_embedding_model",
+          "completed": 0,
+          "total": 2803
+        },
+        {
+          "seconds": 0.7170180000248365,
+          "phase": "preparing_embeddings",
+          "completed": 0,
+          "total": 2799
+        },
+        {
+          "seconds": 10.745737333025318,
+          "phase": "preparing_embeddings",
+          "completed": 1266,
+          "total": 2799
+        },
+        {
+          "seconds": 20.74575158301741,
+          "phase": "preparing_embeddings",
+          "completed": 1356,
+          "total": 2799
+        },
+        {
+          "seconds": 30.75050695799291,
+          "phase": "preparing_embeddings",
+          "completed": 1391,
+          "total": 2799
+        },
+        {
+          "seconds": 40.752135874994565,
+          "phase": "preparing_embeddings",
+          "completed": 1469,
+          "total": 2799
+        },
+        {
+          "seconds": 50.77202491700882,
+          "phase": "preparing_embeddings",
+          "completed": 1554,
+          "total": 2799
+        },
+        {
+          "seconds": 60.8719332080218,
+          "phase": "preparing_embeddings",
+          "completed": 1652,
+          "total": 2799
+        },
+        {
+          "seconds": 70.87884941702941,
+          "phase": "preparing_embeddings",
+          "completed": 1726,
+          "total": 2799
+        },
+        {
+          "seconds": 80.98088550003013,
+          "phase": "preparing_embeddings",
+          "completed": 1769,
+          "total": 2799
+        },
+        {
+          "seconds": 91.0840008330415,
+          "phase": "preparing_embeddings",
+          "completed": 1818,
+          "total": 2799
+        },
+        {
+          "seconds": 101.10889062500792,
+          "phase": "preparing_embeddings",
+          "completed": 1900,
+          "total": 2799
+        },
+        {
+          "seconds": 111.13407625001855,
+          "phase": "preparing_embeddings",
+          "completed": 1952,
+          "total": 2799
+        },
+        {
+          "seconds": 121.16702954203356,
+          "phase": "preparing_embeddings",
+          "completed": 2065,
+          "total": 2799
+        },
+        {
+          "seconds": 131.21032524999464,
+          "phase": "preparing_embeddings",
+          "completed": 2187,
+          "total": 2799
+        },
+        {
+          "seconds": 141.29403000004822,
+          "phase": "preparing_embeddings",
+          "completed": 2219,
+          "total": 2799
+        },
+        {
+          "seconds": 151.35007283301093,
+          "phase": "preparing_embeddings",
+          "completed": 2242,
+          "total": 2799
+        },
+        {
+          "seconds": 161.3916504170047,
+          "phase": "preparing_embeddings",
+          "completed": 2303,
+          "total": 2799
+        },
+        {
+          "seconds": 171.42829445801908,
+          "phase": "preparing_embeddings",
+          "completed": 2340,
+          "total": 2799
+        },
+        {
+          "seconds": 181.5377188330167,
+          "phase": "preparing_embeddings",
+          "completed": 2379,
+          "total": 2799
+        },
+        {
+          "seconds": 191.63951333303703,
+          "phase": "preparing_embeddings",
+          "completed": 2442,
+          "total": 2799
+        },
+        {
+          "seconds": 201.64960566704394,
+          "phase": "preparing_embeddings",
+          "completed": 2547,
+          "total": 2799
+        },
+        {
+          "seconds": 211.6892405420076,
+          "phase": "preparing_embeddings",
+          "completed": 2575,
+          "total": 2799
+        },
+        {
+          "seconds": 221.70944345800672,
+          "phase": "preparing_embeddings",
+          "completed": 2615,
+          "total": 2799
+        },
+        {
+          "seconds": 231.73303649999434,
+          "phase": "preparing_embeddings",
+          "completed": 2690,
+          "total": 2799
+        },
+        {
+          "seconds": 241.8175877080066,
+          "phase": "preparing_embeddings",
+          "completed": 2790,
+          "total": 2799
+        }
+      ],
+      "includes": "local model initialization and embedding every accepted source file before returning first result",
+      "sum_attempt_seconds": 484.8339052500087
+    },
+    "restart_graph_seconds": 6.446046583994757
+  },
+  "warm": {
+    "dependencies": {
+      "samples_seconds": [
+        0.26547799998661503,
+        0.26279812498250976,
+        0.2512725410051644,
+        0.2552852500230074,
+        0.26261299999896437,
+        0.2663137500057928,
+        0.2614737499970943,
+        0.2507111669983715,
+        0.25587837502826005,
+        0.2645201660343446
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.2620433749980293,
+      "p95_seconds": 0.2663137500057928,
+      "maximum_seconds": 0.2663137500057928,
+      "target_seconds": 0.5,
+      "meets_target": true
+    },
+    "map": {
+      "samples_seconds": [
+        0.27559145900886506,
+        0.26887345797149464,
+        0.26352849998511374,
+        0.27381383400643244,
+        0.2765755410073325,
+        0.27939262497238815,
+        0.2719623330049217,
+        0.26363483298337087,
+        0.26254895800957456,
+        0.27209549996769056
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.2720289164863061,
+      "p95_seconds": 0.27939262497238815,
+      "maximum_seconds": 0.27939262497238815,
+      "target_seconds": 0.5,
+      "meets_target": true
+    },
+    "search": {
+      "samples_seconds": [
+        0.3118993749958463,
+        0.28664150001714006,
+        0.2817544999998063,
+        0.2781334170140326,
+        0.2872106249560602,
+        0.2990933750406839,
+        0.2848432500031777,
+        0.27533020899863914,
+        0.28088274999754503,
+        0.27703204104909673
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.283298875001492,
+      "p95_seconds": 0.3118993749958463,
+      "maximum_seconds": 0.3118993749958463,
+      "target_seconds": 2.0,
+      "meets_target": true
+    },
+    "context": {
+      "samples_seconds": [
+        0.614229874976445,
+        4.732273000001442,
+        0.5554737080237828,
+        0.5833287080167793,
+        5.092670958023518,
+        0.5799928340129554,
+        0.5764654999948107,
+        0.5975870830006897,
+        0.5589717910042964,
+        0.5545910419896245
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.5816607710148674,
+      "p95_seconds": 5.092670958023518,
+      "maximum_seconds": 5.092670958023518,
+      "target_seconds": 2.0,
+      "meets_target": false
+    },
+    "edit_next_answer": {
+      "samples_seconds": [
+        3.5095916249556467,
+        3.0569319169735536,
+        3.042335791978985,
+        3.0436417079763487,
+        3.032873167016078,
+        3.055584124987945,
+        3.048551832966041,
+        3.035533874994144,
+        3.0401165829971433,
+        3.045224041037727
+      ],
+      "sample_count": 10,
+      "median_seconds": 3.044432874507038,
+      "p95_seconds": 3.5095916249556467,
+      "maximum_seconds": 3.5095916249556467,
+      "target_seconds": 2.0,
+      "meets_target": false
+    }
+  },
+  "memory": [
+    {
+      "label": "after_cold_graph",
+      "peak_rss_bytes": 1134215168,
+      "pid": 61832
+    },
+    {
+      "label": "after_semantic_preparation",
+      "peak_rss_bytes": 4059742208,
+      "pid": 61832
+    },
+    {
+      "label": "after_warm_search",
+      "peak_rss_bytes": 4059758592,
+      "pid": 61832
+    },
+    {
+      "label": "after_warm_context",
+      "peak_rss_bytes": 4098670592,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_1",
+      "peak_rss_bytes": 4164648960,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_2",
+      "peak_rss_bytes": 4165976064,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_3",
+      "peak_rss_bytes": 4168237056,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_4",
+      "peak_rss_bytes": 4174610432,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_5",
+      "peak_rss_bytes": 4174610432,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_6",
+      "peak_rss_bytes": 4174610432,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_7",
+      "peak_rss_bytes": 4174610432,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_8",
+      "peak_rss_bytes": 4174610432,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_9",
+      "peak_rss_bytes": 4174692352,
+      "pid": 61832
+    },
+    {
+      "label": "after_edit_10",
+      "peak_rss_bytes": 4174692352,
+      "pid": 61832
+    },
+    {
+      "label": "after_restore",
+      "peak_rss_bytes": 4175413248,
+      "pid": 61832
+    }
+  ],
+  "errors": [],
+  "complete": true,
+  "cache": {
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django-cache",
+    "entries_before": 1234,
+    "entries_after": 2799
+  },
+  "query_set": [
+    "How does Django initialize application configuration and load models?",
+    "How are model fields and database columns discovered?",
+    "Where are incoming requests dispatched through middleware?",
+    "How are template variables and filters resolved?",
+    "How do form fields validate incoming values?",
+    "How are database migration dependencies ordered?",
+    "Where does Django find and serve static files?",
+    "How does model serialization handle related objects?",
+    "How are cache keys generated and invalidated?",
+    "How do lazy objects defer evaluating wrapped values?"
+  ],
+  "probe_file": "django/apps/registry.py",
+  "edit_file": "django/utils/functional.py",
+  "coverage": {
+    "indexed": 2799,
+    "eligible": 2803,
+    "invalid_count": 4,
+    "invalid_files": {
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/openlayers.js": "syntax_error",
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/osm.js": "syntax_error",
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/i18n/commands/javascript.js": "syntax_error",
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/test_runner_apps/tagged/tests_syntax_error.py": "syntax_error"
+    },
+    "invalid_details_omitted": 0,
+    "import_resolvers": [
+      "python",
+      "javascript_typescript"
+    ],
+    "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+    "watcher": "native hints plus manifest reconciliation"
+  },
+  "statistics": {
+    "node_count": 2799,
+    "edge_count": 2106,
+    "import_edges": 1254,
+    "symbol_edges": 852,
+    "total_definitions": 34117,
+    "unresolved_import_count": 1,
+    "module_index_size": 5381,
+    "source_roots": [
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django",
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/docs",
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests"
+    ],
+    "known_root_modules": [
+      "__main__",
+      "_ext",
+      "absolute_url_overrides",
+      "admin_autodiscover",
+      "admin_changelist",
+      "admin_checks",
+      "admin_custom_urls",
+      "admin_default_site",
+      "admin_docs",
+      "admin_filters",
+      "admin_inlines",
+      "admin_ordering",
+      "admin_registration",
+      "admin_scripts",
+      "admin_utils",
+      "admin_views",
+      "admin_widgets",
+      "aggregation",
+      "aggregation_regress",
+      "annotations",
+      "app_loading",
+      "apps",
+      "asgi",
+      "async",
+      "auth_tests",
+      "backends",
+      "base",
+      "bash_completion",
+      "basic",
+      "builtin_server",
+      "bulk_create",
+      "cache",
+      "check_framework",
+      "conditional_processing",
+      "conf",
+      "constraints",
+      "contenttypes_tests",
+      "context_processors",
+      "contrib",
+      "core",
+      "csrf_tests",
+      "custom_columns",
+      "custom_lookups",
+      "custom_managers",
+      "custom_methods",
+      "custom_migration_operations",
+      "custom_pk",
+      "datatypes",
+      "dates",
+      "datetimes",
+      "db",
+      "db_functions",
+      "db_typecasts",
+      "db_utils",
+      "dbshell",
+      "decorators",
+      "defer",
+      "defer_regress",
+      "delete",
+      "delete_regress",
+      "deprecation",
+      "dispatch",
+      "distinct_on_fields",
+      "django",
+      "docs",
+      "empty",
+      "empty_models",
+      "expressions",
+      "expressions_case",
+      "expressions_window",
+      "extra_regress",
+      "field_deconstruction",
+      "field_defaults",
+      "field_subclassing",
+      "file_storage",
+      "file_uploads",
+      "files",
+      "filtered_relation",
+      "fixtures",
+      "fixtures_model_package",
+      "fixtures_regress",
+      "flatpages_tests",
+      "force_insert_update",
+      "foreign_object",
+      "forms",
+      "forms_tests",
+      "from_db_value",
+      "generic_inline_admin",
+      "generic_relations",
+      "generic_relations_regress",
+      "generic_views",
+      "get_earliest_or_latest",
+      "get_object_or_404",
+      "get_or_create",
+      "gis_tests",
+      "handlers",
+      "http",
+      "httpwrappers",
+      "humanize_tests",
+      "i18n",
+      "import_error_package",
+      "indexes",
+      "inline_formsets",
+      "inspectdb",
+      "introspection",
+      "invalid_models_tests",
+      "known_related_objects",
+      "logging_tests",
+      "lookup",
+      "m2m_and_m2o",
+      "m2m_intermediary",
+      "m2m_multiple",
+      "m2m_recursive",
+      "m2m_regress",
+      "m2m_signals",
+      "m2m_through",
+      "m2m_through_regress",
+      "m2o_recursive",
+      "mail",
+      "managers_regress",
+      "many_to_many",
+      "many_to_one",
+      "many_to_one_null",
+      "max_lengths",
+      "messages_tests",
+      "middleware",
+      "middleware_exceptions",
+      "migrate_signals",
+      "migration_test_data_persistence",
+      "migrations",
+      "migrations2",
+      "model_enums",
+      "model_fields",
+      "model_forms",
+      "model_formsets",
+      "model_formsets_regress",
+      "model_indexes",
+      "model_inheritance",
+      "model_inheritance_regress",
+      "model_meta",
+      "model_options",
+      "model_package",
+      "model_regress",
+      "model_utils",
+      "modeladmin",
+      "multiple_database",
+      "mutually_referential",
+      "nested_foreign_keys",
+      "no_models",
+      "null_fk",
+      "null_fk_ordering",
+      "null_queries",
+      "one_to_one",
+      "or_lookups",
+      "order_with_respect_to",
+      "ordering",
+      "pagination",
+      "postgres_tests",
+      "prefetch_related",
+      "project_template",
+      "properties",
+      "proxy_model_inheritance",
+      "proxy_models",
+      "queries",
+      "queryset_pickle",
+      "raw_query",
+      "redirects_tests",
+      "requests",
+      "reserved_names",
+      "resolve_url",
+      "responses",
+      "reverse_lookup",
+      "runtests",
+      "save_delete_hooks",
+      "schema",
+      "scripts",
+      "select_for_update",
+      "select_related",
+      "select_related_onetoone",
+      "select_related_regress",
+      "serializers",
+      "servers",
+      "sessions_tests",
+      "settings_tests",
+      "setup",
+      "shell",
+      "shortcuts",
+      "signals",
+      "signed_cookies_tests",
+      "signing",
+      "sitemaps_tests",
+      "sites_framework",
+      "sites_tests",
+      "staticfiles_tests",
+      "str",
+      "string_lookup",
+      "swappable_models",
+      "syndication_tests",
+      "template",
+      "template_backends",
+      "template_loader",
+      "template_tests",
+      "templatetags",
+      "test",
+      "test_client",
+      "test_client_regress",
+      "test_exceptions",
+      "test_runner",
+      "test_runner_apps",
+      "test_sqlite",
+      "test_utils",
+      "tests",
+      "timezones",
+      "transaction_hooks",
+      "transactions",
+      "unmanaged_models",
+      "update",
+      "update_only_fields",
+      "urlpatterns",
+      "urlpatterns_reverse",
+      "urls",
+      "user_commands",
+      "utils",
+      "utils_tests",
+      "validation",
+      "validators",
+      "version",
+      "view_tests",
+      "views",
+      "wsgi"
+    ],
+    "registered_resolvers": [
+      "python",
+      "javascript_typescript"
+    ],
+    "file_counts_by_language": {
+      "javascript": 108,
+      "python": 2695
+    },
+    "unsupported_language_counts": {},
+    "source_roots_total": 3,
+    "source_roots_omitted": 0,
+    "known_root_modules_total": 230,
+    "known_root_modules_omitted": 0
+  },
+  "edit_next_answer_operation": "context",
+  "meets_measured_targets": false,
+  "elapsed_seconds": 313.5088880062103,
+  "memory_note": "Worker peakRSS observations; finite edit-cycle sampling does not prove asymptotic memory bounds.",
+  "measurement_status": "uncontended_resumed_public_gate_failure",
+  "prior_cold_attempt": {
+    "path": "public-scale-final.json",
+    "cold_timeout_seconds": 240,
+    "graph_seconds": 5.662722125009168,
+    "elapsed_seconds": 251.3423159122467,
+    "cache_entries_retained": 1234,
+    "worker_pid": 61510
+  },
+  "restart_verified": {
+    "different_worker_pid": true,
+    "new_worker_pid": 61832,
+    "cache_entries_before": 1234,
+    "previous_cache_entries_after": 1234
+  },
+  "coordination_note": "Measured in the agreed exclusive CPU window. All samples retained. Same full pinned source checkout and persistent cache after the recorded240-second cold timeout.",
+  "fixture_restoration": {
+    "verified": true,
+    "edited_file": "work/public-scale-django/django/utils/functional.py",
+    "sha256": "e5d30a3989e6271cb938028cc152f386204f604fd931a013064aeeb0d9d75f64",
+    "compared_with": "isolated copy original pinned checkout"
+  }
+}

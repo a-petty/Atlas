@@ -1,0 +1,639 @@
+{
+  "note": "Actual local BGE/Rust/RepositoryState/MCP rendering smoke; not ContextBench evidence",
+  "results": [
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "bm25",
+      "budget": 8000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2551,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 2.1431249915622175,
+      "warm_assembly_ms": [
+        1.3732080115005374
+      ],
+      "cold_delivery_ms": 2.1590840187855065,
+      "warm_latency_ms": [
+        1.38841598527506
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    },
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "flat_embedding",
+      "budget": 8000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2557,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 3.6687080282717943,
+      "warm_assembly_ms": [
+        3.416666993871331
+      ],
+      "cold_delivery_ms": 3.6864160210825503,
+      "warm_latency_ms": [
+        3.437249979469925
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    },
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "atlas_no_expansion",
+      "budget": 8000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2548,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 3.5808750544674695,
+      "warm_assembly_ms": [
+        3.3504169550724328
+      ],
+      "cold_delivery_ms": 3.5980420070700347,
+      "warm_latency_ms": [
+        3.3681249478831887
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    },
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "atlas",
+      "budget": 8000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2548,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 3.5805419902317226,
+      "warm_assembly_ms": [
+        3.3414579811505973
+      ],
+      "cold_delivery_ms": 3.59595799818635,
+      "warm_latency_ms": [
+        3.3582079922780395
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    },
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "flat_embedding",
+      "budget": 12000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2557,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 3.4702499979175627,
+      "warm_assembly_ms": [
+        2.95670802006498
+      ],
+      "cold_delivery_ms": 3.4851660020649433,
+      "warm_latency_ms": [
+        2.9720410238951445
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    },
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "atlas",
+      "budget": 12000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2548,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 3.6099160206504166,
+      "warm_assembly_ms": [
+        3.114999970421195
+      ],
+      "cold_delivery_ms": 3.627208003308624,
+      "warm_latency_ms": [
+        3.1311659840866923
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    },
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "bm25",
+      "budget": 12000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2551,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 1.626000041142106,
+      "warm_assembly_ms": [
+        1.300834002904594
+      ],
+      "cold_delivery_ms": 1.6401670291088521,
+      "warm_latency_ms": [
+        1.3145419652573764
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    },
+    {
+      "instance_id": "local_delivery_smoke_not_contextbench",
+      "repo": "local/fixture",
+      "language": "python",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "model": "BAAI/bge-small-en-v1.5",
+      "model_identity": null,
+      "strategy": "atlas_no_expansion",
+      "budget": 12000,
+      "file_recall": 1.0,
+      "file_precision": 0.3333333333333333,
+      "file_f1": 0.5,
+      "gold_files": [
+        "b.py"
+      ],
+      "retrieved_files": [
+        "a.py",
+        "b.py",
+        "noise.py"
+      ],
+      "gold_bytes": 42,
+      "retained_gold_bytes": 42,
+      "gold_byte_recall": 1.0,
+      "blocks_fully_covered": 1,
+      "blocks_partially_covered": 0,
+      "blocks_missed": 0,
+      "invalid_gold_blocks": [],
+      "span_metrics_complete": true,
+      "tokens": 392,
+      "characters": 1288,
+      "json_characters": 2548,
+      "json_tokens": 848,
+      "coverage": {
+        "indexed": 3,
+        "eligible": 4,
+        "invalid_count": 1,
+        "invalid_files": {
+          "/Users/apetty/Documents/Codex/2026-09-05/i/work/implementation/retrieval-delivery-fixture/broken.py": "syntax_error"
+        },
+        "invalid_details_omitted": 0,
+        "import_resolvers": [
+          "python"
+        ],
+        "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+        "watcher": "native hints plus manifest reconciliation"
+      },
+      "omissions": {},
+      "incomplete": true,
+      "cold_assembly_ms": 3.7627500132657588,
+      "warm_assembly_ms": [
+        3.64491599611938
+      ],
+      "cold_delivery_ms": 3.781875013373792,
+      "warm_latency_ms": [
+        3.6625409848056734
+      ],
+      "latency_scope": "ranking, packing, and both MCP response formats",
+      "checkout_ms": 0.0003750319592654705,
+      "graph_ms": 104.7188329976052,
+      "embedding_prepare_ms": 115.53883395390585,
+      "lexical_prepare_ms": 0.2369590220041573,
+      "eligible_files": 3,
+      "eligible_files_sha256": "d4b5b09f9a5a89dbd9156de2ea2aeb1b35d287dddf74d89c03dd4e5cc593ec67",
+      "embedding_engine_key": "[\"BAAI/bge-small-en-v1.5\", \"0.7.4\", \"dcc52dedc73755de62156d8cce48d99856550891584e3a4a35d23f6f178fa9a8\", \"atlas-skeleton-v2\", \"chunk-v3-bounded\"]",
+      "error": null
+    }
+  ],
+  "summary": [
+    {
+      "strategy": "atlas",
+      "budget": 8000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 3.3582079922780395
+    },
+    {
+      "strategy": "atlas",
+      "budget": 12000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 3.1311659840866923
+    },
+    {
+      "strategy": "atlas_no_expansion",
+      "budget": 8000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 3.3681249478831887
+    },
+    {
+      "strategy": "atlas_no_expansion",
+      "budget": 12000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 3.6625409848056734
+    },
+    {
+      "strategy": "bm25",
+      "budget": 8000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 1.38841598527506
+    },
+    {
+      "strategy": "bm25",
+      "budget": 12000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 1.3145419652573764
+    },
+    {
+      "strategy": "flat_embedding",
+      "budget": 8000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 3.437249979469925
+    },
+    {
+      "strategy": "flat_embedding",
+      "budget": 12000,
+      "tasks": 1,
+      "failed": 0,
+      "incomplete": 1,
+      "file_recall_mean": 1.0,
+      "file_precision_mean": 0.3333333333333333,
+      "file_f1_mean": 0.5,
+      "gold_byte_recall_mean": 1.0,
+      "tokens_mean": 392.0,
+      "warm_p95_ms": 2.9720410238951445
+    }
+  ]
+}

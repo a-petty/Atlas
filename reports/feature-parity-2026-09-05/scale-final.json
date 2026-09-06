@@ -1,0 +1,492 @@
+{
+  "schema_version": 1,
+  "started_unix": 1788650187.309145,
+  "build": {
+    "label": "release",
+    "extension_path": "/Users/apetty/Dev/Atlas/python_shell/atlas/semantic_engine.cpython-311-darwin.so",
+    "extension_sha256": "80a276b6d0bbfba972a408a702515916236ccbdd9c56672f0a61788a511ba3a5",
+    "benchmark_sha256": "556effe8249dc7ccff5a26ae21370b657dcaf1d12e3ceedd256acc4b088b7c36",
+    "python_source_sha256": {
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "agent.py": "27235253aa7b519a7fd36ab0886ee7cdd9637f1d5fe3fdc8c85b12c2ff459d28",
+      "cli.py": "218c54625552a3efe2b5ff25ac1320f34d00a43e611f09002dcbb0d1bbbe789b",
+      "context.py": "31a56a8696434373f0928e2462a4de6ac382ea6e627b552675f5211c680359a4",
+      "embeddings.py": "f25bede755a6ddd05e5ab6e97de60b9c62d6a41ca0b92c6ba6991dbe18681f9d",
+      "health.py": "5fe1b17af8cdca7190c7f0c124a0a5eae70e6ea0b1f5853562b11f40e598251a",
+      "llm.py": "b8c3633424ca6e020e87d8eb26834eebbe7fec9a0657ce93a75fd51e74278abf",
+      "mcp_server.py": "8bb230c88a4d45135d584209e88d064b66c90ffd0e6e03183f3eef2a68f6d4c4",
+      "session.py": "7f38e726da7fa4ba5e62d02b532df6e58037feadd22b8391e7f9e1303227a0cd",
+      "tools.py": "858c1ccd9395e71f71896cdd8bec316b3ddae0596c578706b97f241bb1a746b6"
+    },
+    "embedding_model": {
+      "name": "BAAI/bge-small-en-v1.5",
+      "fastembed_version": "0.7.4"
+    },
+    "git_commit": "a796d490238bb0b686e1ba4b517518ec68b2f50e",
+    "tracked_diff_sha256": "19d471e3c449f17bd85f8b28fd8cc66fc7b9d1dff029e63ed68d5a78e19be869",
+    "python": "3.11.14 (main, Oct  9 2025, 16:16:55) [Clang 17.0.0 (clang-1700.0.13.3)]",
+    "platform": "macOS-15.7.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "cpu": null,
+    "logical_cpus": 14,
+    "physical_memory_bytes": null
+  },
+  "fixture": {
+    "version": 1,
+    "seed": 20260905,
+    "file_count": 10000,
+    "files_by_language": {
+      "python": 2000,
+      "javascript": 2000,
+      "typescript": 2000,
+      "rust": 2000,
+      "go": 2000
+    },
+    "source_bytes": 3338612,
+    "fixture_sha256": "cd091ac6833e0fc977529774fe5b47a41867edffbda349a5286a52faf37ede14",
+    "configuration_sha256": "8b6487e103604593447be27c07dab20f3e7dc379b81381cb160876f1a8c467a1",
+    "resolver_scope": "Python and JS/TS only; Rust/Go remain parser/skeleton coverage"
+  },
+  "fixture_path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/scale-fixture",
+  "samples_requested": 10,
+  "cache": {
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/scale-locked-cold-cache",
+    "entries_before": 10000,
+    "content_cache_cold": false,
+    "model_weights": "existing local cache; downloads blocked by HF_HUB_OFFLINE",
+    "entries_after": 10000
+  },
+  "cold": {
+    "graph": {
+      "seconds": 3.9991354169906117,
+      "progress_timeline": [
+        {
+          "seconds": 0.10057370900176466,
+          "phase": "not_started"
+        },
+        {
+          "seconds": 0.51642191701103,
+          "phase": "capturing_sources",
+          "completed": 0,
+          "total": 10000,
+          "generation": null
+        },
+        {
+          "seconds": 0.6192422090098262,
+          "phase": "indexing",
+          "completed": 0,
+          "total": 10000,
+          "generation": null
+        }
+      ],
+      "indexed": 10000,
+      "generation": "303031adb54c:1"
+    },
+    "semantic_preparation": {
+      "seconds": 2.6954725420218892,
+      "progress_timeline": [
+        {
+          "seconds": 0.10115845798281953,
+          "phase": "ready",
+          "completed": 10000,
+          "total": 10000,
+          "generation": "303031adb54c:1"
+        },
+        {
+          "seconds": 0.5177584580378607,
+          "phase": "loading_embedding_model",
+          "completed": 0,
+          "total": 10000
+        },
+        {
+          "seconds": 0.7278513330384158,
+          "phase": "preparing_embeddings",
+          "completed": 0,
+          "total": 10000
+        }
+      ],
+      "sampled_phase_seconds": {
+        "ready": 0.41660000005504116,
+        "loading_embedding_model": 0.21009287500055507,
+        "preparing_embeddings": 1.9676212089834735
+      },
+      "includes": "model initialization, tokenization, all eligible file embeddings, persistent writes, matrix assembly and first query",
+      "phase_timing_resolution_seconds": 0.1
+    }
+  },
+  "warm": {
+    "dependencies": {
+      "samples_seconds": [
+        0.23160324996570125,
+        0.24377862497931346,
+        0.22364829102298245,
+        0.2296592079801485,
+        0.2361481249681674,
+        0.23650962498504668,
+        0.22325379098765552,
+        0.22032562497770414,
+        0.24118383304448798,
+        0.22347787499893457
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.23063122897292487,
+      "p95_seconds": 0.24377862497931346,
+      "maximum_seconds": 0.24377862497931346,
+      "target_seconds": 0.5,
+      "meets_target": true
+    },
+    "map": {
+      "samples_seconds": [
+        0.2592456669663079,
+        0.2577982079819776,
+        0.2702380000264384,
+        0.2852471249643713,
+        0.2726093750097789,
+        0.2595088750240393,
+        0.2660581669770181,
+        0.2592080410104245,
+        0.2638140410417691,
+        0.27187754097394645
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.2649361040093936,
+      "p95_seconds": 0.2852471249643713,
+      "maximum_seconds": 0.2852471249643713,
+      "target_seconds": 0.5,
+      "meets_target": true
+    },
+    "search": {
+      "samples_seconds": [
+        0.3203947499860078,
+        0.32109762501204386,
+        0.3256355830235407,
+        0.3332563749863766,
+        0.31952837499557063,
+        0.3173800419899635,
+        0.31622554099885747,
+        0.323454583005514,
+        0.31930508400546387,
+        0.31227358302567154
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.3199615624907892,
+      "p95_seconds": 0.3332563749863766,
+      "maximum_seconds": 0.3332563749863766,
+      "target_seconds": 2.0,
+      "meets_target": true,
+      "delivered": [
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        }
+      ]
+    },
+    "context": {
+      "samples_seconds": [
+        0.9508151659974828,
+        0.9600058340001851,
+        0.9426732920110226,
+        3.3946451250230893,
+        3.371674833004363,
+        0.9645960420020856,
+        0.9740341250435449,
+        0.9624166660360061,
+        0.9605603329837322,
+        0.9582487089792266
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.9614884995098691,
+      "p95_seconds": 3.3946451250230893,
+      "maximum_seconds": 3.3946451250230893,
+      "target_seconds": 2.0,
+      "meets_target": false,
+      "delivered": [
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5251,
+          "characters": 19611,
+          "omitted": 9964,
+          "omission_reasons": {
+            "budget": 9964
+          },
+          "omission_details_omitted": 9959
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5250,
+          "characters": 19626,
+          "omitted": 9964,
+          "omission_reasons": {
+            "budget": 9964
+          },
+          "omission_details_omitted": 9959
+        },
+        {
+          "files": 38,
+          "chunks": 44,
+          "tokens": 5338,
+          "characters": 18878,
+          "omitted": 9964,
+          "omission_reasons": {
+            "budget": 9964
+          },
+          "omission_details_omitted": 9960
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5237,
+          "characters": 19387,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5240,
+          "characters": 19234,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 44,
+          "tokens": 5316,
+          "characters": 19103,
+          "omitted": 9962,
+          "omission_reasons": {
+            "budget": 9962
+          },
+          "omission_details_omitted": 9959
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5259,
+          "characters": 19253,
+          "omitted": 9964,
+          "omission_reasons": {
+            "budget": 9964
+          },
+          "omission_details_omitted": 9959
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5256,
+          "characters": 19322,
+          "omitted": 9964,
+          "omission_reasons": {
+            "budget": 9964
+          },
+          "omission_details_omitted": 9959
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5257,
+          "characters": 19417,
+          "omitted": 9964,
+          "omission_reasons": {
+            "budget": 9964
+          },
+          "omission_details_omitted": 9959
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5253,
+          "characters": 19504,
+          "omitted": 9964,
+          "omission_reasons": {
+            "budget": 9964
+          },
+          "omission_details_omitted": 9959
+        }
+      ]
+    },
+    "edit_next_answer": {
+      "samples_seconds": [
+        1.2967925000120886,
+        1.292972166032996,
+        1.3213141660089605,
+        1.3502751250052825,
+        1.32242070796201,
+        1.3119012080132961,
+        1.3138760839938186,
+        1.3342608329840004,
+        1.3477659169584513,
+        1.338320292008575
+      ],
+      "sample_count": 10,
+      "median_seconds": 1.3218674369854853,
+      "p95_seconds": 1.3502751250052825,
+      "maximum_seconds": 1.3502751250052825,
+      "target_seconds": 2.0,
+      "meets_target": true
+    }
+  },
+  "memory": [
+    {
+      "label": "after_cold_graph",
+      "peak_rss_bytes": 514195456,
+      "pid": 61167
+    },
+    {
+      "label": "after_semantic_preparation",
+      "peak_rss_bytes": 757153792,
+      "pid": 61167
+    },
+    {
+      "label": "after_warm_search",
+      "peak_rss_bytes": 762888192,
+      "pid": 61167
+    },
+    {
+      "label": "after_warm_context",
+      "peak_rss_bytes": 778207232,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_1",
+      "peak_rss_bytes": 807059456,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_2",
+      "peak_rss_bytes": 811122688,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_3",
+      "peak_rss_bytes": 814137344,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_4",
+      "peak_rss_bytes": 814137344,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_5",
+      "peak_rss_bytes": 816365568,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_6",
+      "peak_rss_bytes": 816365568,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_7",
+      "peak_rss_bytes": 819904512,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_8",
+      "peak_rss_bytes": 822886400,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_9",
+      "peak_rss_bytes": 824754176,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_10",
+      "peak_rss_bytes": 824754176,
+      "pid": 61167
+    },
+    {
+      "label": "after_edit_series_and_restore",
+      "peak_rss_bytes": 824754176,
+      "pid": 61167
+    }
+  ],
+  "errors": [],
+  "complete": true,
+  "coverage": {
+    "indexed": 10000,
+    "eligible": 10000,
+    "invalid_count": 0,
+    "invalid_files": {},
+    "invalid_details_omitted": 0,
+    "import_resolvers": [
+      "python",
+      "javascript_typescript"
+    ],
+    "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+    "watcher": "native hints plus manifest reconciliation"
+  },
+  "edit_next_answer_operation": "context",
+  "edit_fixture_file": "python/module_1000.py",
+  "memory_observation": {
+    "maximum_peak_rss_bytes": 824754176,
+    "note": "Worker resource.ru_maxrss peak observations outside request timers; these are not current RSS. Finite repeated-edit observation does not prove asymptotic memory boundedness."
+  },
+  "semantic_skipped": false,
+  "meets_measured_targets": false,
+  "elapsed_seconds": 49.52282404899597,
+  "measurement_status": "final_release_uncontended_gate_failure",
+  "coordination_note": "Measured after root confirmed final release validation complete and both other workers were CPU idle. No samples were dropped.",
+  "historical_cold_evidence": [
+    {
+      "path": "scale-release.json",
+      "extension_sha256": "6dec9f080342e0665d50309f05554662072ec4291ba86302de847bb57c54078e",
+      "graph_seconds": 3.522424624999985,
+      "semantic_preparation_seconds": 56.60120212496258,
+      "cache_entries_before": 0,
+      "cache_entries_after": 10000,
+      "note": "Earlier release, original local environment. Fresh content cache; local model weights already cached."
+    },
+    {
+      "path": "scale-locked-release.json",
+      "extension_sha256": "b9071d13e499140616c0cbd44a984fc6cb4fa892cdd9d5fa60633e552d3759d0",
+      "graph_seconds": 5.301993916975334,
+      "semantic_preparation_seconds": 58.37909425003454,
+      "cache_entries_before": 0,
+      "cache_entries_after": 10000,
+      "note": "Earlier release, clean locked environment, early stages overlapped a retrieval runner; diagnostic only, not a final latency gate."
+    }
+  ],
+  "fixture_restoration": {
+    "verified": true,
+    "edited_file": "work/scale-fixture/python/module_1000.py",
+    "sha256": "0100819017928bbb4e32a9ac7bc7def5a9698449c814823f5c556787b0ea3b8f",
+    "compared_with": "pinned deterministic fixture manifest"
+  }
+}

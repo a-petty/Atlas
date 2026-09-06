@@ -1,0 +1,1761 @@
++ uv lock --check
+Resolved 93 packages in 4ms
++ cargo test --locked --manifest-path rust_core/Cargo.toml -- --test-threads=1
+warning: unused import: `HashSet`
+ --> src/parser.rs:1:33
+  |
+1 | use std::collections::{HashMap, HashSet};
+  |                                 ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `warn`
+ --> src/graph.rs:6:24
+  |
+6 | use log::{debug, info, warn};
+  |                        ^^^^
+
+warning: unused import: `ParserPool`
+  --> src/lib.rs:25:21
+   |
+25 | use crate::parser::{ParserPool, SupportedLanguage, create_skeleton_from_source};
+   |                     ^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+ --> src/parser.rs:6:44
+  |
+6 | pub fn create_skeleton_from_source(source: &str, lang_ext: &str) -> PyResult<String> {
+  |                                            ^ call to unsafe function
+  |
+  = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+  = note: consult the function's documentation for information on how to avoid undefined behavior
+  = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+ --> src/parser.rs:6:60
+  |
+6 | pub fn create_skeleton_from_source(source: &str, lang_ext: &str) -> PyResult<String> {
+  |                                                            ^ call to unsafe function
+  |
+  = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+  = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/parser.rs:372:45
+    |
+372 | pub fn create_skeleton_details_json(source: &str, lang_ext: &str) -> PyResult<String> {
+    |                                             ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/parser.rs:372:61
+    |
+372 | pub fn create_skeleton_details_json(source: &str, lang_ext: &str) -> PyResult<String> {
+    |                                                             ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: variable does not need to be mutable
+    --> src/graph.rs:1659:13
+     |
+1659 |         let mut canonical_paths: Vec<PathBuf> = paths
+     |             ----^^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:34:21
+   |
+34 |         start_line: usize,
+   |                     ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:35:20
+   |
+35 |         start_col: usize,
+   |                    ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:36:19
+   |
+36 |         end_line: usize,
+   |                   ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:37:18
+   |
+37 |         end_col: usize,
+   |                  ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:38:19
+   |
+38 |         old_text: String,
+   |                   ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:39:19
+   |
+39 |         new_text: String,
+   |                   ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:87:48
+   |
+87 |     pub fn py_update_file(&mut self, path_str: String, new_source: String, edit: &TextEdit) -> PyResult<()> {
+   |                                                ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:87:68
+   |
+87 |     pub fn py_update_file(&mut self, path_str: String, new_source: String, edit: &TextEdit) -> PyResult<()> {
+   |                                                                    ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:87:82
+   |
+87 |     pub fn py_update_file(&mut self, path_str: String, new_source: String, edit: &TextEdit) -> PyResult<()> {
+   |                                                                                  ^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: value assigned to `new_tree` is never read
+   --> src/incremental_parser.rs:160:28
+    |
+160 |         let mut new_tree = None;
+    |                            ^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `entry_idx`
+  --> src/dataflow.rs:28:13
+   |
+28 |         let entry_idx = match cpg.function_to_entry.get(&func_idx) {
+   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entry_idx`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `exit_idx`
+  --> src/dataflow.rs:32:13
+   |
+32 |         let exit_idx = match cpg.function_to_exit.get(&func_idx) {
+   |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_exit_idx`
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:107:26
+    |
+107 | fn check_syntax(content: &str, lang_name: &str) -> PyResult<PySyntaxCheckResult> {
+    |                          ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:107:43
+    |
+107 | fn check_syntax(content: &str, lang_name: &str) -> PyResult<PySyntaxCheckResult> {
+    |                                           ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:192:26
+    |
+192 | fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>, include_aliases: bool) -> PyResult<Vec<String>> {
+    |                          ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:404:23
+    |
+404 |         project_root: &str,
+    |                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:493:46
+    |
+493 |     fn build_complete(&mut self, file_paths: Vec<String>) {
+    |                                              ^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:510:34
+    |
+510 |     fn add_file(&mut self, path: String, content: String) -> PyResult<()> {
+    |                                  ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:510:51
+    |
+510 |     fn add_file(&mut self, path: String, content: String) -> PyResult<()> {
+    |                                                   ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:528:37
+    |
+528 |     fn remove_file(&mut self, path: String) -> PyResult<()> {
+    |                                     ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:543:42
+    |
+543 |     fn update_file(&mut self, file_path: &str, content: &str) -> PyResult<PyGraphUpdateResult> {
+    |                                          ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:543:57
+    |
+543 |     fn update_file(&mut self, file_path: &str, content: &str) -> PyResult<PyGraphUpdateResult> {
+    |                                                         ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:556:43
+    |
+556 |     fn generate_map(&mut self, max_files: usize) -> String {
+    |                                           ^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:567:41
+    |
+567 |     fn get_dependents(&self, file_path: &str) -> PyResult<Vec<(String, String)>> {
+    |                                         ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:575:43
+    |
+575 |     fn get_dependencies(&self, file_path: &str) -> PyResult<Vec<(String, String)>> {
+    |                                           ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:582:35
+    |
+582 |     fn has_file(&self, file_path: &str) -> bool {
+    |                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:588:45
+    |
+588 |     fn get_unresolved_imports(&self, limit: usize) -> Vec<(String, usize)> {
+    |                                             ^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:604:48
+    |
+604 |     fn debug_module_lookup(&self, module_path: &str) -> Option<String> {
+    |                                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:610:51
+    |
+610 |     fn debug_resolve_import(&self, import_source: &str, current_file: &str) -> Vec<(String, String)> {
+    |                                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:610:71
+    |
+610 |     fn debug_resolve_import(&self, import_source: &str, current_file: &str) -> Vec<(String, String)> {
+    |                                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:614:47
+    |
+614 |     fn get_top_ranked_files(&mut self, limit: usize) -> Vec<(String, f64)> {
+    |                                               ^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:623:38
+    |
+623 |     pub fn get_skeleton(&self, path: String) -> PyResult<String> {
+    |                                      ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:632:32
+    |
+632 |     fn get_source(&self, path: &str) -> PyResult<String> {
+    |                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:637:47
+    |
+637 |     fn build_from_sources(&mut self, sources: HashMap<String, String>) {
+    |                                               ^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:664:50
+    |
+664 |     fn ensure_cpg_for_file(&mut self, file_path: &str) -> bool {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:673:49
+    |
+673 |     fn build_cpg_for_file(&mut self, file_path: &str) -> bool {
+    |                                                 ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:683:51
+    |
+683 |     fn resolve_cpg_for_file(&mut self, file_path: &str) -> PyResult<bool> {
+    |                                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:699:50
+    |
+699 |     fn resolve_new_callers(&mut self, file_path: &str) -> PyResult<bool> {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:713:60
+    |
+713 |     fn get_functions_in_file(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                            ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:752:52
+    |
+752 |     fn get_cpg_nodes(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                    ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:786:43
+    |
+786 |     fn get_function_cfg(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                           ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:786:64
+    |
+786 |     fn get_function_cfg(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:822:48
+    |
+822 |     fn get_function_dataflow(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:822:69
+    |
+822 |     fn get_function_dataflow(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                                                     ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:857:62
+    |
+857 |     fn get_statement_defs_uses(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                              ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:857:83
+    |
+857 |     fn get_statement_defs_uses(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:902:57
+    |
+902 |     fn get_cfg_statements(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                         ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:902:78
+    |
+902 |     fn get_cfg_statements(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                              ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:953:52
+    |
+953 |     fn get_callables(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                    ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:958:55
+    |
+958 |     fn get_file_symbols(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:976:50
+    |
+976 |     fn get_callees(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:976:71
+    |
+976 |     fn get_callees(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:980:50
+    |
+980 |     fn get_callers(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:980:71
+    |
+980 |     fn get_callers(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+    --> src/lib.rs:1140:15
+     |
+1140 |         path: String,
+     |               ^^^^^^ call to unsafe function
+     |
+     = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+     = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+    --> src/lib.rs:1174:42
+     |
+1174 |     fn wait_for_event(&self, timeout_ms: u64) -> PyResult<Option<PyFileChangeEvent>> {
+     |                                          ^^^ call to unsafe function
+     |
+     = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+     = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: function `find_all_func_indices` is never used
+    --> src/lib.rs:1002:4
+     |
+1002 | fn find_all_func_indices(cpg: &cpg::CpgLayer, path: &Path, function_name: &str) -> Vec<petgraph::graph::NodeIndex> {
+     |    ^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `filter` and `known_files` are never read
+   --> src/watcher.rs:139:5
+    |
+125 | pub struct FileWatcher {
+    |            ----------- fields in this struct
+...
+139 |     filter: FileFilter,
+    |     ^^^^^^
+...
+145 |     known_files: Arc<RwLock<HashSet<PathBuf>>>,
+    |     ^^^^^^^^^^^
+
+warning: field `language` is never read
+  --> src/cfg.rs:37:5
+   |
+36 | pub struct CfgBuilder {
+   |            ---------- field in this struct
+37 |     language: SupportedLanguage,
+   |     ^^^^^^^^
+
+For more information about this error, try `rustc --explain E0133`.
+warning: `semantic_engine` (lib) generated 67 warnings (run `cargo fix --lib -p semantic_engine` to apply 6 suggestions)
+warning: unused variable: `entry_idx`
+   --> tests/test_cfg.rs:192:9
+    |
+192 |     let entry_idx = cpg.function_to_entry[&func_idx];
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entry_idx`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `PathBuf` and `Path`
+ --> tests/test_graph_updates.rs:5:17
+  |
+5 | use std::path::{Path, PathBuf};
+  |                 ^^^^  ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `result`
+   --> tests/test_graph_updates.rs:209:9
+    |
+209 |     let result = graph.update_file(&module_a, &content).unwrap();
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_result`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `CpgEdge`
+ --> tests/test_dataflow.rs:1:28
+  |
+1 | use semantic_engine::cpg::{CpgEdge, CpgLayer, CpgNodeKind, StatementKind};
+  |                            ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `petgraph::visit::EdgeRef`
+ --> tests/test_dataflow.rs:6:5
+  |
+6 | use petgraph::visit::EdgeRef;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::collections::HashSet`
+ --> tests/test_dataflow.rs:7:5
+  |
+7 | use std::collections::HashSet;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `semantic_engine::parser::SupportedLanguage`
+ --> tests/test_incremental_parsing.rs:4:5
+  |
+4 | use semantic_engine::parser::SupportedLanguage;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `semantic_engine` (test "test_cfg") generated 1 warning (run `cargo fix --test "test_cfg" -p semantic_engine` to apply 1 suggestion)
+warning: `semantic_engine` (test "test_graph_updates") generated 2 warnings (run `cargo fix --test "test_graph_updates" -p semantic_engine` to apply 2 suggestions)
+warning: `semantic_engine` (test "test_dataflow") generated 3 warnings (run `cargo fix --test "test_dataflow" -p semantic_engine` to apply 3 suggestions)
+warning: `semantic_engine` (lib test) generated 67 warnings (67 duplicates)
+warning: `semantic_engine` (test "test_incremental_parsing") generated 1 warning (run `cargo fix --test "test_incremental_parsing" -p semantic_engine` to apply 1 suggestion)
+warning: use of deprecated associated function `semantic_engine::graph::RepoGraph::new`: use `new_multi(&[ResolverGroup::X, ...])` instead; this function will be removed in a future release
+  --> examples/generate_map.rs:27:32
+   |
+27 |     let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+   |                                ^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: unused import: `petgraph::visit::EdgeRef`
+ --> tests/test_js_import_resolution.rs:4:5
+  |
+4 | use petgraph::visit::EdgeRef;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: use of deprecated associated function `semantic_engine::graph::RepoGraph::new`: use `new_multi(&[ResolverGroup::X, ...])` instead; this function will be removed in a future release
+  --> examples/test_graph_build.rs:27:32
+   |
+27 |     let mut graph = RepoGraph::new(&root_path, "python", &[], None);
+   |                                ^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: `semantic_engine` (example "generate_map") generated 1 warning
+warning: `semantic_engine` (test "test_js_import_resolution") generated 1 warning (run `cargo fix --test "test_js_import_resolution" -p semantic_engine` to apply 1 suggestion)
+warning: `semantic_engine` (example "test_graph_build") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.29s
+     Running unittests src/lib.rs (rust_core/target/debug/deps/semantic_engine-2cffc50920d5d6b6)
+
+running 74 tests
+test import_resolver::tests::test_absolute_import_package_via_source_root ... ok
+test import_resolver::tests::test_absolute_import_via_source_root ... ok
+test import_resolver::tests::test_bare_absolute_import_via_source_root ... ok
+test import_resolver::tests::test_default_ignored_dirs_skipped_with_empty_user_list ... ok
+test import_resolver::tests::test_detection_orders_by_count_desc ... ok
+test import_resolver::tests::test_detection_picks_both_when_mixed ... ok
+test import_resolver::tests::test_detection_picks_present_python_only ... ok
+test import_resolver::tests::test_detection_picks_present_ts_only ... ok
+test import_resolver::tests::test_detection_respects_default_ignored_dirs ... ok
+test import_resolver::tests::test_detection_respects_user_ignored_dirs ... ok
+test import_resolver::tests::test_detection_returns_empty_for_unsupported_only ... ok
+test import_resolver::tests::test_detection_unsupported_counts_populated_for_go_rust ... ok
+test import_resolver::tests::test_duplicate_from_import_not_counted_as_failed ... ok
+test import_resolver::tests::test_expanded_stdlib_filter_covers_common_misses ... ok
+test import_resolver::tests::test_failed_import_names_aggregates_by_count ... ok
+test import_resolver::tests::test_failed_import_names_default_impl_empty ... ok
+test import_resolver::tests::test_failed_import_names_records_unresolvable_module ... ok
+test import_resolver::tests::test_failed_import_names_respects_cap ... ok
+test import_resolver::tests::test_failed_import_names_respects_limit ... ok
+test import_resolver::tests::test_failed_import_names_sorted_by_count_desc ... ok
+test import_resolver::tests::test_from_relative_import_unaffected_by_stdlib_filter ... ok
+test import_resolver::tests::test_from_stdlib_does_not_count_as_attempted_or_failed ... ok
+test import_resolver::tests::test_from_stdlib_not_in_failed_name_registry ... ok
+test import_resolver::tests::test_from_third_party_does_not_count_as_attempted_or_failed ... ok
+test import_resolver::tests::test_from_unknown_module_still_counts_as_failed ... ok
+test import_resolver::tests::test_full_path_import_still_works ... ok
+test import_resolver::tests::test_js_missing_relative_import_counts_as_failed ... ok
+test import_resolver::tests::test_js_node_builtin_not_counted ... ok
+test import_resolver::tests::test_js_resolved_relative_import_not_failed ... ok
+test import_resolver::tests::test_js_third_party_declared_not_counted ... ok
+test import_resolver::tests::test_js_undeclared_bare_import_counts_as_failed ... ok
+test import_resolver::tests::test_module_indexing ... ok
+test import_resolver::tests::test_monorepo_backend_no_init_anywhere ... ok
+test import_resolver::tests::test_monorepo_with_pyrightconfig ... ok
+test import_resolver::tests::test_multiple_source_roots ... ok
+test import_resolver::tests::test_no_source_roots_for_flat_project ... ok
+test import_resolver::tests::test_poetry_packages_from ... ok
+test import_resolver::tests::test_relative_import_double_dot_in_src_layout ... ok
+test import_resolver::tests::test_relative_import_in_src_layout ... ok
+test import_resolver::tests::test_resolve_absolute ... ok
+test import_resolver::tests::test_resolve_bare_import_fallback_to_init ... ok
+test import_resolver::tests::test_resolve_from_import_absolute ... ok
+test import_resolver::tests::test_resolve_from_import_absolute_module ... ok
+test import_resolver::tests::test_resolve_from_import_with_alias ... ok
+test import_resolver::tests::test_resolve_function_level_import ... ok
+test import_resolver::tests::test_resolve_multiple_bare_imports ... ok
+test import_resolver::tests::test_resolve_non_existent ... ok
+test import_resolver::tests::test_resolve_package ... ok
+test import_resolver::tests::test_resolve_package_deep ... ok
+test import_resolver::tests::test_resolve_relative_dotted_module ... ok
+test import_resolver::tests::test_resolve_relative_double_dot ... ok
+test import_resolver::tests::test_resolve_relative_single_dot ... ok
+test import_resolver::tests::test_resolve_relative_with_module_name ... ok
+test import_resolver::tests::test_resolve_star_import ... ok
+test import_resolver::tests::test_resolve_star_import_with_init ... ok
+test import_resolver::tests::test_resolve_stdlib ... ok
+test import_resolver::tests::test_resolve_third_party ... ok
+test import_resolver::tests::test_setuptools_find_where ... ok
+test import_resolver::tests::test_setuptools_package_dir ... ok
+test import_resolver::tests::test_source_root_detection ... ok
+test import_resolver::tests::test_source_root_ignored_dirs_skipped ... ok
+test import_resolver::tests::test_source_root_module_index_has_both_variants ... ok
+test import_resolver::tests::test_source_root_namespace_package_no_init ... ok
+test import_resolver::tests::test_source_root_not_detected_for_non_package_dir ... ok
+test import_resolver::tests::test_src_as_package_not_source_root ... ok
+test import_resolver::tests::test_src_layout_with_pyproject_hatch ... ok
+test import_resolver::tests::test_src_layout_without_init ... ok
+test import_resolver::tests::test_user_ignored_dirs_merge_with_defaults ... ok
+test import_resolver::tests::test_uv_workspace_members ... ok
+test parser::tests::debug_python_tree ... ok
+test parser::tests::debug_rust_tree ... ok
+test parser::tests::test_normalization_reduces_nodes ... ok
+test parser::tree_inspection::inspect_python_function ... ok
+test parser::tree_inspection::inspect_rust_function ... ok
+
+test result: ok. 74 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running tests/test_call_index.rs (rust_core/target/debug/deps/test_call_index-c5c564cb1c3f8507)
+
+running 16 tests
+test aliases_reexports_and_import_binding_changes ... ok
+test bare_dotted_module_and_aliased_module_resolve_without_namespace_guessing ... ok
+test builtin_name_override_is_lexically_resolved ... ok
+test conditional_receiver_and_reassigned_instance_are_unresolved ... ok
+test context_exception_and_pattern_bindings_shadow_globals ... ok
+test cpg_file_lru_is_bounded_and_preserves_lightweight_answers ... ok
+test cyclic_reexport_is_bounded ... ok
+test detailed_cpg_eviction_cannot_change_lightweight_call_answers ... ok
+test file_order_and_repeated_query_resolution_are_identical ... ok
+test import_usage_requires_lexical_binding_and_counts_constants_and_types ... ok
+test incremental_matches_fresh_for_edit_sequence ... ok
+test lexical_scope_shadowing_and_qualified_candidates ... ok
+test removed_and_missing_exports_do_not_count_as_semantic_usage ... ok
+test repograph_new_import_target_refreshes_existing_importer_without_cpg ... ok
+test staticmethod_receiver_name_does_not_prove_a_class ... ok
+test unresolved_import_create_delete_and_recreate ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.01s
+
+     Running tests/test_callgraph.rs (rust_core/target/debug/deps/test_callgraph-c6d012a742cfa915)
+
+running 44 tests
+test test_aliased_from_import_class_resolution ... ok
+test test_aliased_module_import_resolution ... ok
+test test_ambiguous_unresolved ... ok
+test test_build_cpg_for_file_idempotent ... ok
+test test_build_cpg_for_file_no_interprocedural_edges ... ok
+test test_build_cpg_for_file_then_resolve ... ok
+test test_builtin_unresolved ... ok
+test test_callee_edit_preserves_other_calls_and_incoming_callers ... ok
+test test_class_qualified_call_resolution ... ok
+test test_cross_file_instance_method_resolves ... ok
+test test_cross_file_overloaded_method_resolves ... ok
+test test_duplicate_name_internal_call_resolves ... ok
+test test_extract_call_with_args ... ok
+test test_extract_call_with_kwargs ... ok
+test test_extract_chained_calls ... ok
+test test_extract_method_call ... ok
+test test_extract_nested_calls ... ok
+test test_extract_no_calls ... ok
+test test_extract_simple_call ... ok
+test test_find_all_func_indices_returns_both ... ok
+test test_incremental_update_adds_call_edges ... ok
+test test_keyword_arg_flow ... ok
+test test_module_qualified_call_resolution ... ok
+test test_overloaded_self_method_resolves ... ok
+test test_parameter_and_local_assignment_shadow_global ... ok
+test test_positional_arg_flow ... ok
+test test_recursive_call ... ok
+test test_remove_file_no_dangling_edges ... ok
+test test_repograph_call_graph_integration ... ok
+test test_resolve_all_no_duplicate_edges_multi_call ... ok
+test test_resolve_cross_file ... ok
+test test_resolve_file_no_duplicate_edges_cross_file ... ok
+test test_resolve_file_no_duplicate_edges_same_file ... ok
+test test_resolve_new_callers_additive ... ok
+test test_resolve_new_callers_idempotent ... ok
+test test_resolve_same_file ... ok
+test test_resolve_self_method ... ok
+test test_return_flow ... ok
+test test_self_attribute_not_call ... ok
+test test_self_param_skip ... ok
+test test_unimported_unique_global_never_resolves ... ok
+test test_unique_name_still_resolves ... ok
+test test_unknown_receiver_order_does_not_invent_method ... ok
+test test_unresolved_receiver_no_import ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.91s
+
+     Running tests/test_cfg.rs (rust_core/target/debug/deps/test_cfg-5e7b852f4f682ca6)
+
+running 17 tests
+test test_break_exits_loop ... ok
+test test_continue_back_edge ... ok
+test test_empty_function_body ... ok
+test test_for_loop ... ok
+test test_if_elif_else ... ok
+test test_if_else ... ok
+test test_if_no_else ... ok
+test test_match_statement ... ok
+test test_nested_loops ... ok
+test test_raise_jumps_to_exit ... ok
+test test_repograph_cfg_integration ... ok
+test test_return_jumps_to_exit ... ok
+test test_sequential_statements ... ok
+test test_try_except ... ok
+test test_try_except_finally ... ok
+test test_while_loop ... ok
+test test_with_statement ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/test_cpg.rs (rust_core/target/debug/deps/test_cpg-8f33985cd1205a01)
+
+running 15 tests
+test test_args_kwargs_parameters ... ok
+test test_ast_persistence ... ok
+test test_async_function ... ok
+test test_class_with_bases_and_methods ... ok
+test test_complex_class_hierarchy ... ok
+test test_cpg_file_removal ... ok
+test test_cpg_incremental_update ... ok
+test test_decorated_function ... ok
+test test_default_parameter_values ... ok
+test test_empty_file ... ok
+test test_module_level_variable ... ok
+test test_multiple_files ... ok
+test test_python_function_with_typed_params ... ok
+test test_repograph_cpg_integration ... ok
+test test_unsupported_language ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+
+     Running tests/test_dataflow.rs (rust_core/target/debug/deps/test_dataflow-1ed9e87e7c001e39)
+
+running 20 tests
+test test_assignment_with_expression ... ok
+test test_augmented_assignment ... ok
+test test_branch_convergence ... ok
+test test_branch_no_else ... ok
+test test_empty_function_no_dataflow ... ok
+test test_expression_statement_call ... ok
+test test_for_loop_variable ... ok
+test test_function_parameters_at_entry ... ok
+test test_incremental_update_dataflow ... ok
+test test_kill ... ok
+test test_linear_flow ... ok
+test test_loop_reaching_defs ... ok
+test test_no_reaching_def_for_undefined ... ok
+test test_parameters_reach_return ... ok
+test test_repograph_dataflow_integration ... ok
+test test_return_statement_uses ... ok
+test test_self_filtering ... ok
+test test_simple_assignment_defs_uses ... ok
+test test_tuple_unpacking ... ok
+test test_with_statement_defs_uses ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
+     Running tests/test_graph_construction.rs (rust_core/target/debug/deps/test_graph_construction-7c1b93a194ce8b94)
+
+running 5 tests
+test test_graph_statistics ... ok
+test test_import_edge_creation ... ok
+test test_multiple_symbol_definitions ... ok
+test test_no_self_edges ... ok
+test test_symbol_usage_edge_creation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s
+
+     Running tests/test_graph_invariants.rs (rust_core/target/debug/deps/test_graph_invariants-201a1bb3e59b7a88)
+
+running 6 tests
+test incremental_create_delete_recreate_matches_fresh_typed_graph ... ok
+test local_binding_changes_match_fresh_edges_and_invalidate_rank ... ok
+test local_js_export_changes_refresh_incoming_semantic_evidence ... ok
+test pagerank_conserves_mass_with_dangling_nodes ... ok
+test skeleton_uses_accepted_buffer_and_invalidates_after_update ... ok
+test typed_evidence_survives_rebuild_and_tracks_import_removal ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.33s
+
+     Running tests/test_graph_updates.rs (rust_core/target/debug/deps/test_graph_updates-fa19f244baf49bdc)
+
+running 13 tests
+test test_batch_updates_maintain_consistency ... ok
+test test_file_creation_with_symbols ... ok
+test test_file_deletion_cleanup ... ok
+test test_lazy_pagerank_recalculation ... ok
+test test_symbol_collision_handling ... ok
+test test_symbol_definition_addition ... ok
+test test_symbol_definition_removal ... ok
+test test_symbol_usage_change ... ok
+test test_update_file_add_import ... ok
+test test_update_file_no_change ... ok
+test test_update_file_remove_import ... ok
+test test_update_maintains_consistency ... ok
+test test_update_performance ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.82s
+
+     Running tests/test_import_canonicalization.rs (rust_core/target/debug/deps/test_import_canonicalization-19f1b1c453f3149f)
+
+running 6 tests
+test test_absolute_import_with_canonical_paths ... ok
+test test_airflow_like_structure ... ok
+test test_relative_import_with_canonical_paths ... ok
+test test_source_roots_detected_in_statistics ... ok
+test test_src_layout_integration ... ok
+test test_src_layout_relative_import_integration ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
+
+     Running tests/test_incremental_parsing.rs (rust_core/target/debug/deps/test_incremental_parsing-3b97e147d7247c44)
+
+running 2 tests
+test test_edit_conversion_single_line_insertion ... ok
+test test_incremental_update_produces_valid_tree ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/test_init_reexports.rs (rust_core/target/debug/deps/test_init_reexports-44e899a26e6683d2)
+
+running 5 tests
+test test_backend_source_root_with_init_reexports ... ok
+test test_barrel_reexport_creates_edge_to_submodule ... ok
+test test_multiple_reexports_from_init ... ok
+test test_no_unresolved_for_valid_reexports ... ok
+test test_non_init_import_unchanged ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+     Running tests/test_js_call_bindings.rs (rust_core/target/debug/deps/test_js_call_bindings-781e91ea68486ac4)
+
+running 11 tests
+test commonjs_object_exports_and_shadowed_module_are_conservative ... ok
+test commonjs_static_requires_and_exports ... ok
+test conflicting_wildcard_reexports_stay_unresolved ... ok
+test es_named_default_namespace_and_private_exports ... ok
+test es_named_namespace_and_wildcard_reexports ... ok
+test exported_declarations_respect_reassignment_and_type_namespace ... ok
+test javascript_reexport_update_and_unresolved_creation_are_fresh ... ok
+test javascript_static_and_instance_method_namespaces_are_distinct ... ok
+test local_export_alias_and_anonymous_default ... ok
+test shadowed_require_and_import_parameter_do_not_invent_calls ... ok
+test type_only_imports_count_as_types_and_never_as_calls ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.98s
+
+     Running tests/test_js_cpg.rs (rust_core/target/debug/deps/test_js_cpg-58b9d94eafb471bb)
+
+running 16 tests
+test test_js_arrow_function ... ok
+test test_js_async_function ... ok
+test test_js_call_site_extraction ... ok
+test test_js_cfg_for_loop ... ok
+test test_js_cfg_if_else ... ok
+test test_js_cfg_try_catch ... ok
+test test_js_class_extends ... ok
+test test_js_class_with_methods ... ok
+test test_js_dataflow_var_declaration ... ok
+test test_js_export_function ... ok
+test test_js_function_declaration ... ok
+test test_js_generator_function ... ok
+test test_js_repograph_cpg_integration ... ok
+test test_js_rest_params ... ok
+test test_js_variable_extraction ... ok
+test test_ts_typed_params_and_return ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+
+     Running tests/test_js_import_resolution.rs (rust_core/target/debug/deps/test_js_import_resolution-2300169c0e393cfc)
+
+running 2 tests
+test test_js_import_resolution ... ok
+test test_ts_path_alias_resolution ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.50s
+
+     Running tests/test_js_third_party_detection.rs (rust_core/target/debug/deps/test_js_third_party_detection-f9208e647bf6d5d1)
+
+running 6 tests
+test test_fallback_to_builtins_when_no_package_json ... ok
+test test_monorepo_packages_detected ... ok
+test test_package_json_dependencies_detected ... ok
+test test_peer_dependencies_detected ... ok
+test test_scoped_packages_detected ... ok
+test test_subdirectory_package_json ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running tests/test_pagerank.rs (rust_core/target/debug/deps/test_pagerank-340bf3d60ffd4fa2)
+
+running 2 tests
+test test_pagerank_handles_empty_graph ... ok
+test test_pagerank_identifies_core_file ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.79s
+
+     Running tests/test_phase1_hang.rs (rust_core/target/debug/deps/test_phase1_hang-22e32546c387009f)
+
+running 1 test
+test test_phase1_high_level_cpg_build ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/test_phase2_criteria.rs (rust_core/target/debug/deps/test_phase2_criteria-eed0f962851692ba)
+
+running 4 tests
+test tests::debug_skeleton_output ... ok
+test tests::print_full_python_tree ... ok
+test tests::test_phase_2_1_cst_pruning_criteria ... ok
+test tests::test_phase_2_2_skeletonizer_criteria ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running tests/test_repo_map.rs (rust_core/target/debug/deps/test_repo_map-e2eaa9cf4a7fa6bd)
+
+running 6 tests
+test test_generate_map_basic ... ok
+test test_generate_map_includes_ranks ... ok
+test test_generate_map_includes_stars ... ok
+test test_generate_map_performance ... ok
+test test_generate_map_respects_max_files ... ok
+test test_generate_map_token_efficiency ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.36s
+
+     Running tests/test_skeleton_languages.rs (rust_core/target/debug/deps/test_skeleton_languages-42900ea5e4c55fc1)
+
+running 12 tests
+test go_package_imports_fields_methods_interfaces_and_function_values ... ok
+test js_exports_arrows_classes_fields_jsx_commonjs ... ok
+test language_specific_queries_harvest_real_definitions_and_references ... ok
+test large_function_bodies_compress_without_hiding_signature_or_docs ... ok
+test omitted_body_bytes_never_receive_coverage_even_on_same_line ... ok
+test oversized_impl_splits_only_at_members_with_enclosing_identity ... ok
+test oversized_initializers_are_omitted_without_clipping_declaration ... ok
+test python_api_docs_decorators_fields_nested_and_stubs ... ok
+test python_conditional_api_retains_guard_without_runtime ... ok
+test rust_struct_enum_trait_impl_macro_and_nested_module ... ok
+test typescript_declarations_namespaces_types_and_tsx ... ok
+test unsupported_language_fallback_and_empty_source_preserve_compatibility ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+     Running tests/test_symbol_harvesting.rs (rust_core/target/debug/deps/test_symbol_harvesting-541a036939bc9ba4)
+
+running 7 tests
+test debug_python_explicit_tuple_unpacking_tree ... ok
+test debug_python_tree ... ok
+test debug_python_unpacking_tree ... ok
+test debug_rust_tree ... ok
+test test_query_compilation ... ok
+test test_symbol_harvesting_python_comprehensive ... ok
+test test_symbol_harvesting_python_simple ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests/test_third_party_detection.rs (rust_core/target/debug/deps/test_third_party_detection-dc10acef3d11108c)
+
+running 11 tests
+test test_depth_3_pyproject_toml_detected ... ok
+test test_depth_3_requirements_txt_detected ... ok
+test test_depth_4_not_walked ... ok
+test test_fallback_to_hardcoded_when_no_files ... ok
+test test_gitignored_vendored_tree_skipped ... ok
+test test_known_mismatch_normalization ... ok
+test test_node_modules_skipped ... ok
+test test_pyproject_toml_poetry_dependencies ... ok
+test test_pyproject_toml_project_dependencies ... ok
+test test_requirements_txt_packages_detected ... ok
+test test_subdirectory_requirements_txt ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/test_watcher.rs (rust_core/target/debug/deps/test_watcher-0fc735f71645bc10)
+
+running 12 tests
+test full_output_queue_stop_completes ... ok
+test output_overflow_must_reconcile_after_consumer_resumes ... ok
+test test_debouncing ... ok
+test test_detect_file_creation ... ok
+test test_detect_file_deletion ... ok
+test test_detect_file_modification ... ok
+test test_file_filtering ... ok
+test test_ignore_pycache ... ok
+test test_watcher_creation_invalid_path ... ok
+test test_watcher_creation_success ... ok
+test test_watcher_statistics ... ok
+test test_watcher_stop ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.45s
+
+   Doc-tests semantic_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
++ /Users/apetty/Documents/Codex/2026-09-05/i/work/locked-venv/bin/python -m maturin develop --release
+📦 Including license file `LICENSE`
+🍹 Building a mixed python/rust project
+🐍 Found CPython 3.11 at /Users/apetty/Documents/Codex/2026-09-05/i/work/locked-venv/bin/python
+🔗 Found pyo3 bindings
+Using Python 3.11.14 environment at: /Users/apetty/Documents/Codex/2026-09-05/i/work/locked-venv
+Checked 15 packages in 12ms
+warning: unused import: `HashSet`
+ --> src/parser.rs:1:33
+  |
+1 | use std::collections::{HashMap, HashSet};
+  |                                 ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `warn`
+ --> src/graph.rs:6:24
+  |
+6 | use log::{debug, info, warn};
+  |                        ^^^^
+
+warning: unused import: `ParserPool`
+  --> src/lib.rs:25:21
+   |
+25 | use crate::parser::{ParserPool, SupportedLanguage, create_skeleton_from_source};
+   |                     ^^^^^^^^^^
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+ --> src/parser.rs:6:44
+  |
+6 | pub fn create_skeleton_from_source(source: &str, lang_ext: &str) -> PyResult<String> {
+  |                                            ^ call to unsafe function
+  |
+  = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+  = note: consult the function's documentation for information on how to avoid undefined behavior
+  = note: `#[warn(unsafe_op_in_unsafe_fn)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+ --> src/parser.rs:6:60
+  |
+6 | pub fn create_skeleton_from_source(source: &str, lang_ext: &str) -> PyResult<String> {
+  |                                                            ^ call to unsafe function
+  |
+  = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+  = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/parser.rs:372:45
+    |
+372 | pub fn create_skeleton_details_json(source: &str, lang_ext: &str) -> PyResult<String> {
+    |                                             ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/parser.rs:372:61
+    |
+372 | pub fn create_skeleton_details_json(source: &str, lang_ext: &str) -> PyResult<String> {
+    |                                                             ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: variable does not need to be mutable
+    --> src/graph.rs:1659:13
+     |
+1659 |         let mut canonical_paths: Vec<PathBuf> = paths
+     |             ----^^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:34:21
+   |
+34 |         start_line: usize,
+   |                     ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:35:20
+   |
+35 |         start_col: usize,
+   |                    ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:36:19
+   |
+36 |         end_line: usize,
+   |                   ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:37:18
+   |
+37 |         end_col: usize,
+   |                  ^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:38:19
+   |
+38 |         old_text: String,
+   |                   ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:39:19
+   |
+39 |         new_text: String,
+   |                   ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:87:48
+   |
+87 |     pub fn py_update_file(&mut self, path_str: String, new_source: String, edit: &TextEdit) -> PyResult<()> {
+   |                                                ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:87:68
+   |
+87 |     pub fn py_update_file(&mut self, path_str: String, new_source: String, edit: &TextEdit) -> PyResult<()> {
+   |                                                                    ^^^^^^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+  --> src/incremental_parser.rs:87:82
+   |
+87 |     pub fn py_update_file(&mut self, path_str: String, new_source: String, edit: &TextEdit) -> PyResult<()> {
+   |                                                                                  ^ call to unsafe function
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: value assigned to `new_tree` is never read
+   --> src/incremental_parser.rs:160:28
+    |
+160 |         let mut new_tree = None;
+    |                            ^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `entry_idx`
+  --> src/dataflow.rs:28:13
+   |
+28 |         let entry_idx = match cpg.function_to_entry.get(&func_idx) {
+   |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_entry_idx`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `exit_idx`
+  --> src/dataflow.rs:32:13
+   |
+32 |         let exit_idx = match cpg.function_to_exit.get(&func_idx) {
+   |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_exit_idx`
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:107:26
+    |
+107 | fn check_syntax(content: &str, lang_name: &str) -> PyResult<PySyntaxCheckResult> {
+    |                          ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:107:43
+    |
+107 | fn check_syntax(content: &str, lang_name: &str) -> PyResult<PySyntaxCheckResult> {
+    |                                           ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:192:26
+    |
+192 | fn scan_repository(path: &str, ignored_dirs: Option<Vec<String>>, include_aliases: bool) -> PyResult<Vec<String>> {
+    |                          ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:404:23
+    |
+404 |         project_root: &str,
+    |                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:493:46
+    |
+493 |     fn build_complete(&mut self, file_paths: Vec<String>) {
+    |                                              ^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:510:34
+    |
+510 |     fn add_file(&mut self, path: String, content: String) -> PyResult<()> {
+    |                                  ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:510:51
+    |
+510 |     fn add_file(&mut self, path: String, content: String) -> PyResult<()> {
+    |                                                   ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:528:37
+    |
+528 |     fn remove_file(&mut self, path: String) -> PyResult<()> {
+    |                                     ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:543:42
+    |
+543 |     fn update_file(&mut self, file_path: &str, content: &str) -> PyResult<PyGraphUpdateResult> {
+    |                                          ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:543:57
+    |
+543 |     fn update_file(&mut self, file_path: &str, content: &str) -> PyResult<PyGraphUpdateResult> {
+    |                                                         ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:556:43
+    |
+556 |     fn generate_map(&mut self, max_files: usize) -> String {
+    |                                           ^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:567:41
+    |
+567 |     fn get_dependents(&self, file_path: &str) -> PyResult<Vec<(String, String)>> {
+    |                                         ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:575:43
+    |
+575 |     fn get_dependencies(&self, file_path: &str) -> PyResult<Vec<(String, String)>> {
+    |                                           ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:582:35
+    |
+582 |     fn has_file(&self, file_path: &str) -> bool {
+    |                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:588:45
+    |
+588 |     fn get_unresolved_imports(&self, limit: usize) -> Vec<(String, usize)> {
+    |                                             ^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:604:48
+    |
+604 |     fn debug_module_lookup(&self, module_path: &str) -> Option<String> {
+    |                                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:610:51
+    |
+610 |     fn debug_resolve_import(&self, import_source: &str, current_file: &str) -> Vec<(String, String)> {
+    |                                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:610:71
+    |
+610 |     fn debug_resolve_import(&self, import_source: &str, current_file: &str) -> Vec<(String, String)> {
+    |                                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:614:47
+    |
+614 |     fn get_top_ranked_files(&mut self, limit: usize) -> Vec<(String, f64)> {
+    |                                               ^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:623:38
+    |
+623 |     pub fn get_skeleton(&self, path: String) -> PyResult<String> {
+    |                                      ^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:632:32
+    |
+632 |     fn get_source(&self, path: &str) -> PyResult<String> {
+    |                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:637:47
+    |
+637 |     fn build_from_sources(&mut self, sources: HashMap<String, String>) {
+    |                                               ^^^^^^^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:664:50
+    |
+664 |     fn ensure_cpg_for_file(&mut self, file_path: &str) -> bool {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:673:49
+    |
+673 |     fn build_cpg_for_file(&mut self, file_path: &str) -> bool {
+    |                                                 ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:683:51
+    |
+683 |     fn resolve_cpg_for_file(&mut self, file_path: &str) -> PyResult<bool> {
+    |                                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:699:50
+    |
+699 |     fn resolve_new_callers(&mut self, file_path: &str) -> PyResult<bool> {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:713:60
+    |
+713 |     fn get_functions_in_file(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                            ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:752:52
+    |
+752 |     fn get_cpg_nodes(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                    ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:786:43
+    |
+786 |     fn get_function_cfg(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                           ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:786:64
+    |
+786 |     fn get_function_cfg(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:822:48
+    |
+822 |     fn get_function_dataflow(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                                ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:822:69
+    |
+822 |     fn get_function_dataflow(&self, file_path: &str, function_name: &str) -> PyResult<Vec<(usize, usize, String)>> {
+    |                                                                     ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:857:62
+    |
+857 |     fn get_statement_defs_uses(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                              ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:857:83
+    |
+857 |     fn get_statement_defs_uses(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                                   ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:902:57
+    |
+902 |     fn get_cfg_statements(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                         ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:902:78
+    |
+902 |     fn get_cfg_statements(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                              ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:953:52
+    |
+953 |     fn get_callables(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                    ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:958:55
+    |
+958 |     fn get_file_symbols(&self, py: Python, file_path: &str) -> PyResult<Vec<PyObject>> {
+    |                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:976:50
+    |
+976 |     fn get_callees(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:976:71
+    |
+976 |     fn get_callees(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:980:50
+    |
+980 |     fn get_callers(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                  ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+   --> src/lib.rs:980:71
+    |
+980 |     fn get_callers(&self, py: Python, file_path: &str, function_name: &str) -> PyResult<Vec<PyObject>> {
+    |                                                                       ^ call to unsafe function
+    |
+    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+    = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+    --> src/lib.rs:1140:15
+     |
+1140 |         path: String,
+     |               ^^^^^^ call to unsafe function
+     |
+     = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+     = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning[E0133]: call to unsafe function `pyo3::impl_::extract_argument::unwrap_required_argument` is unsafe and requires unsafe block
+    --> src/lib.rs:1174:42
+     |
+1174 |     fn wait_for_event(&self, timeout_ms: u64) -> PyResult<Option<PyFileChangeEvent>> {
+     |                                          ^^^ call to unsafe function
+     |
+     = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
+     = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: function `find_all_func_indices` is never used
+    --> src/lib.rs:1002:4
+     |
+1002 | fn find_all_func_indices(cpg: &cpg::CpgLayer, path: &Path, function_name: &str) -> Vec<petgraph::graph::NodeIndex> {
+     |    ^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `filter` and `known_files` are never read
+   --> src/watcher.rs:139:5
+    |
+125 | pub struct FileWatcher {
+    |            ----------- fields in this struct
+...
+139 |     filter: FileFilter,
+    |     ^^^^^^
+...
+145 |     known_files: Arc<RwLock<HashSet<PathBuf>>>,
+    |     ^^^^^^^^^^^
+
+warning: field `language` is never read
+  --> src/cfg.rs:37:5
+   |
+36 | pub struct CfgBuilder {
+   |            ---------- field in this struct
+37 |     language: SupportedLanguage,
+   |     ^^^^^^^^
+
+For more information about this error, try `rustc --explain E0133`.
+warning: `semantic_engine` (lib) generated 67 warnings (run `cargo fix --lib -p semantic_engine` to apply 6 suggestions)
+    Finished `release` profile [optimized] target(s) in 0.09s
+📦 Built wheel for CPython 3.11 to /var/folders/32/r8bbr6rx7knffbmn__6kx8l00000gn/T/.tmp0TVCFU/atlas-0.1.0-cp311-cp311-macosx_11_0_arm64.whl
+✏️ Setting installed package as editable
+🛠 Installed atlas-0.1.0
++ /Users/apetty/Documents/Codex/2026-09-05/i/work/locked-venv/bin/python -m pytest python_shell/tests -q -p no:cacheprovider
+........................................................................ [ 37%]
+........................................................................ [ 75%]
+..............................................                           [100%]
+190 passed in 7.96s

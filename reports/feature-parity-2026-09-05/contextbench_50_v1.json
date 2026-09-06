@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "dataset": "Contextbench/ContextBench",
+  "dataset_revision": "c2855792b006af41c67202d33883fb9d46362853",
+  "dataset_sha256": "2f56535bdc73eb8a68bf4ebb49789d8e9cd4f219ea60df6290b85278aee61ca8",
+  "seed": 20260905,
+  "per_language": 10,
+  "excluded_instance_ids": [
+    "SWE-Bench-Verified__python__maintenance__bugfix__01aef133",
+    "SWE-Bench-Verified__python__maintenance__bugfix__27320d49",
+    "SWE-Bench-Verified__python__maintenance__bugfix__2ab7d0fc",
+    "SWE-Bench-Verified__python__maintenance__bugfix__4b691a35",
+    "SWE-Bench-Verified__python__maintenance__bugfix__607f6b9e",
+    "SWE-Bench-Verified__python__maintenance__bugfix__adc79a60",
+    "SWE-Bench-Verified__python__maintenance__bugfix__b65c414f",
+    "SWE-Bench-Verified__python__maintenance__bugfix__c20c3c4f",
+    "SWE-Bench-Verified__python__maintenance__bugfix__fb07ed8b",
+    "SWE-PolyBench__python__evolution__feature__17a093c8"
+  ],
+  "tasks": [
+    {
+      "instance_id": "SWE-Bench-Pro__python__maintenance__bugfix__6ebb54dc",
+      "repo": "ansible/ansible",
+      "repo_url": "https://github.com/ansible/ansible.git",
+      "base_commit": "6d34eb88d95c02013d781a29dfffaaf2901cd81f",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__python__maintenance__bugfix__83c269c9",
+      "repo": "ansible/ansible",
+      "repo_url": "https://github.com/ansible/ansible.git",
+      "base_commit": "07e7b69c04116f598ed2376616cbb46343d9a0e9",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714",
+      "repo": "django/django",
+      "repo_url": "https://github.com/django/django.git",
+      "base_commit": "8c3bd0b708b488a1f6e8bd8cc6b96569904605be",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__2d5d4dcd",
+      "repo": "django/django",
+      "repo_url": "https://github.com/django/django.git",
+      "base_commit": "1f8382d34d54061eddc41df6994e20ee38c60907",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6",
+      "repo": "django/django",
+      "repo_url": "https://github.com/django/django.git",
+      "base_commit": "884b4c27f506b3c29d58509fc83a35c30ea10d94",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__7e498c7a",
+      "repo": "django/django",
+      "repo_url": "https://github.com/django/django.git",
+      "base_commit": "903aaa35e5ceaa33bfc9b19b7f6da65ce5a91dd4",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__986c9e85",
+      "repo": "django/django",
+      "repo_url": "https://github.com/django/django.git",
+      "base_commit": "3fb7c12158a2402f0f80824f6778112071235803",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__9ad2c37d",
+      "repo": "sympy/sympy",
+      "repo_url": "https://github.com/sympy/sympy.git",
+      "base_commit": "70381f282f2d9d039da860e391fe51649df2779d",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-Bench-Verified__python__maintenance__bugfix__d939b999",
+      "repo": "django/django",
+      "repo_url": "https://github.com/django/django.git",
+      "base_commit": "0b31e024873681e187b574fe1c4afe5e48aeeecf",
+      "language": "python"
+    },
+    {
+      "instance_id": "SWE-PolyBench__python__maintenance__bugfix__6516ee68",
+      "repo": "keras-team/keras",
+      "repo_url": "https://github.com/keras-team/keras.git",
+      "base_commit": "4a4a139c7aada9f4495620e5a1c5f7ef20d84395",
+      "language": "python"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__00fd24ea",
+      "repo": "sveltejs/svelte",
+      "repo_url": "https://github.com/sveltejs/svelte.git",
+      "base_commit": "eab690d31a7203ac23334460c9ae68844d43dc26",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf",
+      "repo": "anuraghazra/github",
+      "repo_url": "https://github.com/anuraghazra/github-readme-stats.git",
+      "base_commit": "c5d4bcbc1ac5e1811681e4acd825cd39145fb2d9",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed92fe3",
+      "repo": "sveltejs/svelte",
+      "repo_url": "https://github.com/sveltejs/svelte.git",
+      "base_commit": "ae9f53a3bde79e8777e865acac3b99612c2cec71",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__18cb0c28",
+      "repo": "sveltejs/svelte",
+      "repo_url": "https://github.com/sveltejs/svelte.git",
+      "base_commit": "2fa06447cf51893715bfe776f753d1b1f0587d83",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__3cd96c13",
+      "repo": "sveltejs/svelte",
+      "repo_url": "https://github.com/sveltejs/svelte.git",
+      "base_commit": "b0374f8863538c7ae9d035c00c824b7c043bb4e0",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__a8655bb4",
+      "repo": "expressjs/express",
+      "repo_url": "https://github.com/expressjs/express.git",
+      "base_commit": "8da51108e7bb501344c537d3f1f846a7477ae329",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__bb727b6d",
+      "repo": "sveltejs/svelte",
+      "repo_url": "https://github.com/sveltejs/svelte.git",
+      "base_commit": "cf6b64c6c0220068abb2843fea78b125b8767f44",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__javascript__maintenance__bugfix__bd81816f",
+      "repo": "sveltejs/svelte",
+      "repo_url": "https://github.com/sveltejs/svelte.git",
+      "base_commit": "e417d3a2d281a5ec9b595be5ffbd47efe57b28c3",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681",
+      "repo": "element-hq/element-web",
+      "repo_url": "https://github.com/element-hq/element-web.git",
+      "base_commit": "7a33818bd7ec89c21054691afcb6db2fb2631e14",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__javascript__maintenance__bugfix__c6d3e230",
+      "repo": "sveltejs/svelte",
+      "repo_url": "https://github.com/sveltejs/svelte.git",
+      "base_commit": "b99ee7d5d177f4fb42b5821d63993248833ee48a",
+      "language": "javascript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__typescript__maintenance__bugfix__3c1a4f89",
+      "repo": "vuejs/core",
+      "repo_url": "https://github.com/vuejs/core.git",
+      "base_commit": "c0c9432b64091fa15fd8619cfb06828735356a42",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__typescript__maintenance__bugfix__4c3f5d3d",
+      "repo": "mui/material",
+      "repo_url": "https://github.com/mui/material-ui.git",
+      "base_commit": "d9e863562f735bc798adfe20a63faa919a4fddd4",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__evolution__feature__676e9486",
+      "repo": "mui/material-ui",
+      "repo_url": "https://github.com/mui/material-ui.git",
+      "base_commit": "9acf8be6d2fd08210665c294830df3c85c014214",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__evolution__feature__684a3415",
+      "repo": "mui/material-ui",
+      "repo_url": "https://github.com/mui/material-ui.git",
+      "base_commit": "09896d42e6206984a54272cc2059c49a7aa9d54f",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__evolution__feature__d520ba22",
+      "repo": "mui/material-ui",
+      "repo_url": "https://github.com/mui/material-ui.git",
+      "base_commit": "182d4dc7726f6d77f0ca3863ca6fcdf9eec23a23",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__16d1ff7a",
+      "repo": "microsoft/vscode",
+      "repo_url": "https://github.com/microsoft/vscode.git",
+      "base_commit": "88ffbc7a7a81a926c7969ad7428e2ffc54370f42",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__42165c4e",
+      "repo": "coder/code-server",
+      "repo_url": "https://github.com/coder/code-server.git",
+      "base_commit": "5d3c9edce436d11d51aa1e586c11eaa49d626dc2",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__6659fd5a",
+      "repo": "mui/material-ui",
+      "repo_url": "https://github.com/mui/material-ui.git",
+      "base_commit": "e1705939cb75496958ee2eb34a8bfbe67aff3808",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__7827bc22",
+      "repo": "mui/material-ui",
+      "repo_url": "https://github.com/mui/material-ui.git",
+      "base_commit": "5a983eadb806ba095de2a2754b208d470e3f55e7",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "SWE-PolyBench__typescript__maintenance__bugfix__7d106697",
+      "repo": "microsoft/vscode",
+      "repo_url": "https://github.com/microsoft/vscode.git",
+      "base_commit": "cf4b5a703f581944f308b9a6f1e8b386059caef1",
+      "language": "typescript"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__07a7e898",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "81457178fa7e055775867ca659b37798b5ae9584",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__0e4e102e",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "ddd55e57dc4b0205e02c121f1116704bd1b51956",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__3a080ce7",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "610d56d1c63042359d6181c89572e894274f4ae7",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__3c69099b",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "17ec7757891a38965e8492f7a0a48e674a9536eb",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__627665a2",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "c4780e3305b4c2632c7d843511ae7dfe3652a569",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__7e1b8f0a",
+      "repo": "tokio-rs/tokio",
+      "repo_url": "https://github.com/tokio-rs/tokio.git",
+      "base_commit": "fb7dec0e952d0d796b98650998c44a21d6775564",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__aa16b8b2",
+      "repo": "tokio-rs/tracing",
+      "repo_url": "https://github.com/tokio-rs/tracing.git",
+      "base_commit": "908cc432a5994f6e17c8f36e13c217dc40085704",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__b613bda3",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "f9bb3de75061e31a0328e8af9db477f37913c2a1",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__c763032c",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "3b59f5d3699134190d8d5f7fb052418edfd4999f",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__rust__maintenance__bugfix__e2c42cbe",
+      "repo": "clap-rs/clap",
+      "repo_url": "https://github.com/clap-rs/clap.git",
+      "base_commit": "58b0529d13c52882b0a9668db17aa92769e40896",
+      "language": "rust"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__0498ad7f",
+      "repo": "cli/cli",
+      "repo_url": "https://github.com/cli/cli.git",
+      "base_commit": "bdce08a793abe4744c02d537e37c9ba63601a849",
+      "language": "go"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__0a6b76ff",
+      "repo": "cli/cli",
+      "repo_url": "https://github.com/cli/cli.git",
+      "base_commit": "4f80400a896ac10037090a6f7c78751adebd2e2c",
+      "language": "go"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__1aec1ae3",
+      "repo": "cli/cli",
+      "repo_url": "https://github.com/cli/cli.git",
+      "base_commit": "14d339d9ba87e87f34b7a25f00200a2062f87039",
+      "language": "go"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145",
+      "repo": "cli/cli",
+      "repo_url": "https://github.com/cli/cli.git",
+      "base_commit": "41a457136e3134e5b5e6c17cba2704309ac609bb",
+      "language": "go"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__6d48775e",
+      "repo": "cli/cli",
+      "repo_url": "https://github.com/cli/cli.git",
+      "base_commit": "e6ff77ce73c201b0ee36d2b802ea45e9e1ad1822",
+      "language": "go"
+    },
+    {
+      "instance_id": "Multi-SWE-Bench__go__maintenance__bugfix__eda678ea",
+      "repo": "cli/cli",
+      "repo_url": "https://github.com/cli/cli.git",
+      "base_commit": "4c8d124d370f9f58d9a8d8d5a5b590f409542bbe",
+      "language": "go"
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__153337fe",
+      "repo": "flipt-io/flipt",
+      "repo_url": "https://github.com/flipt-io/flipt.git",
+      "base_commit": "dc07fbbd64b05a6f14cc16aa5bcbade2863f9d53",
+      "language": "go"
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__2cef67df",
+      "repo": "future-architect/vuls",
+      "repo_url": "https://github.com/future-architect/vuls.git",
+      "base_commit": "78b52d6a7f480bd610b692de9bf0c86f57332f23",
+      "language": "go"
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__720b4d92",
+      "repo": "future-architect/vuls",
+      "repo_url": "https://github.com/future-architect/vuls.git",
+      "base_commit": "43b46cb324f64076e4d9e807c0b60c4b9ce11a82",
+      "language": "go"
+    },
+    {
+      "instance_id": "SWE-Bench-Pro__go__maintenance__bugfix__e957d0a9",
+      "repo": "navidrome/navidrome",
+      "repo_url": "https://github.com/navidrome/navidrome.git",
+      "base_commit": "39da741a807498a01a31435a097b98fe6021c902",
+      "language": "go"
+    }
+  ],
+  "budgets": [
+    8000,
+    12000
+  ],
+  "max_chars": 60000,
+  "strategies": [
+    "bm25",
+    "flat_embedding",
+    "atlas_no_expansion",
+    "atlas"
+  ],
+  "ranking_tuning_after_freeze": false
+}

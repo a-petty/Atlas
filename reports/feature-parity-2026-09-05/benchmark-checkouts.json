@@ -1,0 +1,302 @@
+[
+  {
+    "task": "SWE-Bench-Pro__python__maintenance__bugfix__6ebb54dc",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/ansible/ansible/6d34eb88d95c02013d781a29dfffaaf2901cd81f",
+    "seconds": 2.13746562495362,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Pro__python__maintenance__bugfix__83c269c9",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/ansible/ansible/07e7b69c04116f598ed2376616cbb46343d9a0e9",
+    "seconds": 5.026932583015878,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/django/django/8c3bd0b708b488a1f6e8bd8cc6b96569904605be",
+    "seconds": 2.8744060000171885,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Verified__python__maintenance__bugfix__2d5d4dcd",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/django/django/1f8382d34d54061eddc41df6994e20ee38c60907",
+    "seconds": 2.9910463329870254,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/django/django/884b4c27f506b3c29d58509fc83a35c30ea10d94",
+    "seconds": 2.320005332992878,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Verified__python__maintenance__bugfix__7e498c7a",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/django/django/903aaa35e5ceaa33bfc9b19b7f6da65ce5a91dd4",
+    "seconds": 2.856942541024182,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Verified__python__maintenance__bugfix__986c9e85",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/django/django/3fb7c12158a2402f0f80824f6778112071235803",
+    "seconds": 6.432195583009161,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Verified__python__maintenance__bugfix__9ad2c37d",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sympy/sympy/70381f282f2d9d039da860e391fe51649df2779d",
+    "seconds": 2.2183008330175653,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Verified__python__maintenance__bugfix__d939b999",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/django/django/0b31e024873681e187b574fe1c4afe5e48aeeecf",
+    "seconds": 2.3436592079815455,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__python__maintenance__bugfix__6516ee68",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/keras-team/keras/4a4a139c7aada9f4495620e5a1c5f7ef20d84395",
+    "seconds": 1.145392082980834,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__00fd24ea",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sveltejs/svelte/eab690d31a7203ac23334460c9ae68844d43dc26",
+    "seconds": 2.5830653749872,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/anuraghazra/github/c5d4bcbc1ac5e1811681e4acd825cd39145fb2d9",
+    "seconds": 0.6412561250035651,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__0ed92fe3",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sveltejs/svelte/ae9f53a3bde79e8777e865acac3b99612c2cec71",
+    "seconds": 1.7838881249772385,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__18cb0c28",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sveltejs/svelte/2fa06447cf51893715bfe776f753d1b1f0587d83",
+    "seconds": 2.791426167008467,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__3cd96c13",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sveltejs/svelte/b0374f8863538c7ae9d035c00c824b7c043bb4e0",
+    "seconds": 1.7314437920576893,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__a8655bb4",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/expressjs/express/8da51108e7bb501344c537d3f1f846a7477ae329",
+    "seconds": 0.7235445000114851,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__bb727b6d",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sveltejs/svelte/cf6b64c6c0220068abb2843fea78b125b8767f44",
+    "seconds": 3.228691791999154,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__javascript__maintenance__bugfix__bd81816f",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sveltejs/svelte/e417d3a2d281a5ec9b595be5ffbd47efe57b28c3",
+    "seconds": 2.707351666991599,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/element-hq/element-web/7a33818bd7ec89c21054691afcb6db2fb2631e14",
+    "seconds": 2.8768577079754323,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__javascript__maintenance__bugfix__c6d3e230",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/sveltejs/svelte/b99ee7d5d177f4fb42b5821d63993248833ee48a",
+    "seconds": 4.512462000013329,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__typescript__maintenance__bugfix__3c1a4f89",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/vuejs/core/c0c9432b64091fa15fd8619cfb06828735356a42",
+    "seconds": 0.9295491250231862,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__typescript__maintenance__bugfix__4c3f5d3d",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/mui/material/d9e863562f735bc798adfe20a63faa919a4fddd4",
+    "seconds": 9.452120750036556,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__evolution__feature__676e9486",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/mui/material-ui/9acf8be6d2fd08210665c294830df3c85c014214",
+    "seconds": 6.4105992909753695,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__evolution__feature__684a3415",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/mui/material-ui/09896d42e6206984a54272cc2059c49a7aa9d54f",
+    "seconds": 1.4050642079673707,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__evolution__feature__d520ba22",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/mui/material-ui/182d4dc7726f6d77f0ca3863ca6fcdf9eec23a23",
+    "seconds": 6.367367166967597,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__maintenance__bugfix__16d1ff7a",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/microsoft/vscode/88ffbc7a7a81a926c7969ad7428e2ffc54370f42",
+    "seconds": 3.82189500000095,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__maintenance__bugfix__42165c4e",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/coder/code-server/5d3c9edce436d11d51aa1e586c11eaa49d626dc2",
+    "seconds": 0.7571264579892159,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__maintenance__bugfix__6659fd5a",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/mui/material-ui/e1705939cb75496958ee2eb34a8bfbe67aff3808",
+    "seconds": 3.2897810410358943,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__maintenance__bugfix__7827bc22",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/mui/material-ui/5a983eadb806ba095de2a2754b208d470e3f55e7",
+    "seconds": 5.169468833017163,
+    "error": null
+  },
+  {
+    "task": "SWE-PolyBench__typescript__maintenance__bugfix__7d106697",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/microsoft/vscode/cf4b5a703f581944f308b9a6f1e8b386059caef1",
+    "seconds": 2.1702860000077635,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__07a7e898",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/81457178fa7e055775867ca659b37798b5ae9584",
+    "seconds": 0.6985291250166483,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__0e4e102e",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/ddd55e57dc4b0205e02c121f1116704bd1b51956",
+    "seconds": 0.6942426669993438,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__3a080ce7",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/610d56d1c63042359d6181c89572e894274f4ae7",
+    "seconds": 0.750141958007589,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__3c69099b",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/17ec7757891a38965e8492f7a0a48e674a9536eb",
+    "seconds": 0.7548519169795327,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__627665a2",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/c4780e3305b4c2632c7d843511ae7dfe3652a569",
+    "seconds": 0.7286707499879412,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__7e1b8f0a",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/tokio-rs/tokio/fb7dec0e952d0d796b98650998c44a21d6775564",
+    "seconds": 0.8991880420362577,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__aa16b8b2",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/tokio-rs/tracing/908cc432a5994f6e17c8f36e13c217dc40085704",
+    "seconds": 0.8428591249976307,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__b613bda3",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/f9bb3de75061e31a0328e8af9db477f37913c2a1",
+    "seconds": 0.9796100829844363,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__c763032c",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/3b59f5d3699134190d8d5f7fb052418edfd4999f",
+    "seconds": 0.990383333992213,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__rust__maintenance__bugfix__e2c42cbe",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/clap-rs/clap/58b0529d13c52882b0a9668db17aa92769e40896",
+    "seconds": 0.9904889999888837,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__go__maintenance__bugfix__0498ad7f",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/cli/cli/bdce08a793abe4744c02d537e37c9ba63601a849",
+    "seconds": 0.7433890840038657,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__go__maintenance__bugfix__0a6b76ff",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/cli/cli/4f80400a896ac10037090a6f7c78751adebd2e2c",
+    "seconds": 1.908025250013452,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__go__maintenance__bugfix__1aec1ae3",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/cli/cli/14d339d9ba87e87f34b7a25f00200a2062f87039",
+    "seconds": 1.123120041040238,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/cli/cli/41a457136e3134e5b5e6c17cba2704309ac609bb",
+    "seconds": 0.9126154590048827,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__go__maintenance__bugfix__6d48775e",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/cli/cli/e6ff77ce73c201b0ee36d2b802ea45e9e1ad1822",
+    "seconds": 0.800445375032723,
+    "error": null
+  },
+  {
+    "task": "Multi-SWE-Bench__go__maintenance__bugfix__eda678ea",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/cli/cli/4c8d124d370f9f58d9a8d8d5a5b590f409542bbe",
+    "seconds": 1.8971127920085564,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Pro__go__maintenance__bugfix__153337fe",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/flipt-io/flipt/dc07fbbd64b05a6f14cc16aa5bcbade2863f9d53",
+    "seconds": 1.0993502080091275,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Pro__go__maintenance__bugfix__2cef67df",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/future-architect/vuls/78b52d6a7f480bd610b692de9bf0c86f57332f23",
+    "seconds": 0.8291706659947522,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Pro__go__maintenance__bugfix__720b4d92",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/future-architect/vuls/43b46cb324f64076e4d9e807c0b60c4b9ce11a82",
+    "seconds": 0.850809458992444,
+    "error": null
+  },
+  {
+    "task": "SWE-Bench-Pro__go__maintenance__bugfix__e957d0a9",
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/contextbench-repos/navidrome/navidrome/39da741a807498a01a31435a097b98fe6021c902",
+    "seconds": 1.3591692500049248,
+    "error": null
+  }
+]

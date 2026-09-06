@@ -1,0 +1,337 @@
+2026-09-05 19:38:36.447 Python[83711:20190211] 2026-09-05 19:38:36.447180 [W:onnxruntime:Default, telemetry.cc:800 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+1/50 SWE-Bench-Pro__python__maintenance__bugfix__6ebb54dc
+2026-09-05 19:38:45.467 Python[83711:20190214] NetworkStorageDB:_openDBReadConnections: failed to open read connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 19:38:45.467 Python[83711:20190214] The read-connection to the DB=/Users/apetty/Library/Caches/org.python.python/Cache.db is NOT valid.  Unable to determine schema version.
+2026-09-05 19:38:45.467 Python[83711:20190214] NetworkStorageDB:_openDBWriteConnections: failed to open write connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 19:38:45.467 Python[83711:20190214] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db.
+2026-09-05 19:38:45.468 Python[83711:20190214] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-shm.
+2026-09-05 19:38:45.468 Python[83711:20190214] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-wal.
+2026-09-05 19:38:46.324 Python[83711:20190501] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2/50 SWE-Bench-Pro__python__maintenance__bugfix__83c269c9
+2026-09-05 19:38:55.582 Python[83711:20190513] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:39:14.306 Python[83711:20191074] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:39:14.731 Python[83711:20191093] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:39:23.990 Python[83711:20191093] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+3/50 SWE-Bench-Verified__python__maintenance__bugfix__1c5aa714
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:39:33.454 Python[83711:20191710] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+4/50 SWE-Bench-Verified__python__maintenance__bugfix__2d5d4dcd
+2026-09-05 19:39:42.766 Python[83711:20191711] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:39:52.088 Python[83711:20191711] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+5/50 SWE-Bench-Verified__python__maintenance__bugfix__681ea2b6
+2026-09-05 19:40:01.377 Python[83711:20191711] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:40:10.617 Python[83711:20191711] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+6/50 SWE-Bench-Verified__python__maintenance__bugfix__7e498c7a
+2026-09-05 19:40:19.932 Python[83711:20193047] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:40:29.112 Python[83711:20193343] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+7/50 SWE-Bench-Verified__python__maintenance__bugfix__986c9e85
+2026-09-05 19:40:38.421 Python[83711:20193345] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:40:47.722 Python[83711:20193588] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+8/50 SWE-Bench-Verified__python__maintenance__bugfix__9ad2c37d
+2026-09-05 19:40:57.033 Python[83711:20193889] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:41:16.183 Python[83711:20194117] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:41:16.487 Python[83711:20194809] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+9/50 SWE-Bench-Verified__python__maintenance__bugfix__d939b999
+2026-09-05 19:41:25.807 Python[83711:20195068] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:41:35.215 Python[83711:20195078] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+10/50 SWE-PolyBench__python__maintenance__bugfix__6516ee68
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+2026-09-05 19:41:44.423 Python[83711:20195357] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+11/50 Multi-SWE-Bench__javascript__maintenance__bugfix__00fd24ea
+2026-09-05 19:41:54.673 Python[83711:20195679] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+12/50 Multi-SWE-Bench__javascript__maintenance__bugfix__0ed136bf
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:42:04.436 Python[83711:20196267] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:42:05.184 Python[83711:20196272] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+13/50 Multi-SWE-Bench__javascript__maintenance__bugfix__0ed92fe3
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:42:14.508 Python[83711:20196574] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+14/50 Multi-SWE-Bench__javascript__maintenance__bugfix__18cb0c28
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:42:23.749 Python[83711:20196574] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+15/50 Multi-SWE-Bench__javascript__maintenance__bugfix__3cd96c13
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:42:32.917 Python[83711:20196574] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:42:42.239 Python[83711:20196574] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+16/50 Multi-SWE-Bench__javascript__maintenance__bugfix__a8655bb4
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+17/50 Multi-SWE-Bench__javascript__maintenance__bugfix__bb727b6d
+2026-09-05 19:42:51.410 Python[83711:20196574] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:43:00.732 Python[83711:20197604] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+18/50 Multi-SWE-Bench__javascript__maintenance__bugfix__bd81816f
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:43:09.935 Python[83711:20198165] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+19/50 SWE-Bench-Pro__javascript__maintenance__bugfix__2bfb5681
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+2026-09-05 19:43:19.253 Python[83711:20198165] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:43:28.424 Python[83711:20198571] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+20/50 SWE-PolyBench__javascript__maintenance__bugfix__c6d3e230
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:43:37.747 Python[83711:20198571] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+21/50 Multi-SWE-Bench__typescript__maintenance__bugfix__3c1a4f89
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+22/50 Multi-SWE-Bench__typescript__maintenance__bugfix__4c3f5d3d
+2026-09-05 19:43:47.072 Python[83711:20198571] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:44:10.147 Python[83711:20199423] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:44:10.529 Python[83711:20199423] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:44:40.770 Python[83711:20200860] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:45:09.364 Python[83711:20199423] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+23/50 SWE-PolyBench__typescript__evolution__feature__676e9486
+2026-09-05 19:45:44.331 Python[83711:20202756] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:45:54.649 Python[83711:20202810] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:46:27.272 Python[83711:20202810] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:46:36.592 Python[83711:20203937] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+24/50 SWE-PolyBench__typescript__evolution__feature__684a3415
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:47:17.324 Python[83711:20204704] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:47:17.629 Python[83711:20204704] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+25/50 SWE-PolyBench__typescript__evolution__feature__d520ba22
+2026-09-05 19:47:26.971 Python[83711:20206105] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:47:36.278 Python[83711:20206415] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:47:45.484 Python[83711:20206771] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:48:25.429 Python[83711:20208127] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+26/50 SWE-PolyBench__typescript__maintenance__bugfix__16d1ff7a
+2026-09-05 19:49:15.970 Python[83711:20208929] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:49:25.157 Python[83711:20208929] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:49:34.321 Python[83711:20208929] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+27/50 SWE-PolyBench__typescript__maintenance__bugfix__42165c4e
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+28/50 SWE-PolyBench__typescript__maintenance__bugfix__6659fd5a
+2026-09-05 19:49:43.647 Python[83711:20210858] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:49:52.960 Python[83711:20208929] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:50:02.128 Python[83711:20211511] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+29/50 SWE-PolyBench__typescript__maintenance__bugfix__7827bc22
+2026-09-05 19:50:11.445 Python[83711:20211517] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:50:20.756 Python[83711:20211517] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:50:50.910 Python[83711:20211517] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+30/50 SWE-PolyBench__typescript__maintenance__bugfix__7d106697
+2026-09-05 19:51:00.069 Python[83711:20213399] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:51:09.386 Python[83711:20213706] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+31/50 Multi-SWE-Bench__rust__maintenance__bugfix__07a7e898
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:51:18.711 Python[83711:20213399] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+32/50 Multi-SWE-Bench__rust__maintenance__bugfix__0e4e102e
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+33/50 Multi-SWE-Bench__rust__maintenance__bugfix__3a080ce7
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:51:28.031 Python[83711:20213399] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+34/50 Multi-SWE-Bench__rust__maintenance__bugfix__3c69099b
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+35/50 Multi-SWE-Bench__rust__maintenance__bugfix__627665a2
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:51:37.616 Python[83711:20214813] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+36/50 Multi-SWE-Bench__rust__maintenance__bugfix__7e1b8f0a
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+37/50 Multi-SWE-Bench__rust__maintenance__bugfix__aa16b8b2
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:51:46.941 Python[83711:20215172] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+38/50 Multi-SWE-Bench__rust__maintenance__bugfix__b613bda3
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+39/50 Multi-SWE-Bench__rust__maintenance__bugfix__c763032c
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:51:56.234 Python[83711:20215172] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+40/50 Multi-SWE-Bench__rust__maintenance__bugfix__e2c42cbe
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+41/50 Multi-SWE-Bench__go__maintenance__bugfix__0498ad7f
+2026-09-05 19:52:06.114 Python[83711:20216131] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:52:07.026 Python[83711:20215172] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:52:07.718 Python[83711:20216213] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+42/50 Multi-SWE-Bench__go__maintenance__bugfix__0a6b76ff
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:52:17.035 Python[83711:20216555] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:52:17.362 Python[83711:20216213] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+43/50 Multi-SWE-Bench__go__maintenance__bugfix__1aec1ae3
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:52:26.549 Python[83711:20216213] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+44/50 Multi-SWE-Bench__go__maintenance__bugfix__3d1b3145
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+45/50 Multi-SWE-Bench__go__maintenance__bugfix__6d48775e
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+2026-09-05 19:52:35.880 Python[83711:20216213] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:52:36.200 Python[83711:20216213] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+46/50 Multi-SWE-Bench__go__maintenance__bugfix__eda678ea
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:52:45.528 Python[83711:20216213] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+47/50 SWE-Bench-Pro__go__maintenance__bugfix__153337fe
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+48/50 SWE-Bench-Pro__go__maintenance__bugfix__2cef67df
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:52:54.707 Python[83711:20217565] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+2026-09-05 19:52:55.014 Python[83711:20217582] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+49/50 SWE-Bench-Pro__go__maintenance__bugfix__720b4d92
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+50/50 SWE-Bench-Pro__go__maintenance__bugfix__e957d0a9
+INFO:atlas.embeddings:Initializing EmbeddingManager with model: BAAI/bge-small-en-v1.5
+INFO:atlas.embeddings:FastEmbed model initialized and ready.
+2026-09-05 19:53:04.329 Python[83711:20217582] writeDBwithCachedResponse-ERROR: (_dbWriteConnection=0x15c8d4f20) insert SQL stmnt. is nil for storage: /Users/apetty/Library/Caches/org.python.python
+[
+  {
+    "strategy": "atlas",
+    "budget": 8000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.17936159918512862,
+    "file_precision_mean": 0.22177777777777777,
+    "file_f1_mean": 0.13491891441891446,
+    "gold_byte_recall_mean": 0.07285907204820194,
+    "tokens_mean": 3485.4,
+    "warm_p95_ms": 2200.9712080471218
+  },
+  {
+    "strategy": "atlas",
+    "budget": 12000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.21053806977336387,
+    "file_precision_mean": 0.17582539682539677,
+    "file_f1_mean": 0.13660635442988386,
+    "gold_byte_recall_mean": 0.09921499150875457,
+    "tokens_mean": 5939.48,
+    "warm_p95_ms": 2198.9704169682227
+  },
+  {
+    "strategy": "atlas_no_expansion",
+    "budget": 8000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.17936159918512862,
+    "file_precision_mean": 0.22177777777777777,
+    "file_f1_mean": 0.13491891441891446,
+    "gold_byte_recall_mean": 0.07285907204820194,
+    "tokens_mean": 3484.4,
+    "warm_p95_ms": 2133.0282920389436
+  },
+  {
+    "strategy": "atlas_no_expansion",
+    "budget": 12000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.21053806977336387,
+    "file_precision_mean": 0.17573015873015868,
+    "file_f1_mean": 0.1362562491272169,
+    "gold_byte_recall_mean": 0.09937189629386323,
+    "tokens_mean": 5940.8,
+    "warm_p95_ms": 2214.7795420023613
+  },
+  {
+    "strategy": "bm25",
+    "budget": 8000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.16899350649350645,
+    "file_precision_mean": 0.24,
+    "file_f1_mean": 0.12694329526682469,
+    "gold_byte_recall_mean": 0.036140015482936425,
+    "tokens_mean": 3632.9,
+    "warm_p95_ms": 2415.156624978408
+  },
+  {
+    "strategy": "bm25",
+    "budget": 12000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.18097763347763343,
+    "file_precision_mean": 0.23499999999999996,
+    "file_f1_mean": 0.13371602253955195,
+    "gold_byte_recall_mean": 0.08040242561854999,
+    "tokens_mean": 5910.56,
+    "warm_p95_ms": 2502.564250025898
+  },
+  {
+    "strategy": "flat_embedding",
+    "budget": 8000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.183633307868602,
+    "file_precision_mean": 0.23983333333333334,
+    "file_f1_mean": 0.14062251082251084,
+    "gold_byte_recall_mean": 0.07285907204820194,
+    "tokens_mean": 3457.6,
+    "warm_p95_ms": 2021.2863749475218
+  },
+  {
+    "strategy": "flat_embedding",
+    "budget": 12000,
+    "tasks": 50,
+    "failed": 0,
+    "incomplete": 38,
+    "file_recall_mean": 0.20006187929717342,
+    "file_precision_mean": 0.19772649572649573,
+    "file_f1_mean": 0.1416193022663611,
+    "gold_byte_recall_mean": 0.10008955186669696,
+    "tokens_mean": 5949.12,
+    "warm_p95_ms": 2068.727125006262
+  }
+]

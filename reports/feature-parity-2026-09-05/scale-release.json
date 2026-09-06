@@ -1,0 +1,447 @@
+{
+  "schema_version": 1,
+  "started_unix": 1788647907.772728,
+  "build": {
+    "label": "release",
+    "extension_path": "/Users/apetty/Dev/Atlas/python_shell/atlas/semantic_engine.cpython-311-darwin.so",
+    "extension_sha256": "6dec9f080342e0665d50309f05554662072ec4291ba86302de847bb57c54078e",
+    "git_commit": "76802965024b301ec87601c4eb3017815603eba2",
+    "tracked_diff_sha256": "9e36ef04bba35edae377dcf4eab6a1484a1db6869874db962a12a5913868a0e1",
+    "python": "3.11.14 (main, Oct  9 2025, 16:16:55) [Clang 17.0.0 (clang-1700.0.13.3)]",
+    "platform": "macOS-15.7.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "cpu": null,
+    "logical_cpus": 14,
+    "physical_memory_bytes": null
+  },
+  "fixture": {
+    "version": 1,
+    "seed": 20260905,
+    "file_count": 10000,
+    "files_by_language": {
+      "python": 2000,
+      "javascript": 2000,
+      "typescript": 2000,
+      "rust": 2000,
+      "go": 2000
+    },
+    "source_bytes": 3338612,
+    "fixture_sha256": "cd091ac6833e0fc977529774fe5b47a41867edffbda349a5286a52faf37ede14",
+    "configuration_sha256": "8b6487e103604593447be27c07dab20f3e7dc379b81381cb160876f1a8c467a1",
+    "resolver_scope": "Python and JS/TS only; Rust/Go remain parser/skeleton coverage"
+  },
+  "fixture_path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/scale-fixture",
+  "samples_requested": 10,
+  "cache": {
+    "path": "/Users/apetty/Documents/Codex/2026-09-05/i/work/scale-cache",
+    "entries_before": 0,
+    "content_cache_cold": true,
+    "model_weights": "existing local cache; downloads blocked by HF_HUB_OFFLINE",
+    "entries_after": 10000
+  },
+  "cold": {
+    "graph": {
+      "seconds": 3.522424624999985,
+      "progress_timeline": [
+        {
+          "seconds": 0.10501079197274521,
+          "phase": "not_started"
+        },
+        {
+          "seconds": 0.5130706669879146,
+          "phase": "capturing_sources",
+          "completed": 0,
+          "total": 10000,
+          "generation": null
+        },
+        {
+          "seconds": 0.7216427089879289,
+          "phase": "indexing",
+          "completed": 0,
+          "total": 10000,
+          "generation": null
+        }
+      ],
+      "indexed": 10000,
+      "generation": "daf0972a3f57:1"
+    },
+    "semantic_preparation": {
+      "seconds": 56.60120212496258,
+      "progress_timeline": [
+        {
+          "seconds": 0.10113279201323166,
+          "phase": "ready",
+          "completed": 10000,
+          "total": 10000,
+          "generation": "daf0972a3f57:1"
+        },
+        {
+          "seconds": 0.40933158301049843,
+          "phase": "loading_embedding_model",
+          "completed": 0,
+          "total": 10000
+        },
+        {
+          "seconds": 0.7170494169695303,
+          "phase": "preparing_embeddings",
+          "completed": 0,
+          "total": 10000
+        }
+      ],
+      "sampled_phase_seconds": {
+        "ready": 0.30819879099726677,
+        "loading_embedding_model": 0.30771783395903185,
+        "preparing_embeddings": 55.88415270799305
+      },
+      "includes": "model initialization, tokenization, all eligible file embeddings, persistent writes, matrix assembly and first query",
+      "phase_timing_resolution_seconds": 0.1
+    }
+  },
+  "warm": {
+    "dependencies": {
+      "samples_seconds": [
+        0.23053679103031754,
+        0.20372616697568446,
+        0.20441574999131262,
+        0.22699845803435892,
+        0.20493758301017806,
+        0.21479420800460503,
+        0.22623900003964081,
+        0.20368687500013039,
+        0.2045464999973774,
+        0.2232409999705851
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.20986589550739154,
+      "p95_seconds": 0.23053679103031754,
+      "maximum_seconds": 0.23053679103031754,
+      "target_seconds": 0.5,
+      "meets_target": true
+    },
+    "map": {
+      "samples_seconds": [
+        0.2465346249518916,
+        0.243319834000431,
+        0.2372116670012474,
+        0.2580762089928612,
+        0.2576924590393901,
+        0.24902337504317984,
+        0.2411514999694191,
+        0.24046262499177828,
+        0.25724891701247543,
+        0.25755379197653383
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.24777899999753572,
+      "p95_seconds": 0.2580762089928612,
+      "maximum_seconds": 0.2580762089928612,
+      "target_seconds": 0.5,
+      "meets_target": true
+    },
+    "search": {
+      "samples_seconds": [
+        0.31963045900920406,
+        0.35080587497213855,
+        0.3289606660255231,
+        0.3314091669744812,
+        0.31284720898838714,
+        0.3621145829674788,
+        0.40154337498825043,
+        0.7546845829929225,
+        0.3110655000200495,
+        0.3808262499514967
+      ],
+      "sample_count": 10,
+      "median_seconds": 0.3411075209733099,
+      "p95_seconds": 0.7546845829929225,
+      "maximum_seconds": 0.7546845829929225,
+      "target_seconds": 2.0,
+      "meets_target": true,
+      "delivered": [
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        },
+        {
+          "items": 10
+        }
+      ]
+    },
+    "context": {
+      "samples_seconds": [
+        5.164795958029572,
+        5.47206537501188,
+        6.586913624953013,
+        5.036732167005539,
+        5.0764284579781815,
+        4.961378624953795,
+        6.2753027089638636,
+        5.962362582969945,
+        5.185003541992046,
+        5.005040832969826
+      ],
+      "sample_count": 10,
+      "median_seconds": 5.174899750010809,
+      "p95_seconds": 6.586913624953013,
+      "maximum_seconds": 6.586913624953013,
+      "target_seconds": 2.0,
+      "meets_target": false,
+      "delivered": [
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5253,
+          "characters": 19612,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5252,
+          "characters": 19627,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 44,
+          "tokens": 5340,
+          "characters": 18879,
+          "omitted": 31880,
+          "omission_reasons": {
+            "budget": 31880
+          },
+          "omission_details_omitted": 31876
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5239,
+          "characters": 19387,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5239,
+          "characters": 19230,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 44,
+          "tokens": 5318,
+          "characters": 19104,
+          "omitted": 31857,
+          "omission_reasons": {
+            "budget": 31857
+          },
+          "omission_details_omitted": 31854
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5261,
+          "characters": 19254,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5258,
+          "characters": 19323,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5259,
+          "characters": 19418,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        },
+        {
+          "files": 38,
+          "chunks": 45,
+          "tokens": 5254,
+          "characters": 19504,
+          "omitted": 31846,
+          "omission_reasons": {
+            "budget": 31846
+          },
+          "omission_details_omitted": 31841
+        }
+      ]
+    },
+    "edit_next_answer": {
+      "samples_seconds": [
+        5.668760083033703,
+        5.851123207947239,
+        5.380199041974265,
+        5.316071375040337,
+        5.400056416983716,
+        5.222487333987374,
+        5.327480125008151,
+        5.261139707989059,
+        5.739508832979482,
+        5.294688916997984
+      ],
+      "sample_count": 10,
+      "median_seconds": 5.353839583491208,
+      "p95_seconds": 5.851123207947239,
+      "maximum_seconds": 5.851123207947239,
+      "target_seconds": 2.0,
+      "meets_target": false
+    }
+  },
+  "memory": [
+    {
+      "label": "after_cold_graph",
+      "peak_rss_bytes": 503889920,
+      "pid": 46459
+    },
+    {
+      "label": "after_semantic_preparation",
+      "peak_rss_bytes": 1291550720,
+      "pid": 46459
+    },
+    {
+      "label": "after_warm_search",
+      "peak_rss_bytes": 1292009472,
+      "pid": 46459
+    },
+    {
+      "label": "after_warm_context",
+      "peak_rss_bytes": 1309032448,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_1",
+      "peak_rss_bytes": 1335951360,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_2",
+      "peak_rss_bytes": 1337540608,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_3",
+      "peak_rss_bytes": 1337835520,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_4",
+      "peak_rss_bytes": 1337835520,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_5",
+      "peak_rss_bytes": 1342488576,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_6",
+      "peak_rss_bytes": 1346551808,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_7",
+      "peak_rss_bytes": 1346551808,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_8",
+      "peak_rss_bytes": 1346551808,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_9",
+      "peak_rss_bytes": 1347321856,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_10",
+      "peak_rss_bytes": 1347321856,
+      "pid": 46459
+    },
+    {
+      "label": "after_edit_series_and_restore",
+      "peak_rss_bytes": 1347321856,
+      "pid": 46459
+    }
+  ],
+  "errors": [],
+  "complete": true,
+  "coverage": {
+    "indexed": 10000,
+    "eligible": 10000,
+    "invalid_count": 0,
+    "invalid_files": {},
+    "invalid_details_omitted": 0,
+    "import_resolvers": [
+      "python",
+      "javascript_typescript"
+    ],
+    "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved",
+    "watcher": "native hints plus manifest reconciliation"
+  },
+  "edit_next_answer_operation": "context",
+  "edit_fixture_file": "python/module_1000.py",
+  "memory_observation": {
+    "maximum_peak_rss_bytes": 1347321856,
+    "note": "Worker resource.ru_maxrss peak observations outside request timers; these are not current RSS. Finite repeated-edit observation does not prove asymptotic memory boundedness."
+  },
+  "semantic_skipped": false,
+  "meets_measured_targets": false,
+  "elapsed_seconds": 184.9246952533722
+}

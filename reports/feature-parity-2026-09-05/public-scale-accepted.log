@@ -1,0 +1,19 @@
+{"event": "cold_progress", "seconds": 0.10379437496885657, "phase": "not_started"}
+{"event": "cold_progress", "seconds": 0.5241061659762636, "phase": "indexing", "completed": 0, "total": 2803, "generation": null}
+{"event": "public_graph_complete", "seconds": 5.971797249978408, "coverage": {"indexed": 2799, "eligible": 2803, "invalid_count": 4, "invalid_files": {"/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/openlayers.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/django/contrib/gis/templates/gis/admin/osm.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/i18n/commands/javascript.js": "syntax_error", "/Users/apetty/Documents/Codex/2026-09-05/i/work/public-scale-django/tests/test_runner_apps/tagged/tests_syntax_error.py": "syntax_error"}, "invalid_details_omitted": 0, "import_resolvers": ["python", "javascript_typescript"], "call_analysis": "Python/JS/TS static lexical/import bindings; dynamic calls unresolved", "watcher": "native hints plus manifest reconciliation"}}
+{"event": "public_warm_complete", "operation": "dependencies", "p95_seconds": 0.3005508339847438}
+{"event": "public_warm_complete", "operation": "map", "p95_seconds": 0.32934416696662083}
+{"event": "cold_progress", "seconds": 0.10127104201819748, "phase": "ready", "completed": 2799, "total": 2803, "generation": "72f5487a9e78:1"}
+2026-09-05 16:43:00.977 Python[65075:19922211] 2026-09-05 16:43:00.977258 [W:onnxruntime:Default, telemetry.cc:800 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+{"event": "cold_progress", "seconds": 0.6234050000202842, "phase": "loading_embedding_model", "completed": 0, "total": 2803}
+{"event": "cold_progress", "seconds": 0.8335305000073276, "phase": "preparing_embeddings", "completed": 0, "total": 2799}
+{"event": "public_semantic_preparation_complete", "seconds": 2.8255106250289828}
+{"event": "public_warm_complete", "operation": "search", "p95_seconds": 0.3682183339842595}
+2026-09-05 16:43:09.993 Python[65075:19922608] NetworkStorageDB:_openDBReadConnections: failed to open read connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:43:09.993 Python[65075:19922608] The read-connection to the DB=/Users/apetty/Library/Caches/org.python.python/Cache.db is NOT valid.  Unable to determine schema version.
+2026-09-05 16:43:09.993 Python[65075:19922608] NetworkStorageDB:_openDBWriteConnections: failed to open write connection to DB @ /Users/apetty/Library/Caches/org.python.python/Cache.db.  Error=14. Cause=unable to open database file
+2026-09-05 16:43:09.993 Python[65075:19922608] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db.
+2026-09-05 16:43:09.993 Python[65075:19922608] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-shm.
+2026-09-05 16:43:09.993 Python[65075:19922608] DEBUG: there is no SQL cache DB located at /Users/apetty/Library/Caches/org.python.python/Cache.db-wal.
+{"event": "public_warm_complete", "operation": "context", "p95_seconds": 0.6777403749874793}
+{"event": "public_benchmark_complete", "complete": true, "errors": []}

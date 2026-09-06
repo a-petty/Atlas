@@ -1,0 +1,63 @@
+VERIFY probe_graph_local.py
+extension /Users/apetty/Dev/Atlas/python_shell/atlas/semantic_engine.cpython-311-darwin.so
+{
+  "before": [
+    [
+      "b.py",
+      "Import"
+    ],
+    [
+      "b.py",
+      "SymbolUsage"
+    ]
+  ],
+  "incremental": [
+    [
+      "b.py",
+      "Import"
+    ]
+  ],
+  "fresh": [
+    [
+      "b.py",
+      "Import"
+    ]
+  ],
+  "update_edges_removed": 1,
+  "pagerank_recalc": true,
+  "call_callees": []
+}
+VERIFY probe_js_export.py
+{
+  "before": [
+    [
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/final-audit/tmpwyf6ds5h/lib.js",
+      "SymbolUsage"
+    ],
+    [
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/final-audit/tmpwyf6ds5h/lib.js",
+      "Import"
+    ]
+  ],
+  "incremental": [
+    [
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/final-audit/tmpwyf6ds5h/lib.js",
+      "Import"
+    ]
+  ],
+  "fresh": [
+    [
+      "/Users/apetty/Documents/Codex/2026-09-05/i/work/final-audit/tmpwyf6ds5h/lib.js",
+      "Import"
+    ]
+  ],
+  "callees": [],
+  "recalc": true
+}
+{
+  "symlink_generation_before": "7091e0f2eb4f:1",
+  "symlink_generation_after": "7091e0f2eb4f:2",
+  "old_cursor_rejected": true,
+  "captured_alias_before_reconciliation": true
+}
+All three graph/session reproduction regressions passed
