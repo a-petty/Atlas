@@ -32,10 +32,14 @@ The evidence bundle is mirrored in repo `reports/feature-parity-2026-09-05/` and
 
 ## Recovery and reproduction
 
-Original HEAD: `8a1962e5cb7fd7603a544b9f0687a130d852ab40`. April dirty resolver work and the JS CPG test are preserved in `357ae6b`; accepted plan in `7680296`. Implementation commits are `0892fb3`, `2ed3384`, `a796d49` and `d90e59d`; the evaluator correction is `0580d7b`. Final documentation/evidence are in the subsequent local commit. Original untracked editor files and historical documents remain untouched. Nothing was pushed or deployed.
+Original HEAD: `8a1962e5cb7fd7603a544b9f0687a130d852ab40`. April dirty resolver work and the JS CPG test are preserved in `357ae6b`; accepted plan in `7680296`. Implementation commits are `0892fb3`, `2ed3384`, `a796d49` and `d90e59d`; the evaluator correction is `0580d7b`. Final documentation/evidence are in the subsequent local commit. Original untracked editor files and historical documents remain untouched. At that implementation-completion checkpoint, nothing had been pushed or deployed.
 
 The verified Python is `/Users/apetty/Documents/Codex/2026-09-05/i/work/locked-venv/bin/python` (3.11.14). The repository's older `.venv` was not used for this evidence. Build caches are task-local. The pinned public checkouts, model cache and temporary work files are not bundled with the report. The original comparison is task `work/implementation/retrieval-results-final.json`; its bundled name is `retrieval-results-before-path-correction.json`. The final comparison is `retrieval-results-corrected.json`.
 
 For a future fresh-source verification, follow `REPRODUCE.md`: sync the lock with Python 3.11 and the dev/MCP/benchmark extras, then run `scripts/verify.py --release` with a writable Atlas cache. It rebuilds the extension before Python/MCP tests. Use a new held-out sample if changing the retrieval policy; this cohort has now been inspected.
 
 Remaining capability limits are documented scope: conservative static calls; no Rust/Go import or call resolver; no exhaustive CFG/data-flow audit; descriptive skeletons that need body reads for debugging; and an unmeasured end-to-end agent benefit. These are not unfinished implementation stages.
+
+## September 6 discussion follow-up
+
+`RETRIEVAL_DIRECTION.md` records the subsequent BM25 discussion and the provisional focus on agents revisiting Alec's own repositories. The proposed next experiments remain unimplemented; the completed evidence does not establish whole-agent token savings. Alec requested committing and pushing the current work to GitHub on September 6. Publication targets the existing `codex/atlas-feature-parity` branch on `origin`; no merge or deployment was requested.
